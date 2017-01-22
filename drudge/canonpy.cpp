@@ -19,9 +19,40 @@ static PyMethodDef perm_methods[] = {
     { NULL, NULL } /* sentinel */
 };
 
+/** Sequence operations for Perm objects.
+ *
+ * Here we only support size and pre-image query.
+ */
 
 // clang-format off
+static PySequenceMethods perm_as_sequence = {
+    (lenfunc)perm_length,                       /* sq_length */
+    0,                                          /* sq_concat */
+    0,                                          /* sq_repeat */
+    (ssizeargfunc)perm_item,                    /* sq_item */
+    0,                                          /* sq_slice */
+    0,                                          /* sq_ass_item */
+    0,                                          /* sq_ass_slice */
+    0                                           /* sq_contains */
+};
+// clang-format on
 
+/** Accessors for Perms.
+ *
+ * The accompanied action query is made here.
+ */
+
+// clang-format off
+static PyGetSetDef perm_getsets[] = {
+    { "acc", (getter)perm_get_acc, NULL, "The accompanied action.", NULL },
+    { NULL }
+};
+// clang-format on
+
+/** Type definition for Perm class.
+ */
+
+// clang-format off
 static PyTypeObject perm_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "drudge.canonpy.Perm",
@@ -52,7 +83,7 @@ static PyTypeObject perm_type = {
     0,                                          /* tp_iternext */
     perm_methods,                               /* tp_methods */
     0,                                          /* tp_members */
-    0,                                          /* tp_getset */
+    perm_getsets,                               /* tp_getset */
     0,                                          /* tp_base */
     0,                                          /* tp_dict */
     0,                                          /* tp_descr_get */
@@ -63,7 +94,6 @@ static PyTypeObject perm_type = {
     perm_new,                                   /* tp_new */
     0,                                          /* tp_free */
 };
-
 // clang-format on
 
 //
