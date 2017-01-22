@@ -7,10 +7,31 @@
  * to be added for canonpy.
  */
 
+#include <Python.h>
+
 #ifndef DRUDGE_CANONPY_H
 #define DRUDGE_CANONPY_H
 
+#include <libcanon/perm.h>
+
 extern "C" {
+
+//
+// Permutation type
+// ----------------
+//
+
+/** Object type for canonpy Perm objects.
+ */
+
+// clang-format off
+
+typedef struct {
+    PyObject_HEAD
+    Simple_perm
+} Canonpy_perm_object;
+
+// clang-format on
 }
 
 #endif
