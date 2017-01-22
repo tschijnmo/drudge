@@ -9,6 +9,19 @@
 // Perm class
 // ==========
 //
+// Internal functions
+// ------------------
+//
+
+//
+// Interface functions
+// -------------------
+//
+
+//
+// Class definition
+// ----------------
+//
 
 /** Methods for Perm objects.
  */
