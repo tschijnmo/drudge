@@ -6,6 +6,57 @@
 #include <Python.h>
 
 //
+// Perm class
+// ==========
+//
+
+// clang-format off
+
+static PyTypeObject perm_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "drudge.canonpy.Perm",
+    sizeof(Perm_object),
+    0,
+    (destructor) perm_dealloc,                  /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_reserved */
+    (reprfunc) perm_repr,                       /* tp_repr */
+    0,                                          /* tp_as_number */
+    &perm_as_sequence,                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    (hashfunc) perm_hash,                       /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    0, /* In main. */                           /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    perm_doc,                                   /* tp_doc */
+    0,                                          /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    0,                                          /* tp_iter */
+    0,                                          /* tp_iternext */
+    perm_methods,                               /* tp_methods */
+    0,                                          /* tp_members */
+    0,                                          /* tp_getset */
+    0,                                          /* tp_base */
+    0,                                          /* tp_dict */
+    0,                                          /* tp_descr_get */
+    0,                                          /* tp_descr_set */
+    0,                                          /* tp_dictoffset */
+    0,                                          /* tp_init */
+    0,                                          /* tp_alloc */
+    perm_new,                                   /* tp_new */
+    0,                                          /* tp_free */
+};
+
+// clang-format on
+
+//
 // Python module definition
 // ========================
 //
@@ -28,7 +79,15 @@ static PyMethodDef canonpy_methods[] = { { NULL, NULL, 0, NULL } };
 
 static int canopy_exec(PyObject* m)
 {
-    // TODO: add module attributes, mostly types here.
+    //
+    // Add the class for Perm.
+    //
+
+    perm_type.tp_getattro = PyObject_GenericGetAttr;
+    if (PyType_Ready(&perm_type) < 0)
+        return NULL;
+    Py_INCREF(&perm_type);
+    PyModule_AddObject(m, "Perm", (PyObject*)&perm_type);
 
     return 0;
 }
