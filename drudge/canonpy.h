@@ -29,7 +29,7 @@ extern "C" {
 typedef struct {
     PyObject_HEAD
     Simple_perm
-} Canonpy_perm_object;
+} Perm_object;
 
 // clang-format on
 }
