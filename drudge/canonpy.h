@@ -1,7 +1,16 @@
 /* vim: set filetype=cpp: */
 
-/** Canonpy, a simple wrapper for libcanon in Python.
+/** Header file for canonpy.
  *
- * This is a simple wrapper over some of the facilities in libcanon to be used
- * in Python.  It directly targets what is needed for drudge.
+ * Currently it merely contains the definition of the object structure of the
+ * classes defined in canonpy.  They are put here in case a C API is intended
+ * to be added for canonpy.
  */
+
+#ifndef DRUDGE_CANONPY_H
+#define DRUDGE_CANONPY_H
+
+extern "C" {
+}
+
+#endif
