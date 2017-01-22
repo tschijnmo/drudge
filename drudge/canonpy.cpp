@@ -10,6 +10,16 @@
 // ==========
 //
 
+/** Methods for Perm objects.
+ */
+
+static PyMethodDef perm_methods[] = {
+    { "__getnewargs__", (PyCFunction)perm_getnewargs, METH_NOARGS,
+        perm_getnewargs_doc },
+    { NULL, NULL } /* sentinel */
+};
+
+
 // clang-format off
 
 static PyTypeObject perm_type = {
