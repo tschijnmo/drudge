@@ -293,14 +293,15 @@ static PyObject* perm_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
     if (!self)
         return NULL;
 
-    Simple_perm perm = get_perm_from_args(args, kwargs);
-
-    if (perm.size() > 0) {
-        new (&self->perm) Simple_perm(std::move(perm));
-        return (PyObject*)self;
-    } else {
+    try {
+        Simple_perm perm = make_perm_from_args(args, kwargs);
+    } catch (int) {
+        Py_DECREF(self);
         return NULL;
     }
+
+    new (&self->perm) Simple_perm(std::move(perm));
+    return (PyObject*)self;
 }
 
 //
