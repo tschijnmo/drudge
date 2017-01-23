@@ -108,6 +108,16 @@ static PyObject* perm_repr(Perm_object* self)
     return PyUnicode_FromUnicode(repr.data(), repr.size());
 }
 
+/** Gets the hash of a perm.
+ */
+
+static Py_hash_t perm_hash(Perm_object* self)
+{
+    // Py_hash_t should be compatible with size_t.
+
+    return self->perm.hash();
+}
+
 /** Creates a new Perm object.
  *
  * The actual work is delegated to the Python/Perm interface function.
