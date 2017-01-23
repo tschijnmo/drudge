@@ -51,6 +51,16 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs);
 // -------------------
 //
 
+const static char* perm_getnewargs_doc
+    = "Get the arguments for new to construct the Perm.";
+
+static PyObject* perm_getnewargs(Perm_object* self)
+{
+    // Here we directly use the tuple format of a perm.
+
+    return build_perm_to_tuple(self->perm);
+}
+
 /** Deallocates a perm instance.
  */
 
