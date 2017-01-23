@@ -92,6 +92,24 @@ static PyGetSetDef perm_getsets[] = {
 };
 // clang-format on
 
+/** Perm type doc string.
+  */
+
+static char* perm_doc =
+    R"__doc__(Permutation of points with accompanied action.
+
+Permutations can be constructed from an iterable giving the pre-image of the
+points and an optional integral value for the accompanied action.  The
+accompanied action can be given positionally or by the keyword ``acc``, and it
+will be manipulated according to the convention in libcanon.
+
+Querying the length of a Perm object gives the size of the permutation domain,
+while indexing it gives the pre-image of the given integral point.  The
+accompanied action can be obtained by getting the attribute ``acc``.
+Otherwise, this data type is mostly opaque.
+
+)__doc__"
+
 /** Type definition for Perm class.
  */
 
