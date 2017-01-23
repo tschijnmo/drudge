@@ -51,6 +51,17 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs);
 // -------------------
 //
 
+/** Deallocates a perm instance.
+ */
+
+static void perm_dealloc(Perm_object* self)
+{
+    perm.perm.~Simple_perm();
+
+    // For subclassing.
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
 /** Forms the string representation of a Perm object.
  */
 
@@ -85,6 +96,31 @@ static PyObject* perm_repr(Perm_object* self)
     repr.append(')');
 
     return PyUnicode_FromUnicode(repr.data(), repr.size());
+}
+
+/** Creates a new Perm object.
+ *
+ * The actual work is delegated to the Python/Perm interface function.
+ */
+
+static PyObject* perm_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
+{
+    Perm_object* self;
+
+    // Pay attention to subclassing.
+    self = (Perm_object*)type->tp_alloc(type, 0);
+
+    if (!self)
+        return NULL;
+
+    Simple_perm perm = get_perm_from_args(args, kwargs);
+
+    if (perm.size() > 0) {
+        new (&self->perm) Simple_perm(std::move(perm));
+        return (PyObject*)self;
+    } else {
+        return NULL;
+    }
 }
 
 //
