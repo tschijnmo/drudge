@@ -5,6 +5,9 @@
 
 #include <Python.h>
 
+#include <algorithm>
+#include <string>
+
 #include <libcanon/perm.h>
 
 using libcanon::Simple_perm;
@@ -47,6 +50,42 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs);
 // Interface functions
 // -------------------
 //
+
+/** Forms the string representation of a Perm object.
+ */
+
+static PyObject* perm_repr(Perm_object* self)
+{
+    const Simple_perm& perm = self->perm;
+
+    std::wstring repr("Perm(");
+
+    size_t size = perm.size();
+
+    if (size > 0) {
+        for (size_t i = 0; i < size; ++i) {
+            if (i == 0) {
+                repr.append('[');
+            } else {
+                repr.append(", ");
+            }
+            repr.append(std::to_wstring(perm >> i));
+        }
+        repr.append(']');
+
+        // Add the accompanied action only when we need.
+        char acc = perm.acc();
+        if (acc != 0) {
+            repr.append(", ");
+            repr.append(std::to_wstring(acc));
+        }
+    }
+
+    // This is used for empty or non-empty permutation.
+    repr.append(')');
+
+    return PyUnicode_FromUnicode(repr.data(), repr.size());
+}
 
 //
 // Class definition
