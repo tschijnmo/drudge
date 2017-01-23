@@ -203,7 +203,12 @@ static Py_ssize_t perm_length(Perm_object* self)
 
 static PyObject* perm_item(Perm_object* self, Py_ssize_t i)
 {
-    if (i < 0 || i >= self->perm.size()) {
+    if (i < 0) {
+        PyErr_SetString(PyExc_IndexError, "Points should be positive.");
+        return NULL;
+    }
+    size_t idx = i;
+    if (idx >= self->perm.size()) {
         PyErr_SetString(PyExc_IndexError, "Point outside permutation domain");
         return NULL;
     }
