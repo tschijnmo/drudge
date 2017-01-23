@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <libcanon/perm.h>
+#include <libcanon/sims.h>
 
 using libcanon::Simple_perm;
 using libcanon::Point;
@@ -410,6 +411,100 @@ static PyTypeObject perm_type = {
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
     perm_new,                                   /* tp_new */
+    0,                                          /* tp_free */
+};
+// clang-format on
+
+//
+// Permutation group type definition
+// =================================
+//
+// Internal functions
+// ------------------
+//
+
+//
+// Interface functions
+// -------------------
+//
+
+//
+// Class definition
+// ----------------
+//
+
+/** Methods for permutation group objects.
+ */
+
+static PyMethodDef group_methods[] = {
+    { "__getnewargs__", (PyCFunction)group_getnewargs, METH_NOARGS,
+        group_getnewargs_doc },
+    { NULL, NULL } /* sentinel */
+};
+
+/** Sims transversal type doc string.
+  */
+
+static const char* group_doc =
+    R"__doc__(Permutations groups.
+
+To create a permutation group, an iterable of Perm objects or pre-image array
+action pair can be given for the generators of the group.  Then the
+Schreier-Sims algorithm in libcanon will be invoked to generate the Sims
+transversal system, which will be stored internally for the group.  This class
+is mostly designed to be used to give input for the Eldag canonicalization
+facility.  So it is basically an opaque object after its creation.
+
+Internally, the transversal system can also be constructed directly from the
+transversal system, without going through the Schreier-Sims algorithm.
+However, that is more intended for serialization rather than direct user
+invocation.
+
+)__doc__";
+
+/** Type definition for permutation group class.
+ */
+
+// clang-format off
+static PyTypeObject group_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "drudge.canonpy.Group",
+    sizeof(Group_object),
+    0,
+    (destructor) group_dealloc,                 /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_reserved */
+    0,                                          /* tp_repr */
+    0,                                          /* tp_as_number */
+    0,                                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    0,                                          /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    0, /* In main. */                           /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    group_doc,                                  /* tp_doc */
+    0,                                          /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    0,                                          /* tp_iter */
+    0,                                          /* tp_iternext */
+    group_methods,                              /* tp_methods */
+    0,                                          /* tp_members */
+    0,                                          /* tp_getset */
+    0,                                          /* tp_base */
+    0,                                          /* tp_dict */
+    0,                                          /* tp_descr_get */
+    0,                                          /* tp_descr_set */
+    0,                                          /* tp_dictoffset */
+    0,                                          /* tp_init */
+    0,                                          /* tp_alloc */
+    group_new,                                   /* tp_new */
     0,                                          /* tp_free */
 };
 // clang-format on
