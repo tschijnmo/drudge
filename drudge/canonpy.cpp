@@ -276,7 +276,7 @@ while indexing it gives the pre-image of the given integral point.  The
 accompanied action can be obtained by getting the attribute ``acc``.
 Otherwise, this data type is mostly opaque.
 
-)__doc__"
+)__doc__";
 
 /** Type definition for Perm class.
  */
