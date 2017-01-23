@@ -7,10 +7,10 @@
  * to be added for canonpy.
  */
 
-#include <Python.h>
-
 #ifndef DRUDGE_CANONPY_H
 #define DRUDGE_CANONPY_H
+
+#include <Python.h>
 
 #include <libcanon/perm.h>
 
