@@ -30,7 +30,45 @@ using libcanon::Simple_perm;
  * which is also encoded as an integer.
  */
 
-static PyObject* build_perm_to_tuple(const Simple_perm& perm);
+static PyObject* build_perm_to_tuple(const Simple_perm& perm)
+{
+
+    PyObject* pre_images = NULL;
+    PyObject* res = NULL;
+    PyObject* acc = NULL;
+    size_t size = perm.size();
+
+    pre_images = PyList_New(size);
+    if (!pre_images)
+        goto error;
+    for (size_t i = 0; i < size; ++i) {
+        PyObject* curr = Py_BuildValue('n', perm >> i);
+        if (curr) {
+            PyList_SetItem(pre_images, i, curr);
+        } else {
+            goto error;
+        }
+    }
+
+    acc = Py_BuildValue('b', perm.acc());
+    if (!acc)
+        goto error;
+
+    res = PyTuple_New(2);
+    if (!res)
+        goto error;
+
+    PyTuple_SET_ITEM(res, 0, pre_images);
+    PyTuple_SET_ITEM(res, 1, acc);
+
+    return (PyObject*)res;
+
+error:
+    Py_XDECREF(pre_images);
+    Py_XDECREF(res);
+    Py_XDECREF(acc);
+    return NULL;
+}
 
 /** Builds a permutation from its construction arguments.
  *
