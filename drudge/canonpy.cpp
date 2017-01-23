@@ -159,6 +159,7 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
             std::string err_msg("The image of ");
             err_msg.append(std::to_string(first_not_set - image_set.begin()));
             err_msg.append(" is not set.");
+            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
             throw err_code;
         }
 
