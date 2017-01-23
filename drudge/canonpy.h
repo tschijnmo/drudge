@@ -14,7 +14,6 @@
 
 #include <libcanon/perm.h>
 
-extern "C" {
 using libcanon::Simple_perm;
 
 //
@@ -31,6 +30,5 @@ typedef struct {
     Simple_perm perm;
 } Perm_object;
 // clang-format on
-}
 
 #endif
