@@ -548,6 +548,16 @@ static int canonpy_exec(PyObject* m)
     Py_INCREF(&perm_type);
     PyModule_AddObject(m, "Perm", (PyObject*)&perm_type);
 
+    //
+    // Add the class for Group.
+    //
+
+    group_type.tp_getattro = PyObject_GenericGetAttr;
+    if (PyType_Ready(&group_type) < 0)
+        return -1;
+    Py_INCREF(&group_type);
+    PyModule_AddObject(m, "Group", (PyObject*)&group_type);
+
     return 0;
 }
 
