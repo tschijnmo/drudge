@@ -273,16 +273,6 @@ static PyObject* perm_repr(Perm_object* self)
     return PyUnicode_FromUnicode(repr.data(), repr.size());
 }
 
-/** Gets the hash of a perm.
- */
-
-static Py_hash_t perm_hash(Perm_object* self)
-{
-    // Py_hash_t should be compatible with size_t.
-
-    return self->perm.hash();
-}
-
 /** Creates a new Perm object.
  *
  * The actual work is delegated to the Python/Perm interface function.
@@ -390,7 +380,7 @@ static PyTypeObject perm_type = {
     0,                                          /* tp_as_number */
     &perm_as_sequence,                          /* tp_as_sequence */
     0,                                          /* tp_as_mapping */
-    (hashfunc) perm_hash,                       /* tp_hash */
+    0,                                          /* tp_hash */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
     0, /* In main. */                           /* tp_getattro */
