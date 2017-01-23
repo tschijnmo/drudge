@@ -5,6 +5,10 @@
 
 #include <Python.h>
 
+#include <libcanon/perm.h>
+
+using libcanon::Simple_perm;
+
 //
 // Perm class
 // ==========
@@ -12,6 +16,32 @@
 // Internal functions
 // ------------------
 //
+// These functions are not directly set to Python types but are used
+// internally.  They are also used by other parts of this extension.
+//
+
+/** Builds a tuple object for a permutation.
+ *
+ * This function creates a pair, where the first field is a list of integers
+ * for the preimage array, and the second field is the accompanied action,
+ * which is also encoded as an integer.
+ */
+
+static PyObject* build_perm_to_tuple(const Simple_perm& perm);
+
+/** Builds a permutation from its construction arguments.
+ *
+ * An iterable of positive integers for the pre-image array needs to be given
+ * as the first argument.  The accompanied action can be optionally given as
+ * another integral argument, or by the keyword ``acc``.
+ *
+ * If the arguments are not valid, a Perm of size zero is going to be returned.
+ *
+ * This function is designed to be compatible with the result from the function
+ * `build_perm_to_tuple`.  However, more general input format is accepted.
+ */
+
+static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs);
 
 //
 // Interface functions
