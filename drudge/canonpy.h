@@ -12,9 +12,13 @@
 
 #include <Python.h>
 
+#include <memory>
+
 #include <libcanon/perm.h>
+#include <libcanon/sims.h>
 
 using libcanon::Simple_perm;
+using libcanon::Sims_transv;
 
 //
 // Permutation type
@@ -29,6 +33,18 @@ typedef struct {
     PyObject_HEAD
     Simple_perm perm;
 } Perm_object;
+// clang-format on
+
+//
+// Permutation group type
+// ----------------------
+//
+
+// clang-format off
+typedef struct {
+    PyObject_HEAD
+    std::unique_ptr<Sims_transv<Simple_perm>> transv;
+} Group_object;
 // clang-format on
 
 #endif
