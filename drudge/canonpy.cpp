@@ -91,7 +91,8 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
     PyObject* pre_images;
     char acc = 0;
 
-    // We only need a simple code, actual error is set to the Python stack.
+    // We only need a simple internal code, actual error is set to the Python
+    // stack.
     constexpr int err_code = 1;
 
     static char* kwlist[] = { "pre_images", "acc", NULL };
@@ -107,62 +108,64 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
 
     PyObject* pre_images_iter = PyObject_GetIter(pre_images);
     if (!pre_images_iter)
-        throw error;
+        throw err_code;
 
-    // Set this to true and goto the end of the function, then the iterator can
-    // be released.
+    // Iterator of pre-images is always going to be decrefed after the
+    // following block.  This boolean controls if we are going to return or
+    // throw.
     bool if_err = false;
 
-    PyObject* pre_image_obj;
-    while (pre_image_obj = PyIter_Next(pre_images_iter)) {
+    try {
+        PyObject* pre_image_obj;
+        while ((pre_image_obj = PyIter_Next(pre_images_iter))) {
 
-        if (!PyLong_Check(pre_image_obj)) {
-            if_err = true;
-            goto exit;
+            if (!PyLong_Check(pre_image_obj)) {
+                throw err_code;
+            }
+            Point pre_image = PyLong_AsUnsignedLong(pre_image_obj);
+
+            // Release reference right here since its content is already
+            // extracted.  In this way, the error handling does not need to
+            // worry about it any more.
+            Py_DECREF(pre_image_obj);
+
+            if (PyErr_Occurred()) {
+                throw err_code;
+            }
+
+            pre_images_vec.push_back(pre_image);
+            size_t req_size = pre_image + 1;
+            if (image_set.size() < req_size)
+                image_set.resize(req_size, false);
+            if (image_set[pre_image]) {
+                std::string err_msg("The image of ");
+                err_msg.append(std::to_string(pre_image));
+                err_msg.append(" has already been set.");
+                PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+                throw err_code;
+            } else {
+                image_set[pre_image] = true;
+            }
         }
-        Point pre_image = PyLong_AsUnsignedLong(pre_image_obj);
 
-        // Release reference right here since its content is already extracted.
-        // In this way, the error handling does not need to worry about it any
-        // more.
-        Py_DECREF(pre_image_obj);
-
+        // Non StopIteration error.
         if (PyErr_Occurred()) {
-            if_err = true;
-            goto exit;
+            throw err_code;
         }
 
-        pre_images_vec.push_back(pre_image);
-        size_t req_size = pre_image + 1;
-        if (image_set.size() < req_size)
-            image_set.resize(req_size, false);
-        if (image_set[pre_image]) {
+        auto first_not_set
+            = std::find(image_set.begin(), image_set.end(), false);
+        if (first_not_set != image_set.end()) {
             std::string err_msg("The image of ");
-            err_msg.append(std::to_string(pre_image));
-            err_msg.append(" has already been set.");
-            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            if_err = true;
-            goto exist;
-        } else {
-            image_set[pre_image] = true;
+            err_msg.append(std::to_string(first_not_set - image_set.begin()));
+            err_msg.append(" is not set.");
+            throw err_code;
         }
-    }
 
-    // Non StopIteration error.
-    if (PyErr_Occurred()) {
-        if_err = true;
-        goto exit;
-    }
-
-    auto first_not_set = std::find(image_set.begin(), image_set.end(), false);
-    if (first_not_set != image_set.end()) {
-        std::string err_msg("The image of ");
-        err_msg.append(std::to_string(first_not_set - images_set.begin()));
-        err_msg(" is not set.");
+    } catch (int) {
         if_err = true;
     }
 
-exit:
     Py_DECREF(pre_images_iter);
     if (if_err) {
         throw err_code;
