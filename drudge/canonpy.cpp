@@ -147,10 +147,16 @@ static PyTypeObject perm_type = {
 /** Docstring for the canonpy module.
  */
 
-static const char* canonpy_docstring = R"CANONPYDOC(
-Canonpy, simple wrapper over libcanon for Python.
+static const char* canonpy_docstring
+    = R"__doc__(Canonpy, simple wrapper over libcanon for Python.
 
-)CANONPYDOC";
+This wrapper of libcanon is directly targeted towards usage using drudge.
+Here, we have a class `Perm`, which wraps over the `Simple_perm` class in
+libcanon, another class `SimsTransv`, which wraps over the `Sims_trasv` class
+for `Simple_perm`.  And we also have the function `canon_eldag` to canonicalize
+an Eldag.
+
+)__doc__";
 
 /** Methods in the canonpy module.
  */
