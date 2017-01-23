@@ -15,6 +15,7 @@
 #include <libcanon/perm.h>
 
 extern "C" {
+using libcanon::Simple_perm;
 
 //
 // Permutation type
@@ -25,12 +26,10 @@ extern "C" {
  */
 
 // clang-format off
-
 typedef struct {
     PyObject_HEAD
-    Simple_perm
+    Simple_perm perm;
 } Perm_object;
-
 // clang-format on
 }
 
