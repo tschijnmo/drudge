@@ -120,6 +120,7 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
         while ((pre_image_obj = PyIter_Next(pre_images_iter))) {
 
             if (!PyLong_Check(pre_image_obj)) {
+                PyErr_SetString(PyExc_ValueError, "Non-integral point given");
                 throw err_code;
             }
             Point pre_image = PyLong_AsUnsignedLong(pre_image_obj);
