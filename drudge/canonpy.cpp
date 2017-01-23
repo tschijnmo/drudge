@@ -45,7 +45,7 @@ static PyObject* build_perm_to_tuple(const Simple_perm& perm)
     if (!pre_images)
         goto error;
     for (size_t i = 0; i < size; ++i) {
-        PyObject* curr = Py_BuildValue('n', perm >> i);
+        PyObject* curr = Py_BuildValue("n", perm >> i);
         if (curr) {
             PyList_SetItem(pre_images, i, curr);
         } else {
@@ -53,7 +53,7 @@ static PyObject* build_perm_to_tuple(const Simple_perm& perm)
         }
     }
 
-    acc = Py_BuildValue('b', perm.acc());
+    acc = Py_BuildValue("b", perm.acc());
     if (!acc)
         goto error;
 
@@ -97,7 +97,7 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
     static char* kwlist[] = { "pre_images", "acc", NULL };
 
     auto args_stat = PyArg_ParseTupleAndKeywords(
-        args, kwargs, "O|b", kwlist, &pre_images, &acc, );
+        args, kwargs, "O|b", kwlist, &pre_images, &acc);
 
     if (!args_stat)
         throw err_code;
@@ -226,7 +226,7 @@ static PyObject* perm_get_acc(Perm_object* self, void* closure)
 
 static void perm_dealloc(Perm_object* self)
 {
-    perm.perm.~Simple_perm();
+    self->perm.~Simple_perm();
 
     // For subclassing.
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -239,31 +239,31 @@ static PyObject* perm_repr(Perm_object* self)
 {
     const Simple_perm& perm = self->perm;
 
-    std::wstring repr("Perm(");
+    std::wstring repr(L"Perm(");
 
     size_t size = perm.size();
 
     if (size > 0) {
         for (size_t i = 0; i < size; ++i) {
             if (i == 0) {
-                repr.append('[');
+                repr.append(L"[");
             } else {
-                repr.append(", ");
+                repr.append(L", ");
             }
             repr.append(std::to_wstring(perm >> i));
         }
-        repr.append(']');
+        repr.append(L"]");
 
         // Add the accompanied action only when we need.
         char acc = perm.acc();
         if (acc != 0) {
-            repr.append(", ");
+            repr.append(L", ");
             repr.append(std::to_wstring(acc));
         }
     }
 
     // This is used for empty or non-empty permutation.
-    repr.append(')');
+    repr.append(L")");
 
     return PyUnicode_FromUnicode(repr.data(), repr.size());
 }
@@ -293,8 +293,9 @@ static PyObject* perm_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
     if (!self)
         return NULL;
 
+    Simple_perm perm{};
     try {
-        Simple_perm perm = make_perm_from_args(args, kwargs);
+        perm = make_perm_from_args(args, kwargs);
     } catch (int) {
         Py_DECREF(self);
         return NULL;
@@ -351,7 +352,7 @@ static PyGetSetDef perm_getsets[] = {
 /** Perm type doc string.
   */
 
-static char* perm_doc =
+static const char* perm_doc =
     R"__doc__(Permutation of points with accompanied action.
 
 Permutations can be constructed from an iterable giving the pre-image of the
@@ -440,7 +441,7 @@ static PyMethodDef canonpy_methods[] = { { NULL, NULL, 0, NULL } };
 /** Executes the initialization of the canonpy module.
  */
 
-static int canopy_exec(PyObject* m)
+static int canonpy_exec(PyObject* m)
 {
     //
     // Add the class for Perm.
@@ -448,7 +449,7 @@ static int canopy_exec(PyObject* m)
 
     perm_type.tp_getattro = PyObject_GenericGetAttr;
     if (PyType_Ready(&perm_type) < 0)
-        return NULL;
+        return -1;
     Py_INCREF(&perm_type);
     PyModule_AddObject(m, "Perm", (PyObject*)&perm_type);
 
@@ -459,7 +460,7 @@ static int canopy_exec(PyObject* m)
  */
 
 static struct PyModuleDef_Slot canonpy_slots[] = {
-    { Py_mod_exec, canonpy_exec }, { 0, NULL },
+    { Py_mod_exec, (void*)canonpy_exec }, { 0, NULL },
 };
 
 /** Canonpy module definition.
