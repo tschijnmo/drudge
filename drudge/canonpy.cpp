@@ -61,6 +61,41 @@ static PyObject* perm_getnewargs(Perm_object* self)
     return build_perm_to_tuple(self->perm);
 }
 
+/** Gets the size of the permutation domain of a Perm.
+ */
+
+static Py_ssize_t perm_length(Perm_object* self)
+{
+    // The type should be the same, size_t and Py_ssize_t.
+
+    return self->perm.size();
+}
+
+/** Gets the pre-image of a point.
+ *
+ * A new integer object will be built by this function.
+ */
+
+static PyObject* perm_item(Perm_object* self, Py_ssize_t i)
+{
+    if (i < 0 || i >= self->perm.size()) {
+        PyErr_SetString(PyExc_IndexError, "Point outside permutation domain");
+        return NULL;
+    }
+
+    return Py_BuildValue("n", self->perm >> i);
+}
+
+/** Gets the accompanied action of a Perm.
+ */
+
+static PyObject* perm_get_acc(Perm_object* self, void* closure)
+{
+    // Note that the accompanied action is a byte in simple perm.
+
+    return Py_BuildValue("b", self->perm.acc());
+}
+
 /** Deallocates a perm instance.
  */
 
