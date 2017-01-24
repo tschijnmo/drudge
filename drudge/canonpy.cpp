@@ -429,10 +429,82 @@ static PyTypeObject perm_type = {
  * Each entry is for one level of transversal system, which is a tuple starting
  * with an integer for the anchor point, and then followed by a list of pairs
  * for the coset representative permutations.
- *
  */
 
-static PyObject* serialize_group(Transv* transv);
+static PyObject* serialize_group(const Transv* transv)
+{
+    // Create a new list for the result.
+    PyObject* res = PyList_New(0);
+    if (!res) {
+        return NULL;
+    }
+
+    for (; transv; transv = transv->next()) {
+
+        // Initialize all of them to NULL, so that things can be handled
+        // consistently on error.  No memory is going to be accidentally
+        // touched by XDECREF.
+
+        PyObject* pair = NULL;
+        PyObject* target = NULL;
+        PyObject* perms = NULL;
+        PyObject* perm = NULL;
+
+        pair = PyTuple_New(2);
+        if (!pair) {
+            goto error;
+        }
+
+        target = Py_BuildValue("n", transv->target());
+        if (!target) {
+            goto error;
+        }
+        PyTuple_SET_ITEM(pair, 0, target);
+        target = NULL; // Reference is stolen, no need to handle it on error.
+
+        perms = PyList_New(0);
+        if (!perms) {
+            goto error;
+        }
+
+        for (const auto& i : *transv) {
+            perm = build_perm_to_tuple(i);
+            if (!perm) {
+                goto error;
+            }
+
+            int stat = PyList_Append(perms, perm);
+            if (stat != 0) {
+                goto error;
+            }
+            Py_DECREF(perm);
+            perm = NULL;
+        }
+
+        PyTuple_SET_ITEM(pair, 1, perms);
+        perms = NULL;
+
+        int stat = PyList_Append(res, pair);
+        if (state != 0) {
+            goto error;
+        }
+        Py_DECREF(pair);
+        pair = NULL;
+
+    error:
+        Py_XDECREF(res);
+        Py_XDECREF(pair);
+        Py_XDECREF(target);
+        Py_XDECREF(perms);
+        Py_XDECREF(perm);
+        return NULL;
+    }
+
+    // No need to handle memory issue here after the loop finished
+    // successfully.  All references are transferred to the result list.
+
+    return res;
+}
 
 /** Builds a Sims transversal system from Python arguments.
  *
