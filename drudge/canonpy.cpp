@@ -6,6 +6,7 @@
 #include <Python.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -513,17 +514,82 @@ static PyObject* serialize_group(const Transv* transv)
  * can be given under the keyword `gens`.
  *
  * Empty iterable is not considered valid.  If the first item from the iterable
- * is a sequence containing an integral value on its first field, the given
- * iterable is considered to contain a serialized transversal system, or it
- * will be attempted to be built from scratch.
+ * is a pair containing an integral value on its first field and an iterable
+ * value on its second field, the given iterable is considered to contain a
+ * serialized transversal system, or it will be attempted to be built from
+ * scratch.
  *
  * For invalid inputs, an empty unique pointer will be returned and the
- * exception for the Python stack will be set.  Note that since the
- * de-serialization mode is mostly for developers, very little input validation
- * is done for performance reasons.
+ * exception for the Python stack will be set.
  */
 
-static Transv_ptr build_sims_transv_from_args(PyObject* args, PyObject* kwargs);
+static Transv_ptr build_sims_transv_from_args(PyObject* args, PyObject* kwargs)
+{
+    PyObject* input;
+
+    static char* kwlist[] = { "gens", NULL };
+
+    auto args_stat
+        = PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &input);
+    if (!args_stat) {
+        return nullptr;
+    }
+
+    PyObject* input_iter = PyObject_GetIter(input);
+    if (!input_iter) {
+        return nullptr;
+    }
+
+    PyObject* front = PyIter_Next(input_iter);
+    if (!front) {
+        // Here we either had an error or reached end.
+
+        if (!PyErr_Occurred()) {
+            // When we reached the end, need to set our own error.
+            PyErr_SetString(PyExc_ValueError, "No generator is given.");
+        }
+
+        Py_DECREF(input_iter);
+        return nullptr;
+    }
+
+    // Here we first check the front to test if we are in scratch mode or
+    // de-serialization mode.
+    //
+    // After the determination is finished, all local references are destroyed.
+    // This is slightly wasteful in that some of them might be helpful for
+    // later de-serialization.  But it helps with code clarity and modularity.
+
+    // We assume we work in scratch mode, unless a strong indication is given
+    // for the de-serialization mode.
+    bool scrach = true;
+
+    if (PySequence_Check(front) && PySequence_Size(front) == 2) {
+        // Here it is possible that we are in de-serialization mode.
+        PyObject* first = PySequence_GetItem(front, 0);
+        PyObject* second = PySequence_GetItem(front, 1);
+
+        if (PyLong_Check(first)) {
+            PyObject* curr_transv = PyObject_GetIter(second);
+
+            if (curr_transv) {
+                scratch = false;
+                Py_DECREF(curr_transv);
+            } else {
+                PyErr_Clear();
+            }
+        }
+
+        Py_DECREF(first);
+        Py_DECREF(second);
+    }
+
+    if (scratch) {
+        return build_sims_scratch(front, input_iter);
+    } else {
+        return deserialize_sims(front, input_iter);
+    }
+}
 
 //
 // Interface functions
