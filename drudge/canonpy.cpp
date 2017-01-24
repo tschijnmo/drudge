@@ -906,7 +906,7 @@ static PyTypeObject group_type = {
     0,                                          /* tp_dictoffset */
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
-    group_new,                                   /* tp_new */
+    group_new,                                  /* tp_new */
     0,                                          /* tp_free */
 };
 // clang-format on
@@ -951,8 +951,8 @@ ia
 symms
 
     An iterable giving the allowed symmetry operations on each node, should be
-    given as a Group instance when symmetries are allowed, or None should be
-    used.  Each node should be given explicitly.
+    given as a Group instance when symmetries are allowed, or a false value
+    should be used.  Each node should be given explicitly.
 
 colours
 

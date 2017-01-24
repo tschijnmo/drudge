@@ -49,3 +49,7 @@ def test_s3_group_correct_and_serializable():
     pickled = pickle.dumps(group)
     new_group = pickle.loads(pickled)
     assert new_group.__getnewargs__() == args
+
+    # Assert that Group type should be considered true, since it implements
+    # neither __bool__ nor __len__.
+    assert group
