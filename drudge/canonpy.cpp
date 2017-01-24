@@ -72,41 +72,46 @@ static constexpr I_err err = 1;
 static PyObject* build_perm_to_tuple(const Simple_perm& perm)
 {
 
-    PyObject* pre_images = NULL;
     PyObject* res = NULL;
+    PyObject* pre_images = NULL;
     PyObject* acc = NULL;
     size_t size = perm.size();
 
-    pre_images = PyList_New(size);
-    if (!pre_images)
-        goto error;
-    for (size_t i = 0; i < size; ++i) {
-        PyObject* curr = Py_BuildValue("n", perm >> i);
-        if (curr) {
-            PyList_SetItem(pre_images, i, curr);
-        } else {
-            goto error;
+    try {
+        pre_images = PyList_New(size);
+        if (!pre_images) {
+            throw err;
         }
+
+        for (size_t i = 0; i < size; ++i) {
+            PyObject* curr = Py_BuildValue("n", perm >> i);
+            if (curr) {
+                PyList_SetItem(pre_images, i, curr);
+            } else {
+                throw err;
+            }
+        }
+
+        acc = Py_BuildValue("b", perm.acc());
+        if (!acc) {
+            throw err;
+        }
+
+        res = PyTuple_New(2);
+        if (!res)
+            throw err;
+
+        PyTuple_SET_ITEM(res, 0, pre_images);
+        PyTuple_SET_ITEM(res, 1, acc);
+
+        return (PyObject*)res;
+
+    } catch (I_err) {
+        Py_XDECREF(pre_images);
+        Py_XDECREF(res);
+        Py_XDECREF(acc);
+        return NULL;
     }
-
-    acc = Py_BuildValue("b", perm.acc());
-    if (!acc)
-        goto error;
-
-    res = PyTuple_New(2);
-    if (!res)
-        goto error;
-
-    PyTuple_SET_ITEM(res, 0, pre_images);
-    PyTuple_SET_ITEM(res, 1, acc);
-
-    return (PyObject*)res;
-
-error:
-    Py_XDECREF(pre_images);
-    Py_XDECREF(res);
-    Py_XDECREF(acc);
-    return NULL;
 }
 
 /** Builds a permutation from its construction arguments.
