@@ -440,6 +440,7 @@ static PyObject* serialize_group(const Transv* transv)
     if (!res) {
         return NULL;
     }
+    constexpr int err_code = 1;
 
     for (; transv; transv = transv->next()) {
 
@@ -452,54 +453,57 @@ static PyObject* serialize_group(const Transv* transv)
         PyObject* perms = NULL;
         PyObject* perm = NULL;
 
-        pair = PyTuple_New(2);
-        if (!pair) {
-            goto error;
-        }
-
-        target = Py_BuildValue("n", transv->target());
-        if (!target) {
-            goto error;
-        }
-        PyTuple_SET_ITEM(pair, 0, target);
-        target = NULL; // Reference is stolen, no need to handle it on error.
-
-        perms = PyList_New(0);
-        if (!perms) {
-            goto error;
-        }
-
-        for (const auto& i : *transv) {
-            perm = build_perm_to_tuple(i);
-            if (!perm) {
-                goto error;
+        try {
+            pair = PyTuple_New(2);
+            if (!pair) {
+                throw err_code;
             }
 
-            int stat = PyList_Append(perms, perm);
+            target = Py_BuildValue("n", transv->target());
+            if (!target) {
+                throw err_code;
+            }
+            PyTuple_SET_ITEM(pair, 0, target);
+            target
+                = NULL; // Reference is stolen, no need to handle it on error.
+
+            perms = PyList_New(0);
+            if (!perms) {
+                throw err_code;
+            }
+
+            for (const auto& i : *transv) {
+                perm = build_perm_to_tuple(i);
+                if (!perm) {
+                    throw err_code;
+                }
+
+                int stat = PyList_Append(perms, perm);
+                if (stat != 0) {
+                    throw err_code;
+                }
+                Py_DECREF(perm);
+                perm = NULL;
+            }
+
+            PyTuple_SET_ITEM(pair, 1, perms);
+            perms = NULL;
+
+            int stat = PyList_Append(res, pair);
             if (stat != 0) {
-                goto error;
+                throw err_code;
             }
-            Py_DECREF(perm);
-            perm = NULL;
+            Py_DECREF(pair);
+            pair = NULL;
+
+        } catch (int) {
+            Py_XDECREF(res);
+            Py_XDECREF(pair);
+            Py_XDECREF(target);
+            Py_XDECREF(perms);
+            Py_XDECREF(perm);
+            return NULL;
         }
-
-        PyTuple_SET_ITEM(pair, 1, perms);
-        perms = NULL;
-
-        int stat = PyList_Append(res, pair);
-        if (stat != 0) {
-            goto error;
-        }
-        Py_DECREF(pair);
-        pair = NULL;
-
-    error:
-        Py_XDECREF(res);
-        Py_XDECREF(pair);
-        Py_XDECREF(target);
-        Py_XDECREF(perms);
-        Py_XDECREF(perm);
-        return NULL;
     }
 
     // No need to handle memory issue here after the loop finished
@@ -592,75 +596,80 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
     Transv head(0, 1); // The dummy head.
     Transv* back = &head;
 
+    constexpr int err_code = 1;
+
     do {
 
-        // Here we still need some checking, since we might be working on
-        // non-first elements from the iterable, which has not been checked.
+        try {
 
-        if (!PySequence_Check(front) || PySequence_Size(front) != 2) {
-            PyErr_SetString(PyExc_ValueError, "Invalid transversal.");
-            goto error;
-        }
-        PyObject* first = PySequence_GetItem(front, 0);
-        if (!first) {
-            goto error;
-        }
+            // Here we still need some checking, since we might be working on
+            // non-first elements from the iterable, which has not been checked.
 
-        if (!PyLong_Check(first)) {
-            PyErr_SetString(PyExc_TypeError, "Invalid target point.");
-            Py_DECREF(first);
-            goto error;
-        }
-        Point target = PyLong_AsUnsignedLong(first);
-        Py_DECREF(first);
-
-        PyObject* second = PySequence_GetItem(front, 1);
-        if (!second) {
-            goto error;
-        }
-
-        // We need at least one element in the transversal.  Both for checking
-        // and for the interface of read_gens.
-
-        PyObject* gens_iter = PyObject_GetIter(second);
-        Py_DECREF(second);
-        if (!gens_iter) {
-            goto error;
-        }
-
-        PyObject* gens_front = PyIter_Next(gens_iter);
-        if (!gens_front) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetString(
-                    PyExc_ValueError, "Empty coset representatives.");
+            if (!PySequence_Check(front) || PySequence_Size(front) != 2) {
+                PyErr_SetString(PyExc_ValueError, "Invalid transversal.");
+                throw err_code;
+            }
+            PyObject* first = PySequence_GetItem(front, 0);
+            if (!first) {
+                throw err_code;
             }
 
-            Py_DECREF(gens_iter);
-            goto error;
+            if (!PyLong_Check(first)) {
+                PyErr_SetString(PyExc_TypeError, "Invalid target point.");
+                Py_DECREF(first);
+                throw err_code;
+            }
+            Point target = PyLong_AsUnsignedLong(first);
+            Py_DECREF(first);
+
+            PyObject* second = PySequence_GetItem(front, 1);
+            if (!second) {
+                throw err_code;
+            }
+
+            // We need at least one element in the transversal.  Both for
+            // checking
+            // and for the interface of read_gens.
+
+            PyObject* gens_iter = PyObject_GetIter(second);
+            Py_DECREF(second);
+            if (!gens_iter) {
+                throw err_code;
+            }
+
+            PyObject* gens_front = PyIter_Next(gens_iter);
+            if (!gens_front) {
+                if (!PyErr_Occurred()) {
+                    PyErr_SetString(
+                        PyExc_ValueError, "Empty coset representatives.");
+                }
+
+                Py_DECREF(gens_iter);
+                throw err_code;
+            }
+
+            std::vector<Simple_perm> gens = read_gens(gens_front, gens_iter);
+            if (gens.size() == 0) {
+                throw err_code;
+            }
+            size_t size = gens.front().size();
+
+            auto new_transv = std::make_unique<Transv>(target, size);
+            for (auto& i : gens) {
+                new_transv->insert(std::move(i));
+            }
+
+            back->set_next(std::move(new_transv));
+            back = back->next();
+
+            Py_DECREF(front);
+            continue;
+
+        } catch (int) {
+            Py_DECREF(front);
+            Py_DECREF(iter);
+            return nullptr;
         }
-
-        std::vector<Simple_perm> gens = read_gens(gens_front, gens_iter);
-        if (gens.size() == 0) {
-            goto error;
-        }
-        size_t size = gens.front().size();
-
-        auto new_transv = std::make_unique<Transv>(target, size);
-        for (auto& i : gens) {
-            new_transv->insert(std::move(i));
-        }
-
-        back->set_next(std::move(new_transv));
-        back = back->next();
-
-        Py_DECREF(front);
-        continue;
-
-    error:
-        Py_DECREF(front);
-        Py_DECREF(iter);
-        return nullptr;
-
     } while ((front = PyIter_Next(iter)));
     Py_DECREF(iter);
 
