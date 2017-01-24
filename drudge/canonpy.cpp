@@ -507,6 +507,59 @@ static PyObject* serialize_group(const Transv* transv)
     return res;
 }
 
+/** Reads permutation generators from the given iterator.
+ *
+ * The front element should already be taken out. This function stoles the
+ * references.
+ */
+
+std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
+{
+    std::vector<Simple_perm> gens{};
+    size_t size; // Size of the permutation domain.
+
+    do {
+        if (PyObject_IsInstance(front, &perm_type)) {
+            gens.push_back(((Perm_object*)front)->perm);
+        } else {
+
+            Simple_perm gen = make_perm_from_args(front, NULL);
+
+            if (gen.size() == 0) {
+                goto error;
+            }
+            if (gens.empty()) {
+                size = gen.size();
+            } else if (gen.size() != size) {
+                std::string err_msg("Generator on ");
+                err_msg.append(std::to_string(gen.size()));
+                err_msg.append(" points has been found, expecting ");
+                err_msg.append(std::to_string(size));
+                err_msg.append(". ");
+                PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+                goto error;
+            }
+
+            gens.push_back(std::move(gen));
+            continue;
+
+        error:
+            Py_DECREF(front);
+            Py_DECREF(iter);
+            return {};
+        }
+
+        Py_DECREF(front);
+    } while (front = PyIter_Next(iter));
+    Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return {};
+    }
+
+    return gens;
+}
+
 /** Builds a Sims transversal system from Python arguments.
  *
  * The building has two modes of operation, scratch mode and de-serialisation
