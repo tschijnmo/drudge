@@ -428,6 +428,53 @@ static PyTypeObject perm_type = {
 // -------------------
 //
 
+const static char* group_getnewargs_doc
+    = "Get the arguments for new to construct the Group.";
+
+static PyObject* group_getnewargs(Group_object* self)
+{
+    // Here we directly use the list format of a perm.
+
+    return serialize_group(self->transv.get());
+}
+
+/** Deallocates a group instance.
+ */
+
+static void group_dealloc(Group_object* self)
+{
+    self->transv.~Transv_ptr();
+
+    // For subclassing.
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+/** Creates a new permutation group object.
+ *
+ * The actual work is delegated to the core functions.
+ */
+
+static PyObject* group_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
+{
+    Perm_object* self;
+
+    // Pay attention to subclassing.
+    self = (Perm_object*)type->tp_alloc(type, 0);
+
+    if (!self)
+        return NULL;
+
+    Transv_ptr trasv = build_sims_transv_from_args(args, kwargs);
+
+    if (!trasv) {
+        Py_DECREF(self);
+        return NULL;
+    }
+
+    self->transv = std::move(transv);
+    return (PyObject*)self;
+}
+
 //
 // Class definition
 // ----------------
