@@ -465,7 +465,7 @@ static PyTypeObject perm_type = {
  *
  * This function creates a new Python list for the given transversal system.
  * Each entry is for one level of transversal system, which is a tuple starting
- * with an integer for the anchor point, and then followed by a list of pairs
+ * with an integer for the target point, and then followed by a list of pairs
  * for the coset representative permutations.
  */
 
@@ -476,7 +476,6 @@ static PyObject* serialize_group(const Transv* transv)
     if (!res) {
         return NULL;
     }
-    constexpr int err_code = 1;
 
     for (; transv; transv = transv->next()) {
 
@@ -487,57 +486,52 @@ static PyObject* serialize_group(const Transv* transv)
         PyObject* pair = NULL;
         PyObject* target = NULL;
         PyObject* perms = NULL;
-        PyObject* perm = NULL;
 
         try {
-            pair = PyTuple_New(2);
-            if (!pair) {
-                throw err_code;
-            }
-
             target = Py_BuildValue("n", transv->target());
             if (!target) {
-                throw err_code;
+                throw err;
             }
-            PyTuple_SET_ITEM(pair, 0, target);
-            target
-                = NULL; // Reference is stolen, no need to handle it on error.
 
             perms = PyList_New(0);
             if (!perms) {
-                throw err_code;
+                throw err;
             }
 
             for (const auto& i : *transv) {
-                perm = build_perm_to_tuple(i);
+                PyObject* perm = build_perm_to_tuple(i);
                 if (!perm) {
-                    throw err_code;
+                    throw err;
                 }
 
                 int stat = PyList_Append(perms, perm);
-                if (stat != 0) {
-                    throw err_code;
-                }
                 Py_DECREF(perm);
-                perm = NULL;
+                if (stat != 0) {
+                    throw err;
+                }
             }
 
+            pair = PyTuple_New(2);
+            if (!pair) {
+                throw err;
+            }
+            PyTuple_SET_ITEM(pair, 0, target);
+            target = NULL;
             PyTuple_SET_ITEM(pair, 1, perms);
             perms = NULL;
 
             int stat = PyList_Append(res, pair);
             if (stat != 0) {
-                throw err_code;
+                throw err;
             }
             Py_DECREF(pair);
             pair = NULL;
 
-        } catch (int) {
+        } catch (I_err) {
             Py_XDECREF(res);
             Py_XDECREF(pair);
             Py_XDECREF(target);
             Py_XDECREF(perms);
-            Py_XDECREF(perm);
             return NULL;
         }
     }
