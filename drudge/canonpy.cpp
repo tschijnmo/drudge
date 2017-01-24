@@ -423,6 +423,36 @@ static PyTypeObject perm_type = {
 // ------------------
 //
 
+/** Serializes a group into a Python list.
+ *
+ * This function creates a new Python list for the given transversal system.
+ * Each entry is for one level of transversal system, which is a tuple starting
+ * with an integer for the anchor point, and then followed by a list of pairs
+ * for the coset representative permutations.
+ *
+ */
+
+static PyObject* serialize_group(Transv* transv);
+
+/** Builds a Sims transversal system from Python arguments.
+ *
+ * The building has two modes of operation, scratch mode and de-serialisation
+ * mode.  In either case, an iterable is expected as the only parameter, which
+ * can be given under the keyword `gens`.
+ *
+ * Empty iterable is not considered valid.  If the first item from the iterable
+ * is a sequence containing an integral value on its first field, the given
+ * iterable is considered to contain a serialized transversal system, or it
+ * will be attempted to be built from scratch.
+ *
+ * For invalid inputs, an empty unique pointer will be returned and the
+ * exception for the Python stack will be set.  Note that since the
+ * de-serialization mode is mostly for developers, very little input validation
+ * is done for performance reasons.
+ */
+
+static Transv_ptr build_sims_transv_from_args(PyObject* args, PyObject* kwargs);
+
 //
 // Interface functions
 // -------------------
