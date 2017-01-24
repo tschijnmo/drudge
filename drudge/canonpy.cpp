@@ -335,7 +335,7 @@ static PyObject* perm_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
     Simple_perm perm{};
     try {
         perm = make_perm_from_args(args, kwargs);
-    } catch (int) {
+    } catch (I_err) {
         Py_DECREF(self);
         return NULL;
     }
