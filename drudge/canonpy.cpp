@@ -21,6 +21,7 @@ using libcanon::build_sims_sys;
 using libcanon::Eldag;
 using libcanon::Node_symms;
 using libcanon::canon_eldag;
+using libcanon::Eldag_perm;
 
 //
 // Perm class
@@ -1011,6 +1012,73 @@ static Node_symms<Simple_perm> read_symms(PyObject* iterable)
     });
 }
 
+/** Builds the Python results for Eldag canonicalization result.
+ *
+ * The result is a pair of the global nodes ordering given as a list and a list
+ * of Perms for each of the nodes.
+ */
+
+static PyObject* build_canon_res(const Eldag_perm<Simple_perm>& canon_res)
+{
+    PyObject* res = NULL;
+    PyObject* gl_order = NULL;
+    PyObject* node_perms = NULL;
+
+    size_t n_nodes = canon_res.partition.size();
+
+    constexpr int err_code = 1;
+
+    try {
+
+        gl_order = PyList_New(n_nodes);
+        if (!gl_order) {
+            throw err_code;
+        }
+        for (size_t i = 0; i < n_nodes; ++i) {
+            Point pre_img = canon_res.partition.get_pre_imgs()[i];
+            PyObject* pre_img_obj = PyLong_FromSize_t(pre_img);
+            if (!pre_img_obj) {
+                throw err_code;
+            }
+            PyList_SetItem(gl_order, i, pre_img_obj);
+        }
+
+        node_perms = PyList_New(n_nodes);
+        if (!node_perms) {
+            throw err_code;
+        }
+        for (size_t i = 0; i < n_nodes; ++i) {
+            auto& perm = canon_res.perms[i];
+            if (!perm) {
+                Py_INCREF(Py_None);
+                PyList_SetItem(node_perms, i, Py_None);
+            } else {
+                Perm_object* perm_obj = PyObject_New(Perm_object, &perm_type);
+                if (!perm_obj) {
+                    throw err_code;
+                }
+                new (&perm_obj->perm) Simple_perm(std::move(*perm));
+                PyList_SetItem(node_perms, i, (PyObject*)perm_obj);
+            }
+        }
+
+        res = PyTuple_New(2);
+        if (!res) {
+            throw err_code;
+        }
+        PyTuple_SET_ITEM(res, 0, gl_order);
+        PyTuple_SET_ITEM(res, 1, node_perms);
+
+    } catch (int) {
+        Py_XDECREF(res);
+        Py_XDECREF(gl_order);
+        Py_XDECREF(node_perms);
+        return NULL;
+    }
+
+    return res;
+}
+
 //
 // Interface functions
 // -------------------
@@ -1128,7 +1196,8 @@ static PyObject* canon_eldag_func(
     auto canon_res
         = canon_eldag(eldag, symms, [&](auto point) { return colours[point]; });
 
-    return build_canon_res(canon_res);
+    // Currently, we just neglect the automorphism group.
+    return build_canon_res(canon_res.first);
 }
 
 //
