@@ -908,6 +908,76 @@ static PyTypeObject group_type = {
 // clang-format on
 
 //
+// Eldag canonicalization function
+// ===============================
+//
+// Internal functions
+// ------------------
+//
+
+//
+// Interface functions
+// -------------------
+//
+
+/** Docstring for Eldag canonicalization function.
+ */
+
+static const char* canon_eldag_docstring = R"__doc__(Canonicalizes an Eldag.
+
+This is the core function of canonpy.  An Eldag can be given and it will be
+canonicalized.
+
+The Eldag should be given by four arguments,
+
+Parameters
+----------
+
+edges
+
+    An iterable of integers giving the edges in the Eldag.  It will be cast
+    into a sequence internally.
+
+ia
+
+    An iterable of integers giving the starting index of edges in the edges
+    array, as in CSR format for sparse matrices.  It determines the number of
+    nodes in the Eldag.
+
+symms
+
+    An iterable giving the allowed symmetry operations on each node, should be
+    given as a Group instance when symmetries are allowed, or None should be
+    used.  Each node should be given explicitly.
+
+colour
+
+    An iterable initial colour of the nodes.  Any Python values supporting
+    equality and less than comparison can be used.  All nodes should be given
+    one explicit initial colour.
+
+Returns
+-------
+
+order
+
+    A list of integers giving the order of the nodes in the canonical form.
+
+perms
+
+    A list for the permutations to be applied to each node.
+
+)__doc__";
+
+/** Eldag canonicalization driver function.
+ */
+
+static PyObject* canon_eldag_func(
+    PyObject* self, PyObject* args, PyObject* keywds)
+{
+}
+
+//
 // Python module definition
 // ========================
 //
@@ -929,7 +999,10 @@ an Eldag.
 /** Methods in the canonpy module.
  */
 
-static PyMethodDef canonpy_methods[] = { { NULL, NULL, 0, NULL } };
+static PyMethodDef canonpy_methods[]
+    = { { "canon_eldag", (PyCFunction)canon_eldag_func,
+            METH_VARARGS | METH_KEYWORDS, canonpy_docstring },
+        { NULL, NULL, 0, NULL } };
 
 /** Executes the initialization of the canonpy module.
  */
