@@ -828,6 +828,7 @@ static PyObject* group_getnewargs(Group_object* self)
 
     transvs = serialize_group(self->transv.get());
     if (!transvs) {
+        Py_DECREF(args);
         return NULL;
     }
 
@@ -966,21 +967,22 @@ static PyTypeObject group_type = {
  *
  * An integral value will be raised when something goes wrong, with the Python
  * exception set.  The get value functor should be a callable that accepts a
- * borrowed reference to the item and return the actual value.  Integral
+ * borrowed reference to the item and return the actual value.  Internal
  * exceptions can be thrown by this function after the Python exception has
  * been set.
+ *
+ * This function only borrows the reference to the iterable.
  */
 
 template <typename T, typename F>
 static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
 {
     std::vector<T> res{};
-    constexpr int err_code = 1;
 
     PyObject* iterator = PyObject_GetIter(iterable);
 
     if (iterator == NULL) {
-        throw err_code;
+        throw err;
     }
 
     PyObject* item;
@@ -988,10 +990,10 @@ static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
 
         try {
             res.push_back(get_value(item));
-        } catch (int) {
+        } catch (I_err) {
             Py_DECREF(item);
             Py_DECREF(iterator);
-            throw err_code;
+            throw err;
         }
 
         Py_DECREF(item);
@@ -1000,7 +1002,7 @@ static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
     Py_DECREF(iterator);
 
     if (PyErr_Occurred()) {
-        throw err_code;
+        throw err;
     }
 
     return res;
@@ -1013,13 +1015,13 @@ static Point_vec read_points(PyObject* iterable)
 {
     return read_py_iter<size_t>(iterable, [](PyObject* item) {
         if (!PyLong_Check(item)) {
-            throw 1;
+            throw err;
         }
 
         size_t value = PyLong_AsSize_t(item);
 
         if (PyErr_Occurred()) {
-            throw 1;
+            throw err;
         }
 
         return value;
@@ -1041,12 +1043,13 @@ static Node_symms<Simple_perm> read_symms(PyObject* iterable)
         } else if (check == -1) {
             // This means something wrong happened during the boolean
             // evaluation.
-            throw 1;
+            throw err;
         }
 
         if (!PyObject_IsInstance(item, (PyObject*)&group_type)) {
             PyErr_SetString(
                 PyExc_TypeError, "Invalid symmetry, Group expected.");
+            throw err;
         }
         Group_object* group = (Group_object*)item;
 
@@ -1068,26 +1071,24 @@ static PyObject* build_canon_res(const Eldag_perm<Simple_perm>& canon_res)
 
     size_t n_nodes = canon_res.partition.size();
 
-    constexpr int err_code = 1;
-
     try {
 
         gl_order = PyList_New(n_nodes);
         if (!gl_order) {
-            throw err_code;
+            throw err;
         }
         for (size_t i = 0; i < n_nodes; ++i) {
             Point pre_img = canon_res.partition.get_pre_imgs()[i];
             PyObject* pre_img_obj = PyLong_FromSize_t(pre_img);
             if (!pre_img_obj) {
-                throw err_code;
+                throw err;
             }
             PyList_SetItem(gl_order, i, pre_img_obj);
         }
 
         node_perms = PyList_New(n_nodes);
         if (!node_perms) {
-            throw err_code;
+            throw err;
         }
         for (size_t i = 0; i < n_nodes; ++i) {
             auto& perm = canon_res.perms[i];
@@ -1097,7 +1098,7 @@ static PyObject* build_canon_res(const Eldag_perm<Simple_perm>& canon_res)
             } else {
                 Perm_object* perm_obj = PyObject_New(Perm_object, &perm_type);
                 if (!perm_obj) {
-                    throw err_code;
+                    throw err;
                 }
                 new (&perm_obj->perm) Simple_perm(std::move(*perm));
                 PyList_SetItem(node_perms, i, (PyObject*)perm_obj);
@@ -1106,12 +1107,12 @@ static PyObject* build_canon_res(const Eldag_perm<Simple_perm>& canon_res)
 
         res = PyTuple_New(2);
         if (!res) {
-            throw err_code;
+            throw err;
         }
         PyTuple_SET_ITEM(res, 0, gl_order);
         PyTuple_SET_ITEM(res, 1, node_perms);
 
-    } catch (int) {
+    } catch (I_err) {
         Py_XDECREF(res);
         Py_XDECREF(gl_order);
         Py_XDECREF(node_perms);
@@ -1210,26 +1211,26 @@ static PyObject* canon_eldag_func(
         symms = read_symms(symms_arg);
         if (symms.size() != n_nodes) {
             std::string err_msg("Expecting ");
-            err_msg.append(std::to_string(n_nodes));
-            err_msg.append(" symmetries, ");
-            err_msg.append(std::to_string(symms.size()));
-            err_msg.append(" given.");
+            err_msg += std::to_string(n_nodes);
+            err_msg += " symmetries, ";
+            err_msg += std::to_string(symms.size());
+            err_msg += " given.";
             PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            throw err_code;
+            throw err;
         }
 
         colours = read_points(colours_arg);
         if (colours.size() != n_nodes) {
             std::string err_msg("Expecting ");
-            err_msg.append(std::to_string(n_nodes));
-            err_msg.append(" colours, ");
-            err_msg.append(std::to_string(colours.size()));
-            err_msg.append(" given.");
+            err_msg += std::to_string(n_nodes);
+            err_msg += " colours, ";
+            err_msg += std::to_string(colours.size());
+            err_msg += " given.";
             PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            throw err_code;
+            throw err;
         }
 
-    } catch (int) {
+    } catch (I_err) {
         return NULL;
     }
 
