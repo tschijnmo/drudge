@@ -234,7 +234,8 @@ static PyObject* perm_getnewargs(Perm_object* self)
 
 static Py_ssize_t perm_length(Perm_object* self)
 {
-    // The type should be the same, size_t and Py_ssize_t.
+    // The size_t that we use is different from Py_ssize_t, hopefully overflow
+    // should not be an issue here.
 
     return self->perm.size();
 }
@@ -294,24 +295,24 @@ static PyObject* perm_repr(Perm_object* self)
     if (size > 0) {
         for (size_t i = 0; i < size; ++i) {
             if (i == 0) {
-                repr.append(L"[");
+                repr += L'[';
             } else {
-                repr.append(L", ");
+                repr += L", ";
             }
-            repr.append(std::to_wstring(perm >> i));
+            repr += std::to_wstring(perm >> i);
         }
-        repr.append(L"]");
+        repr += L']';
 
         // Add the accompanied action only when we need.
         char acc = perm.acc();
         if (acc != 0) {
-            repr.append(L", ");
-            repr.append(std::to_wstring(acc));
+            repr += L", ";
+            repr += std::to_wstring(acc);
         }
     }
 
     // This is used for empty or non-empty permutation.
-    repr.append(L")");
+    repr += L')';
 
     return PyUnicode_FromUnicode(repr.data(), repr.size());
 }
