@@ -487,7 +487,7 @@ static PyObject* serialize_group(const Transv* transv)
         perms = NULL;
 
         int stat = PyList_Append(res, pair);
-        if (state != 0) {
+        if (stat != 0) {
             goto error;
         }
         Py_DECREF(pair);
@@ -520,7 +520,7 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
     size_t size; // Size of the permutation domain.
 
     do {
-        if (PyObject_IsInstance(front, &perm_type)) {
+        if (PyObject_IsInstance(front, (PyObject*)&perm_type)) {
             gens.push_back(((Perm_object*)front)->perm);
         } else {
 
@@ -551,7 +551,7 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
         }
 
         Py_DECREF(front);
-    } while (front = PyIter_Next(iter));
+    } while ((front = PyIter_Next(iter)));
     Py_DECREF(iter);
 
     if (PyErr_Occurred()) {
@@ -574,7 +574,7 @@ Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
         return nullptr;
     }
 
-    Transv_ptr res = build_sims_sys(size, std::move(gens));
+    Transv_ptr res = build_sims_sys(gens.front().size(), std::move(gens));
     if (!res) {
         PyErr_SetString(PyExc_ValueError, "Identity group found.");
     }
@@ -647,7 +647,7 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
 
         auto new_transv = std::make_unique<Transv>(target, size);
         for (auto& i : gens) {
-            new_transv.insert(std::move(i));
+            new_transv->insert(std::move(i));
         }
 
         back->set_next(std::move(new_transv));
@@ -661,7 +661,7 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
         Py_DECREF(iter);
         return nullptr;
 
-    } while (front = PyIter_Next(iter));
+    } while ((front = PyIter_Next(iter)));
     Py_DECREF(iter);
 
     return head.release_next();
@@ -722,7 +722,7 @@ static Transv_ptr build_sims_transv_from_args(PyObject* args, PyObject* kwargs)
 
     // We assume we work in scratch mode, unless a strong indication is given
     // for the de-serialization mode.
-    bool scrach = true;
+    bool scratch = true;
 
     if (PySequence_Check(front) && PySequence_Size(front) == 2) {
         // Here it is possible that we are in de-serialization mode.
@@ -784,17 +784,17 @@ static void group_dealloc(Group_object* self)
 
 static PyObject* group_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
 {
-    Perm_object* self;
+    Group_object* self;
 
     // Pay attention to subclassing.
-    self = (Perm_object*)type->tp_alloc(type, 0);
+    self = (Group_object*)type->tp_alloc(type, 0);
 
     if (!self)
         return NULL;
 
-    Transv_ptr trasv = build_sims_transv_from_args(args, kwargs);
+    Transv_ptr transv = build_sims_transv_from_args(args, kwargs);
 
-    if (!trasv) {
+    if (!transv) {
         Py_DECREF(self);
         return NULL;
     }
