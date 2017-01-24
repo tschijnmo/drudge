@@ -544,6 +544,8 @@ static PyObject* serialize_group(const Transv* transv)
 
 /** Reads permutation generators from the given iterator.
  *
+ * Error will be indicated by throwing an internal error.
+ *
  * The front element should already be taken out. This function stoles the
  * references.
  */
@@ -558,30 +560,32 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
             gens.push_back(((Perm_object*)front)->perm);
         } else {
 
-            Simple_perm gen = make_perm_from_args(front, NULL);
+            try {
+                Simple_perm gen = make_perm_from_args(front, NULL);
+                if (gen.size() == 0) {
+                    throw err;
+                }
 
-            if (gen.size() == 0) {
-                goto error;
+                if (gens.empty()) {
+                    size = gen.size();
+                } else if (gen.size() != size) {
+                    std::string err_msg("Generator on ");
+                    err_msg += std::to_string(gen.size());
+                    err_msg += " points has been found, expecting ";
+                    err_msg += std::to_string(size);
+                    err_msg += ". ";
+                    PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+                    throw err;
+                }
+
+                gens.push_back(std::move(gen));
+                continue;
+
+            } catch (I_err) {
+                Py_DECREF(front);
+                Py_DECREF(iter);
+                throw;
             }
-            if (gens.empty()) {
-                size = gen.size();
-            } else if (gen.size() != size) {
-                std::string err_msg("Generator on ");
-                err_msg.append(std::to_string(gen.size()));
-                err_msg.append(" points has been found, expecting ");
-                err_msg.append(std::to_string(size));
-                err_msg.append(". ");
-                PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-                goto error;
-            }
-
-            gens.push_back(std::move(gen));
-            continue;
-
-        error:
-            Py_DECREF(front);
-            Py_DECREF(iter);
-            return {};
         }
 
         Py_DECREF(front);
@@ -589,7 +593,7 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
     Py_DECREF(iter);
 
     if (PyErr_Occurred()) {
-        return {};
+        throw err;
     }
 
     return gens;
@@ -599,11 +603,18 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
  *
  * Note that this function steals references to the iterator for generators and
  * its front.
+ *
+ * Erroneous inputs are given by null pointer.
  */
 
 Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
 {
-    std::vector<Simple_perm> gens = read_gens(front, iter);
+    std::vector<Simple_perm> gens{};
+    try {
+        gens = read_gens(front, iter);
+    } catch (I_err) {
+        return nullptr;
+    }
     if (gens.size() == 0) {
         return nullptr;
     }
@@ -611,14 +622,16 @@ Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
     Transv_ptr res = build_sims_sys(gens.front().size(), std::move(gens));
     if (!res) {
         PyErr_SetString(PyExc_ValueError, "Identity group found.");
+        return nullptr;
     }
+
     return res;
 }
 
 /** Build a Sims transversal system from transversals directly.
  *
  * Similar to the scratch mode function, here the references will be stolen for
- * the front element and iterator.
+ * the front element and iterator.  And errors will be given by a null pointer.
  */
 
 Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
@@ -626,10 +639,7 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
     Transv head(0, 1); // The dummy head.
     Transv* back = &head;
 
-    constexpr int err_code = 1;
-
     do {
-
         try {
 
             // Here we still need some checking, since we might be working on
@@ -637,34 +647,37 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
 
             if (!PySequence_Check(front) || PySequence_Size(front) != 2) {
                 PyErr_SetString(PyExc_ValueError, "Invalid transversal.");
-                throw err_code;
+                throw err;
             }
             PyObject* first = PySequence_GetItem(front, 0);
             if (!first) {
-                throw err_code;
+                throw err;
             }
 
             if (!PyLong_Check(first)) {
                 PyErr_SetString(PyExc_TypeError, "Invalid target point.");
                 Py_DECREF(first);
-                throw err_code;
+                throw err;
             }
-            Point target = PyLong_AsUnsignedLong(first);
+            Point target = PyLong_AsSize_t(first);
             Py_DECREF(first);
+            if (PyErr_Occurred()) {
+                throw err;
+            }
 
             PyObject* second = PySequence_GetItem(front, 1);
             if (!second) {
-                throw err_code;
+                // First should be released now.
+                throw err;
             }
 
             // We need at least one element in the transversal.  Both for
-            // checking
-            // and for the interface of read_gens.
+            // checking and for the interface of read_gens.
 
             PyObject* gens_iter = PyObject_GetIter(second);
             Py_DECREF(second);
             if (!gens_iter) {
-                throw err_code;
+                throw err;
             }
 
             PyObject* gens_front = PyIter_Next(gens_iter);
@@ -675,12 +688,12 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
                 }
 
                 Py_DECREF(gens_iter);
-                throw err_code;
+                throw err;
             }
 
             std::vector<Simple_perm> gens = read_gens(gens_front, gens_iter);
             if (gens.size() == 0) {
-                throw err_code;
+                throw err;
             }
             size_t size = gens.front().size();
 
@@ -695,13 +708,17 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
             Py_DECREF(front);
             continue;
 
-        } catch (int) {
+        } catch (I_err) {
             Py_DECREF(front);
             Py_DECREF(iter);
             return nullptr;
         }
     } while ((front = PyIter_Next(iter)));
     Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return nullptr;
+    }
 
     return head.release_next();
 }
@@ -719,7 +736,7 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
  * scratch.
  *
  * For invalid inputs, an empty unique pointer will be returned and the
- * exception for the Python stack will be set.
+ * exception for the Python exception will be set.
  */
 
 static Transv_ptr build_sims_transv_from_args(PyObject* args, PyObject* kwargs)
