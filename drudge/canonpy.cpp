@@ -770,9 +770,23 @@ const static char* group_getnewargs_doc
 
 static PyObject* group_getnewargs(Group_object* self)
 {
-    // Here we directly use the list format of a perm.
+    // Here we need to put the list format of the transversal into a tuple.
+    PyObject* args;
+    PyObject* transvs;
 
-    return serialize_group(self->transv.get());
+    args = PyTuple_New(1);
+    if (!args) {
+        return NULL;
+    }
+
+    transvs = serialize_group(self->transv.get());
+    if (!transvs) {
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM(args, 0, transvs);
+
+    return args;
 }
 
 /** Deallocates a group instance.
