@@ -16,6 +16,7 @@
 using libcanon::Simple_perm;
 using libcanon::Point;
 using libcanon::Point_vec;
+using libcanon::build_sims_sys;
 
 //
 // Perm class
@@ -558,6 +559,26 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
     }
 
     return gens;
+}
+
+/** Builds a Sims transversal from scratch.
+ *
+ * Note that this function steals references to the iterator for generators and
+ * its front.
+ */
+
+Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
+{
+    std::vector<Simple_perm> gens = read_gens(front, iter);
+    if (gens.size() == 0) {
+        return nullptr;
+    }
+
+    Transv_ptr res = build_sims_sys(size, std::move(gens));
+    if (!res) {
+        PyErr_SetString(PyExc_ValueError, "Identity group found.");
+    }
+    return res;
 }
 
 /** Builds a Sims transversal system from Python arguments.
