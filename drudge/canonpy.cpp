@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <libcanon/eldag.h>
 #include <libcanon/perm.h>
 #include <libcanon/sims.h>
 
@@ -17,6 +18,9 @@ using libcanon::Simple_perm;
 using libcanon::Point;
 using libcanon::Point_vec;
 using libcanon::build_sims_sys;
+using libcanon::Eldag;
+using libcanon::Node_symms;
+using libcanon::canon_eldag;
 
 //
 // Perm class
@@ -950,9 +954,9 @@ symms
     given as a Group instance when symmetries are allowed, or None should be
     used.  Each node should be given explicitly.
 
-colour
+colours
 
-    An iterable initial colour of the nodes.  Any Python values supporting
+    An iterable initial colours of the nodes.  Any Python values supporting
     equality and less than comparison can be used.  All nodes should be given
     one explicit initial colour.
 
@@ -975,6 +979,60 @@ perms
 static PyObject* canon_eldag_func(
     PyObject* self, PyObject* args, PyObject* keywds)
 {
+    PyObject* edges_arg;
+    PyObject* ia_arg;
+    PyObject* symms_arg;
+    PyObject* colour_arg;
+
+    size_t n_nodes;
+    constexpr int err_code = 1;
+
+    static char* kwlist[] = { "edges", "ia", "symms", "colours", NULL };
+
+    auto arg_stat = PyArg_ParseTupleAndKeywords(args, keywds, "OOOO", kwlist,
+        &edges_arg, &ia_arg, &symms_arg, &colour_arg);
+    if (!arg_stat) {
+        return NULL;
+    }
+
+    try {
+        Point_vec edges = read_points(edges_arg);
+        Point_vec ia = read_points(ia_arg);
+        n_nodes = ia.size() - 1;
+
+        Node_symms<Simple_perm> symms = read_symms(symms_arg);
+        if (symms.size() != n_nodes) {
+            std::string err_msg("Expecting ");
+            err_msg.append(std::to_string(n_nodes));
+            err_msg.append(" symmetries, ");
+            err_msg.append(std::to_string(symms.size()));
+            err_msg.append(" given.");
+            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+            raise err_code;
+        }
+
+        std::vector<Python_order_handle> colours
+            = read_order_handles(colour_arg) if (colours.size() != n_nodes)
+        {
+            std::string err_msg("Expecting ");
+            err_msg.append(std::to_string(n_nodes));
+            err_msg.append(" colours, ");
+            err_msg.append(std::to_string(colours.size()));
+            err_msg.append(" given.");
+            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+            raise err_code;
+        }
+
+    } catch (int) {
+        return NULL;
+    }
+
+    Eldag eldag{ std::move(edges), std::move(ia) };
+
+    auto canon_res = canon_eldag(eldag, symms,
+        [](auto point) -> Python_order_handle& { return colours[point]; });
+
+    return build_canon_res(canon_res);
 }
 
 //
