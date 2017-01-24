@@ -956,9 +956,9 @@ symms
 
 colours
 
-    An iterable initial colours of the nodes.  Integral values should be used
-    and will be used for an initial partitioning of the nodes.  All nodes
-    should be given one explicit initial colour.
+    An iterable initial colours of the nodes.  Positive integral values should
+    be used and will be used for an initial partitioning of the nodes.  All
+    nodes should be given one explicit initial colour.
 
 Returns
 -------
