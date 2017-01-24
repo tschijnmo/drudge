@@ -24,6 +24,34 @@ using libcanon::canon_eldag;
 using libcanon::Eldag_perm;
 
 //
+// General utilities
+// =================
+//
+// Here we have some general utilities useful throughout the code.
+//
+
+/** Type for internal errors.
+ *
+ * Different from the common treatment of exceptions by goto in the CPython
+ * code base, here goto cannot be liberally used due to the more complicated
+ * goto rules in C++.  So here we choose to use C++ exception handling
+ * facilities for this problem.  Since the actual problem are always set to the
+ * Python exception facility, here we just use a simple data type to jump to an
+ * internal location.
+ */
+
+using I_err = int;
+
+/** A default value to be used for internal errors.
+ *
+ * Since normally the details of the problem should be set to the Python
+ * exception stack rather than set to the C++ exception, this value can be
+ * conveniently used to indicate the presence of a problem.
+ */
+
+static constexpr I_err err = 1;
+
+//
 // Perm class
 // ==========
 //
