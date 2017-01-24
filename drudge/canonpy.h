@@ -40,10 +40,13 @@ typedef struct {
 // ----------------------
 //
 
+using Transv = Sims_transv<Simple_perm>;
+using Transv_ptr = std::unique_ptr<Transv>;
+
 // clang-format off
 typedef struct {
     PyObject_HEAD
-    std::unique_ptr<Sims_transv<Simple_perm>> transv;
+    Transv_ptr transv;
 } Group_object;
 // clang-format on
 
