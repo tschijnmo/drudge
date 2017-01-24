@@ -934,17 +934,17 @@ static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
     std::vector<T> res{};
     constexpr int err_code = 1;
 
-    PyObject* iterator = PyObject_GetIter(obj);
+    PyObject* iterator = PyObject_GetIter(iterable);
 
     if (iterator == NULL) {
         throw err_code;
     }
 
     PyObject* item;
-    while (item = PyIter_Next(iterator)) {
+    while ((item = PyIter_Next(iterator))) {
 
         try {
-            T value = get_value(item);
+            res.push_back(get_value(item));
         } catch (int) {
             Py_DECREF(item);
             Py_DECREF(iterator);
@@ -952,7 +952,6 @@ static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
         }
 
         Py_DECREF(item);
-        res.push_back(std::move(value));
     }
 
     Py_DECREF(iterator);
@@ -974,9 +973,9 @@ static Point_vec read_points(PyObject* iterable)
             throw 1;
         }
 
-        size_t value = PyLong_AsSize_t();
+        size_t value = PyLong_AsSize_t(item);
 
-        if (PyErr_Occurred) {
+        if (PyErr_Occurred()) {
             throw 1;
         }
 
@@ -989,27 +988,27 @@ static Point_vec read_points(PyObject* iterable)
 
 static Node_symms<Simple_perm> read_symms(PyObject* iterable)
 {
-    return read_py_iter<const Sims_trasv<Simple_perm>*>(
-        iterable, [](PyObject* item) {
-            auto check = PyObject_Not(item);
-            if (check == 1) {
-                // This is an indication of a false value used by user for show
-                // the absence of symmetries.
-                return nullptr;
-            } else if (check == -1) {
-                // This means something wrong happened during the boolean
-                // evaluation.
-                throw 1;
-            }
+    using Transv_ptr = const Sims_transv<Simple_perm>*;
+    return read_py_iter<Transv_ptr>(iterable, [](PyObject* item) -> Transv_ptr {
+        auto check = PyObject_Not(item);
+        if (check == 1) {
+            // This is an indication of a false value used by user for show
+            // the absence of symmetries.
+            return nullptr;
+        } else if (check == -1) {
+            // This means something wrong happened during the boolean
+            // evaluation.
+            throw 1;
+        }
 
-            if (!PyObject_IsInstance(item, (PyObject*)group_type)) {
-                PyErr_SetString(
-                    PyExc_TypeError, "Invalid symmetry, Group expected.");
-            }
-            Group_object* group = (Group_object*)item;
+        if (!PyObject_IsInstance(item, (PyObject*)&group_type)) {
+            PyErr_SetString(
+                PyExc_TypeError, "Invalid symmetry, Group expected.");
+        }
+        Group_object* group = (Group_object*)item;
 
-            return group->transv.get();
-        });
+        return group->transv.get();
+    });
 }
 
 //
@@ -1075,25 +1074,30 @@ static PyObject* canon_eldag_func(
     PyObject* edges_arg;
     PyObject* ia_arg;
     PyObject* symms_arg;
-    PyObject* colour_arg;
+    PyObject* colours_arg;
 
-    size_t n_nodes;
     constexpr int err_code = 1;
 
     static char* kwlist[] = { "edges", "ia", "symms", "colours", NULL };
 
     auto arg_stat = PyArg_ParseTupleAndKeywords(args, keywds, "OOOO", kwlist,
-        &edges_arg, &ia_arg, &symms_arg, &colour_arg);
+        &edges_arg, &ia_arg, &symms_arg, &colours_arg);
     if (!arg_stat) {
         return NULL;
     }
 
+    Point_vec edges{};
+    Point_vec ia{};
+    size_t n_nodes;
+    Node_symms<Simple_perm> symms{};
+    Point_vec colours{};
+
     try {
-        Point_vec edges = read_points(edges_arg);
-        Point_vec ia = read_points(ia_arg);
+        edges = read_points(edges_arg);
+        ia = read_points(ia_arg);
         n_nodes = ia.size() - 1;
 
-        Node_symms<Simple_perm> symms = read_symms(symms_arg);
+        symms = read_symms(symms_arg);
         if (symms.size() != n_nodes) {
             std::string err_msg("Expecting ");
             err_msg.append(std::to_string(n_nodes));
@@ -1101,10 +1105,10 @@ static PyObject* canon_eldag_func(
             err_msg.append(std::to_string(symms.size()));
             err_msg.append(" given.");
             PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            raise err_code;
+            throw err_code;
         }
 
-        std::vector<Python_order_handle> colours = read_points(colour_arg);
+        colours = read_points(colours_arg);
         if (colours.size() != n_nodes) {
             std::string err_msg("Expecting ");
             err_msg.append(std::to_string(n_nodes));
@@ -1112,7 +1116,7 @@ static PyObject* canon_eldag_func(
             err_msg.append(std::to_string(colours.size()));
             err_msg.append(" given.");
             PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            raise err_code;
+            throw err_code;
         }
 
     } catch (int) {
@@ -1121,8 +1125,8 @@ static PyObject* canon_eldag_func(
 
     Eldag eldag{ std::move(edges), std::move(ia) };
 
-    auto canon_res = canon_eldag(eldag, symms,
-        [](auto point) -> Python_order_handle& { return colours[point]; });
+    auto canon_res
+        = canon_eldag(eldag, symms, [&](auto point) { return colours[point]; });
 
     return build_canon_res(canon_res);
 }
