@@ -581,6 +581,92 @@ Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
     return res;
 }
 
+/** Build a Sims transversal system from transversals directly.
+ *
+ * Similar to the scratch mode function, here the references will be stolen for
+ * the front element and iterator.
+ */
+
+Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
+{
+    Transv head(0, 1); // The dummy head.
+    Transv* back = &head;
+
+    do {
+
+        // Here we still need some checking, since we might be working on
+        // non-first elements from the iterable, which has not been checked.
+
+        if (!PySequence_Check(front) || PySequence_Size(front) != 2) {
+            PyErr_SetString(PyExc_ValueError, "Invalid transversal.");
+            goto error;
+        }
+        PyObject* first = PySequence_GetItem(front, 0);
+        if (!first) {
+            goto error;
+        }
+
+        if (!PyLong_Check(first)) {
+            PyErr_SetString(PyExc_TypeError, "Invalid target point.");
+            Py_DECREF(first);
+            goto error;
+        }
+        Point target = PyLong_AsUnsignedLong(first);
+        Py_DECREF(first);
+
+        PyObject* second = PySequence_GetItem(front, 1);
+        if (!second) {
+            goto error;
+        }
+
+        // We need at least one element in the transversal.  Both for checking
+        // and for the interface of read_gens.
+
+        PyObject* gens_iter = PyObject_GetIter(second);
+        Py_DECREF(second);
+        if (!gens_iter) {
+            goto error;
+        }
+
+        PyObject* gens_front = PyIter_Next(gens_iter);
+        if (!gens_front) {
+            if (!PyErr_Occurred()) {
+                PyErr_SetString(
+                    PyExc_ValueError, "Empty coset representatives.");
+            }
+
+            Py_DECREF(gens_iter);
+            goto error;
+        }
+
+        std::vector<Simple_perm> gens = read_gens(gens_front, gens_iter);
+        if (gens.size() == 0) {
+            goto error;
+        }
+        size_t size = gens.front().size();
+
+        auto new_transv = std::make_unique<Transv>(target, size);
+        for (auto& i : gens) {
+            new_transv.insert(std::move(i));
+        }
+
+        back->set_next(std::move(new_transv));
+        back = back->next();
+
+        Py_DECREF(front);
+        continue;
+
+    error:
+        Py_DECREF(front);
+        Py_DECREF(iter);
+        return nullptr;
+
+    } while (front = PyIter_Next(iter));
+    Py_DECREF(iter);
+
+    return head.release_next();
+}
+
 /** Builds a Sims transversal system from Python arguments.
  *
  * The building has two modes of operation, scratch mode and de-serialisation
