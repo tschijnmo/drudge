@@ -120,7 +120,7 @@ static PyObject* build_perm_to_tuple(const Simple_perm& perm)
  * as the first argument.  The accompanied action can be optionally given as
  * another integral argument, or by the keyword ``acc``.
  *
- * If the arguments are not valid, an integer exception will be thrown and the
+ * If the arguments are not valid, an internal exception will be thrown and the
  * Python exception will be set.
  *
  * This function is designed to be compatible with the result from the function
@@ -132,24 +132,20 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
     PyObject* pre_images;
     char acc = 0;
 
-    // We only need a simple internal code, actual error is set to the Python
-    // stack.
-    constexpr int err_code = 1;
-
     static char* kwlist[] = { "pre_images", "acc", NULL };
 
     auto args_stat = PyArg_ParseTupleAndKeywords(
         args, kwargs, "O|b", kwlist, &pre_images, &acc);
 
     if (!args_stat)
-        throw err_code;
+        throw err;
 
     Point_vec pre_images_vec{};
     std::vector<bool> image_set{};
 
     PyObject* pre_images_iter = PyObject_GetIter(pre_images);
     if (!pre_images_iter)
-        throw err_code;
+        throw err;
 
     // Iterator of pre-images is always going to be decrefed after the
     // following block.  This boolean controls if we are going to return or
@@ -161,10 +157,11 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
         while ((pre_image_obj = PyIter_Next(pre_images_iter))) {
 
             if (!PyLong_Check(pre_image_obj)) {
+                Py_DECREF(pre_image_obj);
                 PyErr_SetString(PyExc_TypeError, "Non-integral point given");
-                throw err_code;
+                throw err;
             }
-            Point pre_image = PyLong_AsUnsignedLong(pre_image_obj);
+            Point pre_image = PyLong_AsSsize_t(pre_image_obj);
 
             // Release reference right here since its content is already
             // extracted.  In this way, the error handling does not need to
@@ -172,7 +169,7 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
             Py_DECREF(pre_image_obj);
 
             if (PyErr_Occurred()) {
-                throw err_code;
+                throw err;
             }
 
             pre_images_vec.push_back(pre_image);
@@ -181,10 +178,10 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
                 image_set.resize(req_size, false);
             if (image_set[pre_image]) {
                 std::string err_msg("The image of ");
-                err_msg.append(std::to_string(pre_image));
-                err_msg.append(" has already been set.");
+                err_msg += std::to_string(pre_image);
+                err_msg += " has already been set.";
                 PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-                throw err_code;
+                throw err;
             } else {
                 image_set[pre_image] = true;
             }
@@ -192,26 +189,26 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
 
         // Non StopIteration error.
         if (PyErr_Occurred()) {
-            throw err_code;
+            throw err;
         }
 
         auto first_not_set
             = std::find(image_set.begin(), image_set.end(), false);
         if (first_not_set != image_set.end()) {
             std::string err_msg("The image of ");
-            err_msg.append(std::to_string(first_not_set - image_set.begin()));
-            err_msg.append(" is not set.");
+            err_msg += std::to_string(first_not_set - image_set.begin());
+            err_msg += " is not set.";
             PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            throw err_code;
+            throw err;
         }
 
-    } catch (int) {
+    } catch (I_err) {
         if_err = true;
     }
 
     Py_DECREF(pre_images_iter);
     if (if_err) {
-        throw err_code;
+        throw err;
     } else {
         return Simple_perm(std::move(pre_images_vec), acc);
     }
