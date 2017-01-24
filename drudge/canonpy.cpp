@@ -919,6 +919,99 @@ static PyTypeObject group_type = {
 // ------------------
 //
 
+/** Reads values from Python iterable into a vector.
+ *
+ * An integral value will be raised when something goes wrong, with the Python
+ * exception set.  The get value functor should be a callable that accepts a
+ * borrowed reference to the item and return the actual value.  Integral
+ * exceptions can be thrown by this function after the Python exception has
+ * been set.
+ */
+
+template <typename T, typename F>
+static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
+{
+    std::vector<T> res{};
+    constexpr int err_code = 1;
+
+    PyObject* iterator = PyObject_GetIter(obj);
+
+    if (iterator == NULL) {
+        throw err_code;
+    }
+
+    PyObject* item;
+    while (item = PyIter_Next(iterator)) {
+
+        try {
+            T value = get_value(item);
+        } catch (int) {
+            Py_DECREF(item);
+            Py_DECREF(iterator);
+            throw err_code;
+        }
+
+        Py_DECREF(item);
+        res.push_back(std::move(value));
+    }
+
+    Py_DECREF(iterator);
+
+    if (PyErr_Occurred()) {
+        throw err_code;
+    }
+
+    return res;
+}
+
+/** Reads unsigned integral points from a Python iterable.
+ */
+
+static Point_vec read_points(PyObject* iterable)
+{
+    return read_py_iter<size_t>(iterable, [](PyObject* item) {
+        if (!PyLong_Check(item)) {
+            throw 1;
+        }
+
+        size_t value = PyLong_AsSize_t();
+
+        if (PyErr_Occurred) {
+            throw 1;
+        }
+
+        return value;
+    });
+}
+
+/** Reads pointer to Sims transversal from Python iterable.
+ */
+
+static Node_symms<Simple_perm> read_symms(PyObject* iterable)
+{
+    return read_py_iter<const Sims_trasv<Simple_perm>*>(
+        iterable, [](PyObject* item) {
+            auto check = PyObject_Not(item);
+            if (check == 1) {
+                // This is an indication of a false value used by user for show
+                // the absence of symmetries.
+                return nullptr;
+            } else if (check == -1) {
+                // This means something wrong happened during the boolean
+                // evaluation.
+                throw 1;
+            }
+
+            if (!PyObject_IsInstance(item, (PyObject*)group_type)) {
+                PyErr_SetString(
+                    PyExc_TypeError, "Invalid symmetry, Group expected.");
+            }
+            Group_object* group = (Group_object*)item;
+
+            return group->transv.get();
+        });
+}
+
 //
 // Interface functions
 // -------------------
