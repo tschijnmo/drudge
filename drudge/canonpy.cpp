@@ -956,9 +956,9 @@ symms
 
 colours
 
-    An iterable initial colours of the nodes.  Any Python values supporting
-    equality and less than comparison can be used.  All nodes should be given
-    one explicit initial colour.
+    An iterable initial colours of the nodes.  Integral values should be used
+    and will be used for an initial partitioning of the nodes.  All nodes
+    should be given one explicit initial colour.
 
 Returns
 -------
@@ -1011,9 +1011,8 @@ static PyObject* canon_eldag_func(
             raise err_code;
         }
 
-        std::vector<Python_order_handle> colours
-            = read_order_handles(colour_arg) if (colours.size() != n_nodes)
-        {
+        std::vector<Python_order_handle> colours = read_points(colour_arg);
+        if (colours.size() != n_nodes) {
             std::string err_msg("Expecting ");
             err_msg.append(std::to_string(n_nodes));
             err_msg.append(" colours, ");
