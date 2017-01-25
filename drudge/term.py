@@ -1,6 +1,10 @@
 """Tensor term definition and utility."""
 
-from sympy import sympify
+from collections.abc import Iterable, Sequence
+
+from sympy import sympify, SympifyError
+
+from .vec import Vec
 
 
 class Range:
@@ -89,3 +93,97 @@ class Range:
     def __str__(self):
         """Form readable string representation."""
         return str(self._label)
+
+
+class Term:
+    """Terms in tensor expression.
+
+    This is the core class for storing symbolic tensor expressions.  The
+    actual symbolic tensor type is just a shallow wrapper over a list of
+    terms.  It is basically comprised of three fields, a list of summations,
+    a SymPy expression giving the amplitude, and a list of non-commutative
+    vectors.
+    """
+
+    __slots__ = [
+        '_sums',
+        '_amp',
+        '_vecs'
+    ]
+
+    def __init__(self, sums, amp, vecs):
+        """Initialize the tensor term.
+
+        This entry point should be the final place to check user inputs.
+        """
+
+        if not isinstance(sums, Iterable):
+            raise TypeError('Invalid summations, iterable expected: ', sums)
+        checked_sums = []
+        for i in sums:
+            if not (isinstance(i, Sequence) and len(i) == 2):
+                raise TypeError('Invalid summation entry, pair expected: ', i)
+            try:
+                dummy = sympify(i[0])
+            except SympifyError:
+                raise TypeError('Invalid dummy, not sympifiable: ', i[0])
+            if not isinstance(i[1], Range):
+                raise TypeError('Invalid range to sum over: ', i)
+            checked_sums.append((dummy, i[1]))
+            continue
+        self._sums = tuple(checked_sums)
+
+        self._amp = sympify(amp)
+
+        checked_vecs = []
+        if not isinstance(vecs, Iterable):
+            raise TypeError('Invalid vectors, should be iterable: ', vecs)
+        for i in vecs:
+            if not isinstance(i, Vec):
+                raise ValueError('Invalid vector: ', i)
+            checked_vecs.append(i)
+            continue
+        self._vecs = tuple(checked_vecs)
+
+    @property
+    def sums(self):
+        """Get the summations of the term."""
+        return self._sums
+
+    @property
+    def amp(self):
+        """Get the amplitude expression."""
+        return self._amp
+
+    @property
+    def vecs(self):
+        """Gets the vectors in the term."""
+        return self._vecs
+
+    @property
+    def args(self):
+        """The triple of summations, amplitude, and vectors."""
+        return (self._sums, self._amp, self._vecs)
+
+    def __hash__(self):
+        """Compute the hash of the term."""
+        return hash(self.args)
+
+    def __eq__(self, other):
+        """Evaluate the equality with another term."""
+        return isinstance(other, type(self)) and self.args == other.args
+
+    def __repr__(self):
+        """Form the representative string of a term."""
+        return 'Term(sums=[{}], amp={}, vecs=[{}])'.format(
+            ', '.join(repr(i) for i in self._sums),
+            repr(self._amp),
+            ', '.join(repr(i) for i in self._vecs)
+        )
+
+    def __str__(self):
+        """Form the readable string representation of a term."""
+        dumms = ', '.join(str(i[0]) for i in self._sums)
+        factors = [str(self._amp)]
+        factors.extend(str(i) for i in self._vecs)
+        return 'sum_{{{}}} {}'.format(dumms, ' '.join(factors))
