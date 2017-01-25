@@ -33,5 +33,5 @@ setup(
     license='MIT',
     classifiers=CLASSIFIERS,
     packages=find_packages(),
-    ext_modules=[canonpy]
+    ext_modules=[canonpy], install_requires=['sympy']
 )
