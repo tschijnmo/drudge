@@ -70,9 +70,9 @@ class Range:
         """
 
         if self._lower is not None:
-            return (self._label, self._lower, self._upper)
+            return self._label, self._lower, self._upper
         else:
-            return (self._label,)
+            return self._label,
 
     def __hash__(self):
         """Hash the symbolic range."""
@@ -163,7 +163,7 @@ class Term:
     @property
     def args(self):
         """The triple of summations, amplitude, and vectors."""
-        return (self._sums, self._amp, self._vecs)
+        return self._sums, self._amp, self._vecs
 
     def __hash__(self):
         """Compute the hash of the term."""
