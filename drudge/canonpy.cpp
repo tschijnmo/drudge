@@ -1203,34 +1203,29 @@ static PyObject* canon_eldag_func(
     Node_symms<Simple_perm> symms{};
     Point_vec colours{};
 
-    try {
-        edges = read_points(edges_arg);
-        ia = read_points(ia_arg);
-        n_nodes = ia.size() - 1;
+    edges = read_points(edges_arg);
+    ia = read_points(ia_arg);
+    n_nodes = ia.size() - 1;
 
-        symms = read_symms(symms_arg);
-        if (symms.size() != n_nodes) {
-            std::string err_msg("Expecting ");
-            err_msg += std::to_string(n_nodes);
-            err_msg += " symmetries, ";
-            err_msg += std::to_string(symms.size());
-            err_msg += " given.";
-            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            throw err;
-        }
+    symms = read_symms(symms_arg);
+    if (symms.size() != n_nodes) {
+        std::string err_msg("Expecting ");
+        err_msg += std::to_string(n_nodes);
+        err_msg += " symmetries, ";
+        err_msg += std::to_string(symms.size());
+        err_msg += " given.";
+        PyErr_SetString(PyExc_ValueError, err_msg.c_str());
+        return NULL;
+    }
 
-        colours = read_points(colours_arg);
-        if (colours.size() != n_nodes) {
-            std::string err_msg("Expecting ");
-            err_msg += std::to_string(n_nodes);
-            err_msg += " colours, ";
-            err_msg += std::to_string(colours.size());
-            err_msg += " given.";
-            PyErr_SetString(PyExc_ValueError, err_msg.c_str());
-            throw err;
-        }
-
-    } catch (I_err) {
+    colours = read_points(colours_arg);
+    if (colours.size() != n_nodes) {
+        std::string err_msg("Expecting ");
+        err_msg += std::to_string(n_nodes);
+        err_msg += " colours, ";
+        err_msg += std::to_string(colours.size());
+        err_msg += " given.";
+        PyErr_SetString(PyExc_ValueError, err_msg.c_str());
         return NULL;
     }
 
