@@ -5,8 +5,7 @@ Drudge, a symbolic system for non-commutative and tensor algebra
 """
 
 from .canonpy import Perm, Group, canon_eldag
-from .vec import Vec
-from .term import Range, Term
+from .term import Range, Vec, Term
 
 __all__ = [
     # Canonpy.
