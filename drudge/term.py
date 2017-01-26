@@ -203,6 +203,14 @@ class Vec:
         # In principle, other should not be either a term or a vector.
         return Term([], sympify(other), [self])
 
+    #
+    # Misc facilities
+    #
+
+    def map(self, func):
+        """Map the given function to indices."""
+        return Vec(self._base, (func(i) for i in self._indices))
+
 
 class Term:
     """Terms in tensor expression.
