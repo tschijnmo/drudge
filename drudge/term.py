@@ -299,10 +299,14 @@ class Term:
 
     def __str__(self):
         """Form the readable string representation of a term."""
-        dumms = ', '.join(str(i[0]) for i in self._sums)
+        if len(self._sums) > 0:
+            header = 'sum_{{{}}} '.format(
+                ', '.join(str(i[0]) for i in self._sums))
+        else:
+            header = ''
         factors = [str(self._amp)]
         factors.extend(str(i) for i in self._vecs)
-        return 'sum_{{{}}} {}'.format(dumms, ' '.join(factors))
+        return header + ' * '.join(factors)
 
     #
     # Multiplication
