@@ -336,6 +336,24 @@ class Term:
         else:
             return Term(self._sums, sympify(other) * self._amp, self._vecs)
 
+    #
+    # Misc utilities
+    #
+
+    def map(self, func, sums=None):
+        """Map the given function to the SymPy expressions in the term.
+
+        The given function will **not** be mapped to the dummies in the
+        summations.  When operations on summations are needed, an iterable
+        for the new summations can be given.
+        """
+
+        return Term(
+            self._sums if sums is None else sums,
+            func(self._amp),
+            (i.map(func) for i in self._vecs)
+        )
+
 
 def sum_term(*args, predicate=None) -> typing.List[Term]:
     """Sum the given expression.
