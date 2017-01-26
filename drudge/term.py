@@ -4,7 +4,7 @@ import itertools
 import typing
 from collections.abc import Iterable
 
-from sympy import sympify
+from sympy import sympify, Symbol
 
 from .utils import ensure_pair, ensure_symb, ensure_expr
 
@@ -337,8 +337,32 @@ class Term:
             return Term(self._sums, sympify(other) * self._amp, self._vecs)
 
     #
-    # Misc utilities
+    # SymPy related
     #
+
+    @property
+    def exprs(self):
+        """Loop over the sympy expression in the term.
+
+        Note that the summation dummies are not looped over.
+        """
+
+        yield self._amp
+        for vec in self._vecs:
+            yield from vec.indices
+
+    @property
+    def symbs(self):
+        """Get the symbols used in the term.
+
+        The free and dummy symbols used in the term are going to be returned as
+        two sets.
+        """
+
+        dumms = set(i[0] for i in self._sums)
+        frees = set(i for expr in self.exprs for i in expr.atoms(Symbol)
+                    if i not in dumms)
+        return frees, dumms
 
     def map(self, func, sums=None):
         """Map the given function to the SymPy expressions in the term.
