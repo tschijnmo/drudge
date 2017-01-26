@@ -225,16 +225,15 @@ class Term:
         if not isinstance(sums, Iterable):
             raise TypeError('Invalid summations, iterable expected: ', sums)
         checked_sums = []
+        dumms = set()
         for i in sums:
-            if not (isinstance(i, Sequence) and len(i) == 2):
-                raise TypeError('Invalid summation entry, pair expected: ', i)
-            try:
-                dummy = sympify(i[0])
-            except SympifyError:
-                raise TypeError('Invalid dummy, not sympifiable: ', i[0])
+            i = ensure_pair(i, 'summation')
+            dumm = ensure_symb(i[0], 'dummy')
+            if dumm in dumms:
+                raise ValueError('Invalid dummy: ', dumm, 'duplicated')
             if not isinstance(i[1], Range):
-                raise TypeError('Invalid range to sum over: ', i)
-            checked_sums.append((dummy, i[1]))
+                raise TypeError('Invalid range: ', i[1], 'not Range instance')
+            checked_sums.append((dumm, i[1]))
             continue
         self._sums = tuple(checked_sums)
 
@@ -242,10 +241,10 @@ class Term:
 
         checked_vecs = []
         if not isinstance(vecs, Iterable):
-            raise TypeError('Invalid vectors, should be iterable: ', vecs)
+            raise TypeError('Invalid vectors: ', vecs, 'expecting iterable')
         for i in vecs:
             if not isinstance(i, Vec):
-                raise ValueError('Invalid vector: ', i)
+                raise ValueError('Invalid vector: ', i, 'expecting Vec')
             checked_vecs.append(i)
             continue
         self._vecs = tuple(checked_vecs)
