@@ -26,7 +26,8 @@ def mprod():
     prod = sum_term((i, l), (j, l), (k, l), a[i, j] * b[j, k] * v[i] * v[k])
 
     assert len(prod) == 1
-    return prod[0], types.SimpleNamespace(i=i, j=j, k=k, l=l, a=a, b=b, v=v)
+    return prod[0], types.SimpleNamespace(i=i, j=j, k=k, l=l, a=a, b=b, v=v,
+                                          n=n)
 
 
 def test_terms_has_basic_operations(mprod):
@@ -72,3 +73,12 @@ def test_terms_has_basic_operations(mprod):
         " amp=a[i, j]*b[j, k],"
         " vecs=[Vec('v', (i)), Vec('v', (k))])"
     )
+
+
+def test_terms_sympy_operations(mprod):
+    """Test SymPy related operations in terms."""
+    prod, p = mprod
+
+    frees, dumms = prod.symbs
+    assert dumms == {p.i, p.j, p.k}
+    assert frees == {p.a.args[0], p.b.args[0], p.n}
