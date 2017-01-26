@@ -176,6 +176,29 @@ class Vec:
             self.base == other.base and self.indices == other.indices
         )
 
+    #
+    # Multiplication
+    #
+
+    _op_priority = 20.0
+
+    def __mul__(self, other):
+        """Multiply something on the right."""
+
+        if isinstance(other, Term):
+            # Delegate to the term for the multiplication.
+            return NotImplemented
+        if isinstance(other, Vec):
+            return Term([], 1, [self, other])
+        else:
+            return Term([], sympify(other), [self])
+
+    def __rmul__(self, other):
+        """Multiply something on the left."""
+
+        # In principle, other should not be either a term or a vector.
+        return Term([], sympify(other), [self])
+
 
 class Term:
     """Terms in tensor expression.
@@ -269,3 +292,31 @@ class Term:
         factors = [str(self._amp)]
         factors.extend(str(i) for i in self._vecs)
         return 'sum_{{{}}} {}'.format(dumms, ' '.join(factors))
+
+    #
+    # Multiplication
+    #
+
+    _op_priority = 20.0
+
+    def __mul__(self, other):
+        """Multiple something on the right."""
+
+        if isinstance(other, Term):
+            # Now for tensor term creation, we do not need this yet
+            #
+            # TODO: Add implementaion.
+            raise NotImplementedError()
+        elif isinstance(other, Vec):
+            return Term(self._sums, self._amp, self._vecs + (other,))
+        else:
+            return Term(self._sums, self._amp * sympify(other), self._vecs)
+
+    def __rmul__(self, other):
+        """Multiply something on the left."""
+
+        # In principle, the other operand should not be another term.
+        if isinstance(other, Vec):
+            return Term(self._sums, self._amp, (other,) + self._vecs)
+        else:
+            return Term(self._sums, sympify(other) * self._amp, self._vecs)
