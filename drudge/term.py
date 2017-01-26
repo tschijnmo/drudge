@@ -127,7 +127,7 @@ class Vec:
         self._base = base
         if not isinstance(indices, Iterable):
             indices = (indices,)
-        self._indices = tuple(ensure_expr(i) for i in indices)
+        self._indices = tuple(ensure_expr(i, 'vector index') for i in indices)
 
     @property
     def base(self):
