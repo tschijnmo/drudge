@@ -1,5 +1,6 @@
 """Test some basic operations on tensor terms."""
 
+import pickle
 import types
 
 import pytest
@@ -73,6 +74,20 @@ def test_terms_has_basic_operations(mprod):
         " amp=a[i, j]*b[j, k],"
         " vecs=[Vec('v', (i)), Vec('v', (k))])"
     )
+
+
+def test_terms_pickle_well(mprod):
+    """Test terms to work well with pickle.
+
+    This is an important test, since the terms are going to be trasmitted a
+    lot during the parallel processing.
+    """
+
+    prod, _ = mprod
+    serialized = pickle.dumps(prod)
+    recovered = pickle.loads(serialized)
+    assert prod == recovered
+    assert hash(prod) == hash(recovered)
 
 
 def test_terms_sympy_operations(mprod):
