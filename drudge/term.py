@@ -379,6 +379,11 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
                  in inp_vecs)
             ))
 
+            continue
+        continue
+
+    return res
+
 
 def _parse_sums(args):
     """Parse the summation arguments passed to the sum interface.
