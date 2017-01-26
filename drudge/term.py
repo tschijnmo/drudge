@@ -386,6 +386,54 @@ class Term:
         """
         return self.map(lambda x: x.subs(substs, simultaneous=True), sums)
 
+    def reset_dumms(self, dumms, dummbegs=None, excl=None):
+        """Reset the dummies in the term.
+
+        The term with dummies will be returned alongside with the new dummy
+        begins dictionary.  Note that the dummy begins dictionary will be
+        mutated.
+
+        ValueError will be raised when no more dummies are available.
+        """
+
+        if dummbegs is None:
+            dummbegs = {}
+
+        new_sums = []
+        substs = []
+        for dumm_i, range_i in self.sums:
+
+            # For linter.
+            new_dumm = None
+            new_beg = None
+
+            beg = dummbegs[range_i] if range_i in dummbegs else 0
+            for i in itertools.count(beg):
+
+                try:
+                    tentative = ensure_symb(dumms[range_i][i])
+                except KeyError:
+                    raise ValueError('Dummies for range', range_i,
+                                     'is not given')
+                except IndexError:
+                    raise ValueError('Dummies for range', range_i, 'is used up')
+
+                if excl is None or tentative not in excl:
+                    new_dumm = tentative
+                    new_beg = i + 1
+                    break
+                else:
+                    continue
+
+            new_sums.append((new_dumm, range_i))
+            substs.append((dumm_i, new_dumm))
+            dummbegs[range_i] = new_beg
+
+            continue
+
+        return self.subst(substs, new_sums), dummbegs
+
+
 def sum_term(*args, predicate=None) -> typing.List[Term]:
     """Sum the given expression.
 
