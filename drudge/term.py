@@ -382,7 +382,7 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 
     sums, substs = _parse_sums(args[:-1])
 
-    inp_sums, inp_amp, inp_vecs = _parse_term(args[-1])
+    inp_term = _parse_term(args[-1])
 
     res = []
     for sum_i in itertools.product(*sums):
@@ -394,11 +394,9 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
                 if not predicate(full_dict):
                     continue
 
-            res.append(Term(
-                inp_sums + sum_i,
-                inp_amp.subs(subst_i, simultaneous=True),
-                (i.map(lambda x: x.subs(subst_i, simultaneous=True)) for i
-                 in inp_vecs)
+            res.append(inp_term.map(
+                lambda x: x.subs(subst_i, simultaneous=True),
+                itertools.chain(inp_term.sums, sum_i)
             ))
 
             continue
@@ -445,22 +443,14 @@ def _parse_sums(args):
 
 
 def _parse_term(term):
-    """Parse a term into its three parts.
+    """Parse a term.
 
     Other things that can be interpreted as a term are also accepted.
     """
 
     if isinstance(term, Term):
-        sums = term.sums
-        amp = term.amp
-        vecs = term.vecs
+        return term
     elif isinstance(term, Vec):
-        sums = []
-        amp = 1
-        vecs = [term]
+        return Term([], 1, [term])
     else:
-        sums = []
-        amp = sympify(term)
-        vecs = []
-
-    return sums, amp, vecs
+        return Term([], term, [])
