@@ -1,8 +1,12 @@
 """Tensor term definition and utility."""
 
-from collections.abc import Iterable, Sequence
+import itertools
+import typing
+from collections.abc import Iterable
 
-from sympy import sympify, SympifyError
+from sympy import sympify
+
+from .utils import ensure_pair, ensure_symb, ensure_expr
 
 
 class Range:
