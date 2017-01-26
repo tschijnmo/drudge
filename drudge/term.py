@@ -323,3 +323,109 @@ class Term:
             return Term(self._sums, self._amp, (other,) + self._vecs)
         else:
             return Term(self._sums, sympify(other) * self._amp, self._vecs)
+
+
+def sum_term(*args, predicate=None) -> typing.List[Term]:
+    """Sum the given expression.
+
+    This method is meant for easy creation of tensor terms.  The arguments
+    should start with summations and ends with the expression that is summed.
+
+    The summations should be given as pairs, all with the first field being a
+    SymPy symbol for summation.  The second field can be a symbolic range,
+    for which the dummy is summed over.  Or an iterable can also be given,
+    whose entries can be both symbolic ranges or SymPy expressions.
+
+    The predicate can be a callable going to return a boolean when given a
+    dictionary giving the action on each of the dummies.  False values
+    can be used the skip some terms.
+
+    This core function is designed to be wrapped in functions working with
+    full symbolic tensors.
+
+    """
+
+    if len(args) == 0:
+        return []
+    elif len(args) == 1:
+        return [args[0]]
+
+    sums, substs = _parse_sums(args[:-1])
+
+    inp_sums, inp_amp, inp_vecs = _parse_term(args[-1])
+
+    res = []
+    for sum_i in itertools.product(*sums):
+        for subst_i in itertools.product(*substs):
+
+            if predicate is not None:
+                full_dict = dict(sum_i)
+                full_dict.update(subst_i)
+                if not predicate(full_dict):
+                    continue
+
+            res.append(Term(
+                inp_sums + sum_i,
+                inp_amp.subs(subst_i, simultaneous=True),
+                (i.map(lambda x: x.subs(subst_i, simultaneous=True)) for i
+                 in inp_vecs)
+            ))
+
+
+def _parse_sums(args):
+    """Parse the summation arguments passed to the sum interface.
+
+    The result will be the decomposed form of the summations and
+    substitutions from the arguments.
+    """
+
+    sums = []
+    substs = []
+
+    for i in args:
+
+        i = ensure_pair(i, 'summation')
+        dumm = ensure_symb(i[0], 'dummy')
+
+        if isinstance(i[1], Range):
+            sums.append([(dumm, i[1])])
+        else:
+            if not isinstance(i[1], Iterable):
+                raise TypeError(
+                    'Invalid range: ', i[1], 'expecting range or iterable')
+            entries = list(i[1])
+            if len(entries) < 1:
+                raise ValueError('Invalid summation range for ', dumm,
+                                 'expecting non-empty iterable')
+            if any(isinstance(j, Range) for j in entries):
+                if all(isinstance(j, Range) for j in entries):
+                    sums.append([(dumm, j) for j in entries])
+                else:
+                    raise TypeError('Invalid summation range: ', entries,
+                                    'expecting all ranges')
+            else:
+                substs.append([(dumm, ensure_expr(j)) for j in entries])
+
+    return sums, substs
+
+
+def _parse_term(term):
+    """Parse a term into its three parts.
+
+    Other things that can be interpreted as a term are also accepted.
+    """
+
+    if isinstance(term, Term):
+        sums = term.sums
+        amp = term.amp
+        vecs = term.vecs
+    elif isinstance(term, Vec):
+        sums = []
+        amp = 1
+        vecs = [term]
+    else:
+        sums = []
+        amp = sympify(term)
+        vecs = []
+
+    return sums, amp, vecs
