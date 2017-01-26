@@ -378,6 +378,13 @@ class Term:
             (i.map(func) for i in self._vecs)
         )
 
+    def subst(self, substs, sums=None):
+        """Perform substitution on the SymPy expressions.
+
+        This is a specialized map function, where the SymPy ``subs`` function
+        will be called on each of the SymPy expression.
+        """
+        return self.map(lambda x: x.subs(substs, simultaneous=True), sums)
 
 def sum_term(*args, predicate=None) -> typing.List[Term]:
     """Sum the given expression.
@@ -418,10 +425,8 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
                 if not predicate(full_dict):
                     continue
 
-            res.append(inp_term.map(
-                lambda x: x.subs(subst_i, simultaneous=True),
-                itertools.chain(inp_term.sums, sum_i)
-            ))
+            res.append(inp_term.subst(
+                subst_i, itertools.chain(inp_term.sums, sum_i)))
 
             continue
         continue
