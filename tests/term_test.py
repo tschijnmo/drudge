@@ -97,3 +97,32 @@ def test_terms_sympy_operations(mprod):
     frees, dumms = prod.symbs
     assert dumms == {p.i, p.j, p.k}
     assert frees == {p.a.args[0], p.b.args[0], p.n}
+
+
+def test_terms_can_be_reset_dummies(mprod):
+    """Test dummy resetting for terms."""
+
+    prod, p = mprod
+
+    w = sympify('w')
+    excl = {w}
+
+    dumms = {p.l: [w, p.i, p.j, p.k]}
+    res, dummbegs = prod.reset_dumms(dumms, excl=excl)
+    assert res == prod
+    assert len(dummbegs) == 1
+    assert p.l in dummbegs
+    assert dummbegs[p.l] == 4
+
+    res2, dummbegs2 = prod.reset_dumms(dumms, {p.l: 1})
+    assert res2 == res
+    assert dummbegs2 == dummbegs
+
+    dumms = {p.l: [p.k, p.j, p.i]}
+    res, dummbegs = prod.reset_dumms(dumms)
+    expected = sum_term((p.k, p.l), (p.j, p.l), (p.i, p.l),
+                        p.a[p.k, p.j] * p.b[p.j, p.i] * p.v[p.k] * p.v[p.i])[0]
+    assert res == expected
+    assert len(dummbegs) == 1
+    assert p.l in dummbegs
+    assert dummbegs[p.l] == 3
