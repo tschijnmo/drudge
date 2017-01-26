@@ -20,14 +20,14 @@ def ensure_sympify(obj, role='', expected_type=None):
     header = 'Invalid {}: '.format(role)
 
     try:
-        sympified = sympify(obj, strict=True)
+        sympified = sympify(obj)
     except SympifyError as exc:
         raise TypeError(header, obj, 'failed to be simpified', exc.args)
 
-    if expected_type is not None and isinstance(sympified, expected_type):
-        raise TypeError(header, sympified, 'expecting', expected_type)
-    else:
+    if expected_type is None or isinstance(sympified, expected_type):
         return sympified
+    else:
+        raise TypeError(header, sympified, 'expecting', expected_type)
 
 
 def ensure_symb(obj, role=''):
