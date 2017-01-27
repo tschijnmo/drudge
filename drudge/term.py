@@ -3,6 +3,7 @@
 import functools
 import itertools
 import typing
+import collections
 from collections.abc import Iterable, Mapping, Callable
 
 from sympy import (
@@ -470,17 +471,19 @@ class Term:
         resolvers = list(resolvers)
 
         sums_dict = dict(self._sums)
-        substs = {}
+        # Here we need both fast query and remember the order.
+        substs = collections.OrderedDict()
         curr_amp = self._amp
 
         for i in [KroneckerDelta, DiracDelta]:
             curr_amp = curr_amp.replace(i, functools.partial(
                 _resolve_delta, i, sums_dict, resolvers, substs))
 
+        # Note that here the substitutions needs to be performed in order.
         return self.subst(
-            substs,
+            list(substs.items()),
             sums=(i for i in self._sums if i[0] not in substs),
-            amp=curr_amp
+            amp=curr_amp, simultaneous=False
         )
 
 
@@ -602,8 +605,8 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
     call-back to SymPy replace function.
     """
 
-    # We first perform the substitutions found thus far.
-    args = [i.subs(substs, simultaneous=True) for i in args]
+    # We first perform the substitutions found thus far, in order.
+    args = [i.subs(list(substs.items())) for i in args]
     orig = form(*args)
     dumms = [i for i in orig.atoms(Symbol) if i in sums_dict]
     if len(dumms) == 0:
