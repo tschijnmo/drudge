@@ -53,7 +53,9 @@ class Range:
     def __init__(self, label, lower=None, upper=None):
         """Initialize the symbolic range."""
         self._label = label
-        self._lower = sympify(lower) if lower is not None else lower
+        self._lower = (
+            ensure_expr(lower, 'lower bound') if lower is not None else lower
+        )
 
         if self._lower is None:
             if upper is not None:
@@ -64,7 +66,7 @@ class Range:
             if upper is None:
                 raise ValueError('upper range has not been given.')
             else:
-                self._upper = sympify(upper)
+                self._upper = ensure_expr(upper, 'upper bound')
 
     @property
     def label(self):
