@@ -364,7 +364,7 @@ class Term:
                     if i not in dumms)
         return frees, dumms
 
-    def map(self, func, sums=None):
+    def map(self, func, sums=None, amp=None):
         """Map the given function to the SymPy expressions in the term.
 
         The given function will **not** be mapped to the dummies in the
@@ -374,17 +374,20 @@ class Term:
 
         return Term(
             self._sums if sums is None else sums,
-            func(self._amp),
+            func(self._amp if amp is None else amp),
             (i.map(func) for i in self._vecs)
         )
 
-    def subst(self, substs, sums=None):
+    def subst(self, substs, sums=None, amp=None):
         """Perform substitution on the SymPy expressions.
 
         This is a specialized map function, where the SymPy ``subs`` function
         will be called on each of the SymPy expression.
         """
-        return self.map(lambda x: x.subs(substs, simultaneous=True), sums)
+        return self.map(
+            lambda x: x.subs(substs, simultaneous=True),
+            sums=sums, amp=amp
+        )
 
     def reset_dumms(self, dumms, dummbegs=None, excl=None):
         """Reset the dummies in the term.
