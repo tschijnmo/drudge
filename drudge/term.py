@@ -511,12 +511,12 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 
     if len(args) == 0:
         return []
-    elif len(args) == 1:
-        return [args[0]]
-
-    sums, substs = _parse_sums(args[:-1])
 
     inp_term = _parse_term(args[-1])
+    if len(args) == 1:
+        return [inp_term]
+
+    sums, substs = _parse_sums(args[:-1])
 
     res = []
     for sum_i in itertools.product(*sums):
