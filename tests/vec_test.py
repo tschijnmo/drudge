@@ -19,7 +19,8 @@ def test_vecs_has_basic_properties():
     repr_ref = "Vec('v', (a, b))"
 
     for i in [v_ab, v_ab_1, v_ab_2]:
-        assert i.base == base.base
+        assert i.label == base.label
+        assert i.base == base
         assert i.indices == indices_ref
         assert hash(i) == hash_ref
         assert i == v_ab
