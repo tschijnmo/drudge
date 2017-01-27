@@ -224,13 +224,13 @@ class Vec:
         if isinstance(other, Vec):
             return Term([], _UNITY, [self, other])
         else:
-            return Term([], sympify(other), [self])
+            return Term([], other, [self])
 
     def __rmul__(self, other):
         """Multiply something on the left."""
 
         # In principle, other should not be either a term or a vector.
-        return Term([], sympify(other), [self])
+        return Term([], other, [self])
 
     #
     # Misc facilities
