@@ -9,6 +9,12 @@ from sympy import sympify, Symbol
 from .utils import ensure_pair, ensure_symb, ensure_expr
 
 
+#
+# Fundamental classes
+# --------------------
+#
+
+
 class Range:
     """A symbolic range that can be summed over.
 
@@ -437,6 +443,12 @@ class Term:
         return self.subst(substs, new_sums), dummbegs
 
 
+#
+# User interface support
+# ----------------------
+#
+
+
 def sum_term(*args, predicate=None) -> typing.List[Term]:
     """Sum the given expression.
 
@@ -534,3 +546,9 @@ def _parse_term(term):
         return Term([], 1, [term])
     else:
         return Term([], term, [])
+
+
+#
+# Internal functions
+# ------------------
+#
