@@ -395,14 +395,15 @@ class Term:
             (i.map(func) for i in self._vecs)
         )
 
-    def subst(self, substs, sums=None, amp=None):
+    def subst(self, substs, sums=None, amp=None, simultaneous=True):
         """Perform substitution on the SymPy expressions.
 
         This is a specialized map function, where the SymPy ``subs`` function
         will be called on each of the SymPy expression.
         """
+
         return self.map(
-            lambda x: x.subs(substs, simultaneous=True),
+            lambda x: x.subs(substs, simultaneous=simultaneous),
             sums=sums, amp=amp
         )
 
