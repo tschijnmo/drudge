@@ -4,7 +4,7 @@ import pickle
 import types
 
 import pytest
-from sympy import sympify, IndexedBase
+from sympy import sympify, IndexedBase, KroneckerDelta
 
 from drudge import Range, Vec, Term
 from drudge.term import sum_term
@@ -126,3 +126,27 @@ def test_terms_can_be_reset_dummies(mprod):
     assert len(dummbegs) == 1
     assert p.l in dummbegs
     assert dummbegs[p.l] == 3
+
+
+def test_delta_can_be_simplified(mprod):
+    """Test the delta simplification facility."""
+
+    _, p = mprod
+    i, j, k = p.i, p.j, p.k
+    l = p.l
+    dumms = {l: [i, j, k]}
+
+    term = sum_term((i, l), (j, l),
+                    KroneckerDelta(i, j) * KroneckerDelta(j, k) * p.v[i])[0]
+
+    # If we do not tell which range k belongs, a delta should be kept.
+    #
+    # Here either i or j could be removed.
+    res = term.simplify_deltas([]).reset_dumms(dumms)
+    assert res == (
+        sum_term((j, l), KroneckerDelta(j, k) * p.v[j])[0]
+    ).reset_dumms(dumms)
+
+    # When the range for k is given, more simplification comes.
+    res = term.simplify_deltas([lambda x: p.l])
+    assert res == sum_term(p.v[k])[0]
