@@ -2,11 +2,18 @@
 
 import itertools
 import typing
-from collections.abc import Iterable
 
-from sympy import sympify, Symbol
+from sympy import sympify, Symbol, Integer
 
 from .utils import ensure_pair, ensure_symb, ensure_expr
+
+#
+# Utility constants
+# -----------------
+#
+
+_UNITY = Integer(1)
+_NAUGHT = Integer(0)
 
 
 #
@@ -199,7 +206,7 @@ class Vec:
             # Delegate to the term for the multiplication.
             return NotImplemented
         if isinstance(other, Vec):
-            return Term([], 1, [self, other])
+            return Term([], _UNITY, [self, other])
         else:
             return Term([], sympify(other), [self])
 
@@ -543,7 +550,7 @@ def _parse_term(term):
     if isinstance(term, Term):
         return term
     elif isinstance(term, Vec):
-        return Term([], 1, [term])
+        return Term([], _UNITY, [term])
     else:
         return Term([], term, [])
 
