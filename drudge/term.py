@@ -1,9 +1,13 @@
 """Tensor term definition and utility."""
 
+import functools
 import itertools
 import typing
+from collections.abc import Iterable, Mapping, Callable
 
-from sympy import sympify, Symbol, Integer
+from sympy import (
+    sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer
+)
 
 from .utils import ensure_pair, ensure_symb, ensure_expr
 
@@ -449,6 +453,35 @@ class Term:
 
         return self.subst(substs, new_sums), dummbegs
 
+    #
+    # Amplitude simplification
+    #
+
+    def simplify_deltas(self, resolvers):
+        """Simplify deltas in the amplitude of the expression."""
+
+        # It is probably easy to mistakenly pass just one resolver here.
+        # Special checking is done here since most mappings are also iterable.
+        if isinstance(resolvers, Mapping):
+            raise TypeError('Invalid range resolvers list: ', resolvers,
+                            'expecting iterable')
+        # Put in list to be iterated multiple times.
+        resolvers = list(resolvers)
+
+        sums_dict = dict(self._sums)
+        substs = {}
+        curr_amp = self._amp
+
+        for i in [KroneckerDelta, DiracDelta]:
+            curr_amp = curr_amp.replace(i, functools.partial(
+                _resolve_delta, i, sums_dict, resolvers, substs))
+
+        return self.subst(
+            substs,
+            sums=(i for i in self._sums if i[0] not in substs),
+            amp=curr_amp
+        )
+
 
 #
 # User interface support
@@ -559,3 +592,85 @@ def _parse_term(term):
 # Internal functions
 # ------------------
 #
+
+
+def _resolve_delta(form, sums_dict, resolvers, substs, *args):
+    """Resolve the deltas in the given expression.
+
+    The partial application of this function is going to be used as the
+    call-back to SymPy replace function.
+    """
+
+    # We first perform the substitutions found thus far.
+    args = [i.subs(substs, simultaneous=True) for i in args]
+    orig = form(*args)
+    dumms = [i for i in orig.atoms(Symbol) if i in sums_dict]
+    if len(dumms) == 0:
+        return orig
+
+    eqn = Eq(args[0], args[1])
+
+    # We try to solve for each of the dummies.  Most likely this will only be
+    # executed for one loop.
+
+    for dumm in dumms:
+        range_ = sums_dict[dumm]
+        sol = solve(eqn, dumm)
+
+        if sol is S.true:
+            # Now we can be sure that we got an identity.
+            return _UNITY
+        elif len(sol) > 0:
+            for i in sol:
+                # Try to get the range of the substituting expression.
+                range_of_i = _try_resolve_range(i, sums_dict, resolvers)
+                if range_of_i is None:
+                    continue
+                if range_of_i == range_:
+                    substs[dumm] = i
+                    return _UNITY
+                else:
+                    # We assume atomic and disjoint ranges!
+                    return _NAUGHT
+            # We cannot resolve the range of any of the solutions.  Try next
+            # dummy.
+            continue
+        else:
+            # No solution.
+            return _NAUGHT
+
+    # When we got here, all the solutions we found have undetermined range, we
+    # have to return the original form.
+    return orig
+
+
+def _try_resolve_range(i, sums_dict, resolvers):
+    """Attempt to resolve the range of an expression.
+
+    None will be returned if it cannot be resolved.
+    """
+
+    for resolver in itertools.chain([sums_dict], resolvers):
+
+        if isinstance(resolver, Mapping):
+            if i in resolver:
+                return resolver[i]
+            else:
+                continue
+        elif isinstance(resolver, Callable):
+            range_ = resolver(i)
+            if range_ is None:
+                continue
+            else:
+                if isinstance(range_, Range):
+                    return range_
+                else:
+                    raise TypeError('Invalid range: ', range_,
+                                    'from resolver', resolver,
+                                    'expecting range or None')
+        else:
+            raise TypeError('Invalid resolver: ', resolver,
+                            'expecting callable or mapping')
+
+    # Never resolved nor error found.
+    return None
