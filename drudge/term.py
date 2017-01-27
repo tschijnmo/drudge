@@ -1,9 +1,9 @@
 """Tensor term definition and utility."""
 
+import collections
 import functools
 import itertools
 import typing
-import collections
 from collections.abc import Iterable, Mapping, Callable
 
 from sympy import (
@@ -120,39 +120,50 @@ class Range:
 class Vec:
     """Vectors.
 
-    Vectors are the basic non-commutative quantities.  Its objects consist of
-    an base and some indices.  The base is allowed to be any Python object,
-    although small hashable objects, like string, are advised.  The indices
-    are always sympified into SymPy expressions.
+    Vectors are the basic non-commutative quantities.  Its objects consist of an
+    label for its base and some indices.  The label is allowed to be any Python
+    object, although small hashable objects, like string, are advised.  The
+    indices are always sympified into SymPy expressions.
 
-    Its objects can be created directly by giving the base and indices,
-    or existing vector objects can be subscripted to get new ones.  The
-    semantics is similar to Haskell functions.
+    Its objects can be created directly by giving the label and indices, or
+    existing vector objects can be subscribed to get new ones.  The semantics is
+    similar to Haskell functions.
 
     Note that users cannot directly assign to the attributes of this class.
 
     This class can be used by itself, it can also be subclassed for special
     use cases.
 
+    Despite very different internal data structure, the this class is attempted
+    to emulate the behaviour of the SymPy ``IndexedBase`` class
+
     """
 
-    __slots__ = ['_base', '_indices']
+    __slots__ = ['_label', '_indices']
 
-    def __init__(self, base, indices=()):
+    def __init__(self, label, indices=()):
         """Initialize a vector.
 
         Atomic indices are added as the only index.  Iterable values will
         have all of its entries added.
         """
-        self._base = base
+        self._label = label
         if not isinstance(indices, Iterable):
             indices = (indices,)
         self._indices = tuple(ensure_expr(i, 'vector index') for i in indices)
 
     @property
+    def label(self):
+        """Get the label for the base of the vector."""
+        return self._label
+
+    @property
     def base(self):
-        """Get the base of the vector."""
-        return self._base
+        """Get the base of the vector.
+
+        This base can be subscribed to get other vectors.
+        """
+        return Vec(self._label, [])
 
     @property
     def indices(self):
@@ -169,16 +180,14 @@ class Vec:
         if not isinstance(item, tuple):
             item = (item,)
 
-        new_indices = tuple(sympify(i) for i in item)
-
         # Pay attention to subclassing.
-        return type(self)(self.base, self.indices + new_indices)
+        return type(self)(self._label, itertools.chain(self._indices, item))
 
     def __repr__(self):
         """Form repr string form the vector."""
         return ''.join([
-            type(self).__name__, '(', repr(self.base), ', (',
-            ', '.join(repr(i) for i in self.indices),
+            type(self).__name__, '(', repr(self._label), ', (',
+            ', '.join(repr(i) for i in self._indices),
             '))'
         ])
 
@@ -186,18 +195,18 @@ class Vec:
         """Form a more readable string representation."""
 
         return ''.join([
-            str(self.base), '[', ', '.join(str(i) for i in self.indices), ']'
+            str(self._label), '[', ', '.join(str(i) for i in self._indices), ']'
         ])
 
     def __hash__(self):
         """Compute the hash value of a vector."""
-        return hash((self.base, self.indices))
+        return hash((self._label, self._indices))
 
     def __eq__(self, other):
         """Compares the equality of two vectors."""
         return (
             (isinstance(self, type(other)) or isinstance(other, type(self))) and
-            self.base == other.base and self.indices == other.indices
+            self._label == other.label and self._indices == other.indices
         )
 
     #
@@ -229,7 +238,7 @@ class Vec:
 
     def map(self, func):
         """Map the given function to indices."""
-        return Vec(self._base, (func(i) for i in self._indices))
+        return Vec(self._label, (func(i) for i in self._indices))
 
 
 class Term:
