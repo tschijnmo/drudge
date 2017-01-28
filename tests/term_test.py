@@ -1,12 +1,13 @@
 """Test some basic operations on tensor terms."""
 
+import itertools
 import pickle
 import types
 
 import pytest
-from sympy import sympify, IndexedBase, KroneckerDelta
+from sympy import sympify, IndexedBase, KroneckerDelta, conjugate
 
-from drudge import Range, Vec, Term
+from drudge import Range, Vec, Term, Perm, Group, IDENT, NEG, CONJ
 from drudge.term import sum_term
 
 
@@ -150,3 +151,56 @@ def test_delta_can_be_simplified(mprod):
     # When the range for k is given, more simplification comes.
     res = term.simplify_deltas([lambda x: p.l])
     assert res == sum_term(p.v[k])[0]
+
+
+def test_simple_terms_can_be_canonicalized():
+    """Test the canonicalization of very simple terms.
+
+    In this test, all the terms has very simple appearance.  So rather than
+    testing the canonicalization really canonicalizes all the equivalent
+    forms, here we check if the canonicalized form is the most intuitive form
+    that we expect.
+    """
+
+    l = Range('L')
+    x = IndexedBase('x')
+    i, j = sympify('i, j')
+
+    # A term without the vector part, canonicalization without symmetry.
+    term = sum_term((j, l), (i, l), x[i, j])[0]
+    res = term.canon()
+    expected = sum_term((i, l), (j, l), x[i, j])[0]
+    assert res == expected
+
+    # A term without the vector part, canonicalization with symmetry.
+    m = Range('M')
+    term = sum_term((j, m), (i, l), x[j, i])[0]
+    for neg, conj in itertools.product([IDENT, NEG], [IDENT, CONJ]):
+        acc = neg | conj
+        group = Group([Perm([1, 0], acc)])
+        res = term.canon(symms={x: group})
+        expected_amp = x[i, j]
+        if neg == NEG:
+            expected_amp *= -1
+        if conj == CONJ:
+            expected_amp = conjugate(expected_amp)
+        expected = sum_term((i, l), (j, m), expected_amp)[0]
+        assert res == expected
+        continue
+
+    # In the absence of symmetry, the two indices should not be permuted.
+    res = term.canon()
+    expected = sum_term((i, l), (j, m), x[j, i])[0]
+    assert res == expected
+
+    # Now we add vectors to the terms.
+    v = Vec('v')
+    term = sum_term((i, l), (j, l), v[i] * v[j])[0]
+
+    # Without anything added, it should already be in the canonical form.
+    assert term.canon() == term
+
+    # When we flip the colour of the vectors, we should get something different.
+    res = term.canon(vec_colour=lambda idx, vec: -idx)
+    expected = sum_term((j, l), (i, l), v[i] * v[j])[0]
+    assert res == expected
