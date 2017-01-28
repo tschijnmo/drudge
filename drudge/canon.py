@@ -10,7 +10,7 @@ import itertools
 from sympy import conjugate, Symbol
 
 from .canonpy import canon_eldag, Group, Perm
-from .utils import sympy_order
+from .utils import sympy_key
 
 #
 # Preparation
@@ -238,7 +238,7 @@ def _proc_indices(indices, dumms, eldag):
                 ]
             form = expr.subs(substs, simultaneous=True)
 
-            order = sympy_order(form)
+            order = sympy_key(form)
             if curr_form is None or order < curr_order:
                 curr_form = form
                 curr_order = order

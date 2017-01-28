@@ -41,8 +41,8 @@ def ensure_expr(obj, role=''):
     return ensure_sympify(obj, role, Expr)
 
 
-def sympy_order(expr):
-    """Get an order for SymPy expressions.
+def sympy_key(expr):
+    """Get the key for ordering SymPy expressions.
 
     This function assumes that the given expression is already sympified.
     """
