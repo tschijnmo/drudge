@@ -581,15 +581,13 @@ class Term:
         res_amp = coeff * canon_coeff
         res_vecs = []
         for i in canoned_factors:
-            if isinstance(i, Indexed):
-                if i.base == wrapper_base:
-                    res_amp *= i.indices[0]
-                else:
-                    res_amp *= i
-            elif isinstance(i, Vec):
+
+            if isinstance(i, Vec):
                 res_vecs.append(i)
+            elif isinstance(i, Indexed) and i.base == wrapper_base:
+                res_amp *= i.indices[0]
             else:
-                assert False
+                res_amp *= i
             continue
 
         return Term(res_sums, res_amp, res_vecs)
