@@ -418,9 +418,9 @@ class Term:
         if isinstance(amp, Add):
             raise ValueError('Invalid amplitude: ', amp, 'expecting monomial')
         if isinstance(amp, Mul):
-            all_factors = (amp,)
-        else:
             all_factors = amp.args
+        else:
+            all_factors = (amp,)
 
         dumms = {i[0] for i in self._sums}
 
@@ -585,7 +585,7 @@ class Term:
                 if i.base == wrapper_base:
                     res_amp *= i.indices[0]
                 else:
-                    res_amp * i
+                    res_amp *= i
             elif isinstance(i, Vec):
                 res_vecs.append(i)
             else:
