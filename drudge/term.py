@@ -7,8 +7,8 @@ import typing
 from collections.abc import Iterable, Mapping, Callable
 
 from sympy import (
-    sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer
-)
+    sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
+    Add, Mul, Indexed, IndexedBase)
 
 from .utils import ensure_pair, ensure_symb, ensure_expr
 
@@ -396,10 +396,43 @@ class Term:
         two sets.
         """
 
+        # TODO: optimize dummy set creation.
         dumms = set(i[0] for i in self._sums)
         frees = set(i for expr in self.exprs for i in expr.atoms(Symbol)
                     if i not in dumms)
         return frees, dumms
+
+    @property
+    def amp_factors(self):
+        """Get the factors in the amplitude expression.
+
+        The factors involving dummies will be returned as a list, with the rest
+        returned as a single SymPy expression.
+
+        Error will be raised if the amplitude is not a monomial.
+        """
+
+        amp = self._amp
+
+        if isinstance(amp, Add):
+            raise ValueError('Invalid amplitude: ', amp, 'expecting monomial')
+        if isinstance(amp, Mul):
+            all_factors = (amp,)
+        else:
+            all_factors = amp.args
+
+        dumms = {i[0] for i in self._sums}
+
+        factors = []
+        coeff = _UNITY
+        for factor in all_factors:
+            if any(i in dumms for i in factor.atoms(Symbol)):
+                factors.append(factor)
+            else:
+                coeff *= factor
+            continue
+
+        return factors, coeff
 
     def map(self, func, sums=None, amp=None):
         """Map the given function to the SymPy expressions in the term.
