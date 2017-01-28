@@ -240,6 +240,14 @@ class Vec:
         """Map the given function to indices."""
         return Vec(self._label, (func(i) for i in self._indices))
 
+    def _sympy_(self):
+        """Disable the sympification of vectors.
+
+        This could given more sensible errors when vectors are accidentally
+        attempted to be manipulated as SymPy quantities.
+        """
+        raise TypeError('Vectors cannot be sympified', self)
+
 
 class Term:
     """Terms in tensor expression.
