@@ -546,10 +546,10 @@ class Term:
     def canon(self, symms=None, vec_colour=None):
         """Canonicalize the term.
 
-        The given vector colour should be a callable accepting the vector
-        itself (under keyword ``vec``) and the index within vector list (under
-        the keyword ``idx``).  By default, vectors has colour the same as its
-        index within the list of vectors.
+        The given vector colour should be a callable accepting the index
+        within vector list (under the keyword ``idx``) and the vector itself
+        (under keyword ``vec``).  By default, vectors has colour the same as
+        its index within the list of vectors.
 
         Note that whether or not colours for the vectors are given, the vectors
         are never permuted in the result.
@@ -568,7 +568,7 @@ class Term:
             continue
 
         for i, v in enumerate(self._vecs):
-            colour = i if vec_colour is None else vec_colour(vec=v, idx=i)
+            colour = i if vec_colour is None else vec_colour(idx=i, vec=v)
             factors.append((
                 v, (_NON_COMMUTATIVE, colour)
             ))
