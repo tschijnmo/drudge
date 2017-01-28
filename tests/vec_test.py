@@ -1,5 +1,7 @@
 """Tests for vectors."""
 
+import pytest
+
 from sympy import sympify
 
 from drudge import Vec
@@ -26,3 +28,7 @@ def test_vecs_has_basic_properties():
         assert i == v_ab
         assert str(i) == str_ref
         assert repr(i) == repr_ref
+
+        # Vectors should not be sympified.
+        with pytest.raises(TypeError):
+            sympify(i)
