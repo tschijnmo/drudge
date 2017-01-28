@@ -10,7 +10,8 @@ from sympy import (
     sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
     Add, Mul, Indexed, IndexedBase)
 
-from .utils import ensure_pair, ensure_symb, ensure_expr
+from .canon import canon_factors
+from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key
 
 #
 # Utility constants
@@ -538,6 +539,61 @@ class Term:
             amp=curr_amp, simultaneous=False
         )
 
+    #
+    # Canonicalization.
+    #
+
+    def canon(self, symms=None, vec_colour=None):
+        """Canonicalize the term.
+
+        The given vector colour should be a callable accepting the vector
+        itself (under keyword ``vec``) and the index within vector list (under
+        the keyword ``idx``).  By default, vectors has colour the same as its
+        index within the list of vectors.
+
+        Note that whether or not colours for the vectors are given, the vectors
+        are never permuted in the result.
+        """
+
+        factors = []
+
+        wrapper_base = IndexedBase('internalWrapper', shape=('internalShape',))
+        amp_factors, coeff = self.amp_factors
+        for i in amp_factors:
+            if not isinstance(i, Indexed):
+                i = wrapper_base[i]
+            factors.append((
+                i, (_COMMUTATIVE, sympy_key(i.base))
+            ))
+            continue
+
+        for i, v in enumerate(self._vecs):
+            colour = i if vec_colour is None else vec_colour(vec=v, idx=i)
+            factors.append((
+                v, (_NON_COMMUTATIVE, colour)
+            ))
+            continue
+
+        res_sums, canoned_factors, canon_coeff = canon_factors(
+            self._sums, factors, symms if symms is not None else {}
+        )
+
+        res_amp = coeff * canon_coeff
+        res_vecs = []
+        for i in canoned_factors:
+            if isinstance(i, Indexed):
+                if i.base == wrapper_base:
+                    res_amp *= i.indices[0]
+                else:
+                    res_amp * i
+            elif isinstance(i, Vec):
+                res_vecs.append(i)
+            else:
+                assert False
+            continue
+
+        return Term(res_sums, res_amp, res_vecs)
+
 
 #
 # User interface support
@@ -648,6 +704,8 @@ def _parse_term(term):
 # Internal functions
 # ------------------
 #
+# Amplitude simplification
+#
 
 
 def _resolve_delta(form, sums_dict, resolvers, substs, *args):
@@ -730,3 +788,13 @@ def _try_resolve_range(i, sums_dict, resolvers):
 
     # Never resolved nor error found.
     return None
+
+
+#
+# Canonicalization
+#
+# For colour of factors in a term.
+#
+
+_COMMUTATIVE = 0
+_NON_COMMUTATIVE = 1
