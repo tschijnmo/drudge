@@ -204,3 +204,17 @@ def test_simple_terms_can_be_canonicalized():
     res = term.canon(vec_colour=lambda idx, vec: -idx)
     expected = sum_term((j, l), (i, l), v[i] * v[j])[0]
     assert res == expected
+
+
+def test_canonicalization_of_matrix_product(mprod):
+    """Test the canonicalization of the matrix product test case."""
+
+    prod, p = mprod
+
+    res = prod.canon()
+
+    # The indices used in the vectors should come earlier.
+    sums = prod.sums
+    new_sums = [sums[0], sums[2], sums[1]]
+    expected = prod.map(lambda x: x, sums=new_sums)
+    assert res == expected
