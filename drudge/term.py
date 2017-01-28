@@ -794,5 +794,5 @@ def _try_resolve_range(i, sums_dict, resolvers):
 # For colour of factors in a term.
 #
 
-_COMMUTATIVE = 0
-_NON_COMMUTATIVE = 1
+_COMMUTATIVE = 1
+_NON_COMMUTATIVE = 0
