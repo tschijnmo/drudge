@@ -2,7 +2,8 @@
 
 from collections.abc import Sequence
 
-from sympy import sympify, Symbol, Expr, SympifyError
+from sympy import (sympify, Symbol, Expr, SympifyError, count_ops,
+                   default_sort_key)
 
 
 #
@@ -38,6 +39,15 @@ def ensure_symb(obj, role=''):
 def ensure_expr(obj, role=''):
     """Sympify the given object into an expression."""
     return ensure_sympify(obj, role, Expr)
+
+
+def sympy_order(expr):
+    """Get an order for SymPy expressions.
+
+    This function assumes that the given expression is already sympified.
+    """
+
+    return (count_ops(expr), default_sort_key(expr))
 
 
 #
