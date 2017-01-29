@@ -542,6 +542,11 @@ class Term:
             amp=curr_amp, simultaneous=False
         )
 
+    def simplify_amp(self, resolvers):
+        """Simplify the amplitude of the term."""
+        delta_proced = self.simplify_deltas(resolvers)
+        return delta_proced.map(lambda x: x.simplify())
+
     def expand(self):
         """Expand the term into many terms."""
         expanded_amp = self.amp.expand()
