@@ -8,7 +8,7 @@ from collections.abc import Iterable, Mapping, Callable
 
 from sympy import (
     sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
-    Add, Mul, Indexed, IndexedBase)
+    Add, Mul, Indexed, IndexedBase, Expr)
 
 from .canon import canon_factors
 from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key
@@ -305,7 +305,7 @@ class Term:
         return self._sums
 
     @property
-    def amp(self):
+    def amp(self) -> Expr:
         """Get the amplitude expression."""
         return self._amp
 
@@ -441,6 +441,9 @@ class Term:
         The given function will **not** be mapped to the dummies in the
         summations.  When operations on summations are needed, an iterable
         for the new summations can be given.
+
+        By passing the identity function, this function can also be used to
+        replace the summation list or the amplitude expression.
         """
 
         return Term(
