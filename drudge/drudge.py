@@ -162,6 +162,19 @@ class Tensor:
         """
         return self.apply(self._expand)
 
+    def sort(self):
+        """Sort the terms in the tensor.
+
+        The terms will generally be sorted according to increasing complexity.
+
+        """
+        self.apply(self._sort)
+
+    @staticmethod
+    def _sort(terms: RDD):
+        """Compute the terms in the tensor."""
+        return terms.sortBy(lambda term: term.sort_key)
+
     @staticmethod
     def _expand(terms):
         """Get terms after they are fully expanded."""
@@ -243,6 +256,7 @@ class Tensor:
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms)
         terms = self._reset_dumms(terms)
+        terms = self._sort(terms)
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
