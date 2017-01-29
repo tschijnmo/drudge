@@ -6,6 +6,7 @@ by delegating the actual work to the core canonpy module.
 """
 
 import itertools
+import typing
 
 from sympy import conjugate, Symbol
 
@@ -39,7 +40,7 @@ class Eldag:
         self.symms = []
         self.colours = []
 
-    def add_node(self, edges, symm, colour):
+    def add_node(self, edges: typing.Iterable[int], symm, colour) -> int:
         """Add a node.
 
         The index of the given node will be returned.
