@@ -142,9 +142,9 @@ class Vec:
     """Vectors.
 
     Vectors are the basic non-commutative quantities.  Its objects consist of an
-    label for its base and some indices.  The label is allowed to be any Python
-    object, although small hashable objects, like string, are advised.  The
-    indices are always sympified into SymPy expressions.
+    label for its base and some indices.  The label is allowed to be any
+    hashable and ordered Python object, although small objects, like string, are
+    advised.  The indices are always sympified into SymPy expressions.
 
     Its objects can be created directly by giving the label and indices, or
     existing vector objects can be subscribed to get new ones.  The semantics is
@@ -229,6 +229,19 @@ class Vec:
             (isinstance(self, type(other)) or isinstance(other, type(self))) and
             self._label == other.label and self._indices == other.indices
         )
+
+    @property
+    def sort_key(self):
+        """Get sort key for the vector.
+
+        This is a generic sort key for vectors.  Note that this is only useful
+        for sorting the simplified terms and should not be used in the
+        normal-ordering operations.
+        """
+
+        key = [self._label]
+        key.extend(sympy_key(i) for i in self._indices)
+        return key
 
     #
     # Multiplication
