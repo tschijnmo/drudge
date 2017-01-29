@@ -85,6 +85,11 @@ class Range:
         return self._upper
 
     @property
+    def bounded(self):
+        """Test if the range is explicitly bounded."""
+        return self._lower is not None
+
+    @property
     def args(self):
         """Get the arguments for range creation.
 
@@ -92,7 +97,7 @@ class Range:
         tuple of only the label.
         """
 
-        if self._lower is not None:
+        if self.bounded:
             return self._label, self._lower, self._upper
         else:
             return self._label,
