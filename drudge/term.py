@@ -42,6 +42,12 @@ class Range:
 
     .. warning::
 
+        Bounds with the same label but different bounds will be considered
+        unequal.  Although no error be given, using different bounds with
+        identical label is strongly advised against.
+
+    .. warning::
+
          Unequal ranges are always assumed to be disjoint.
 
     """
