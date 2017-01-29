@@ -4,6 +4,7 @@ import operator
 from collections.abc import Iterable
 
 from pyspark import RDD, SparkContext
+
 from .canonpy import Perm, Group
 from .term import Range, sum_term, Term
 from .utils import ensure_symb, BCastVar
