@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from pyspark import RDD, SparkContext
 
 from .canonpy import Perm, Group
-from .term import Range, sum_term, Term
+from .term import Range, sum_term, Term, parse_term
 from .utils import ensure_symb, BCastVar
 
 
@@ -65,7 +65,7 @@ class Tensor:
         return self._local_terms
 
     @property
-    def n_term(self):
+    def n_terms(self):
         """Get the number of terms.
 
         A zero number of terms signatures a zero tensor.
@@ -263,6 +263,36 @@ class Tensor:
         terms = self._simplify_amp(terms)
 
         return terms
+
+    #
+    # Comparison operations
+    #
+
+    def __eq__(self, other):
+        """Compare the equality of tensors.
+
+        Note that this function only compares the syntactical equality of
+        tensors.  Mathematically equal tensors might be compared to be unequal
+        by this function when they are not simplified.
+        """
+
+        n_terms = self.n_terms
+        if isinstance(other, Tensor):
+            return other.n_terms == n_terms and (
+                self._terms
+                    .zip(other.terms)
+                    .map(lambda x: x[0] == x[1])
+                    .filter(lambda x: x)
+                    .isEmpty()
+            )
+        elif other == 0:
+            return n_terms == 0
+        else:
+            if n_terms != 1:
+                return False
+            else:
+                term = self.local_terms[0]
+                return term == parse_term(other)
 
 
 class Drudge:
