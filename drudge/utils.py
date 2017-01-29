@@ -58,7 +58,7 @@ def sympy_key(expr):
 #
 
 
-class BCast:
+class BCastVar:
     """Automatically broadcast variables.
 
     This class is a shallow encapsulation of a variable and its broadcast
