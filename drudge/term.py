@@ -379,6 +379,28 @@ class Term:
         factors.extend(str(i) for i in self._vecs)
         return header + ' * '.join(factors)
 
+    @property
+    def sort_key(self):
+        """Get the sort key for a term.
+
+        This key attempts to sort the terms by complexity, with simpler terms
+        coming earlier.  This capability of sorting the terms will make the
+        equality comparison of multiple terms easier.
+
+        This sort key also ensures that terms that can be merged are always put
+        into adjacent positions.
+
+        """
+
+        vec_keys = [i.sort_key for i in self._vecs]
+        sum_keys = [(i[1].sort_key, sympy_key(i[0])) for i in self._sums]
+
+        return (
+            len(vec_keys), vec_keys,
+            len(sum_keys), sum_keys,
+            sympy_key(self._amp)
+        )
+
     #
     # Multiplication
     #
