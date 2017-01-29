@@ -294,6 +294,23 @@ class Tensor:
                 term = self.local_terms[0]
                 return term == parse_term(other)
 
+        assert False
+
+    #
+    # Mathematical operations
+    #
+
+    def __add__(self, other):
+        """Add the two tensors together.
+
+        The terms in the two tensors will be concatenated together, without any
+        further processing.
+        """
+
+        if not isinstance(other, Tensor):
+            other = self._drudge.sum(other)
+        return Tensor(self._drudge, self._terms.union(other.terms))
+
 
 class Drudge:
     """The main drudge class.
