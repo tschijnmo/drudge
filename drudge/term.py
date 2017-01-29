@@ -33,11 +33,12 @@ class Range:
 
     This class is for symbolic ranges that is going to be summed over in
     tensors.  Each range should have a label, and optionally lower and upper
-    bounds, which should be both given or absent.  The bounds will not be
-    directly used for symbolic computation, but rather designed for printers
-    and conversion to SymPy summation.  Note that ranges are assumed to be
-    atomic and disjoint.  Even in the presence of lower and upper bounds,
-    unequal ranges are assumed to be disjoint.
+    bounds, which should be both given or absent.  The label can be any hashable
+    and ordered Python type.  The bounds will not be directly used for symbolic
+    computation, but rather designed for printers and conversion to SymPy
+    summation.  Note that ranges are assumed to be atomic and disjoint.  Even in
+    the presence of lower and upper bounds, unequal ranges are assumed to be
+    disjoint.
 
     .. warning::
 
@@ -121,6 +122,14 @@ class Range:
     def __str__(self):
         """Form readable string representation."""
         return str(self._label)
+
+    @property
+    def sort_key(self):
+        """Get the sort key for the range."""
+        key = [self._label]
+        if self.bounded:
+            key.extend(sympy_key(i) for i in [self._lower, self._upper])
+        return key
 
 
 class Vec:
