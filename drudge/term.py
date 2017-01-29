@@ -694,7 +694,7 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     if len(args) == 0:
         return []
 
-    inp_term = _parse_term(args[-1])
+    inp_term = parse_term(args[-1])
     if len(args) == 1:
         return [inp_term]
 
@@ -756,7 +756,7 @@ def _parse_sums(args):
     return sums, substs
 
 
-def _parse_term(term):
+def parse_term(term):
     """Parse a term.
 
     Other things that can be interpreted as a term are also accepted.
