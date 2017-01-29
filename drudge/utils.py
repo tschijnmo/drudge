@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from sympy import (sympify, Symbol, Expr, SympifyError, count_ops,
                    default_sort_key)
 
+from pyspark import SparkContext
+
 
 #
 # SymPy utilities
@@ -47,7 +49,57 @@ def sympy_key(expr):
     This function assumes that the given expression is already sympified.
     """
 
-    return (count_ops(expr), default_sort_key(expr))
+    return count_ops(expr), default_sort_key(expr)
+
+
+#
+# Spark utilities
+# ---------------
+#
+
+
+class BCast:
+    """Automatically broadcast variables.
+
+    This class is a shallow encapsulation of a variable and its broadcast
+    into the spark context.  The variable can be redistributed automatically
+    after any change.
+
+    """
+
+    __slots__ = [
+        '_ctx',
+        '_var',
+        '_bcast'
+    ]
+
+    def __init__(self, ctx: SparkContext, var):
+        """Initialize the broadcast variable."""
+        self._ctx = ctx
+        self._var = var
+        self._bcast = None
+
+    @property
+    def var(self):
+        """Get the variable to mutate."""
+        self._bcast = None
+        return self._var
+
+    @property
+    def ro(self):
+        """Get the variable, read-only.
+
+        Note that this function only prevents the redistribution of the
+        variable.  It cannot force the variable not be mutated.
+        """
+        return self._var
+
+    @property
+    def bcast(self):
+        """Get the broadcast variable."""
+        if self._bcast is None:
+            self._bcast = self._ctx.broadcast(self._var)
+        return self._bcast
 
 
 #
