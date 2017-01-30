@@ -11,7 +11,7 @@ from sympy import (
     Add, Mul, Indexed, IndexedBase, Expr)
 
 from .canon import canon_factors
-from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key
+from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key, is_higher
 
 #
 # Utility constants
@@ -247,14 +247,14 @@ class Vec:
     # Multiplication
     #
 
-    _op_priority = 20.0
+    _op_priority = 19.0
 
     def __mul__(self, other):
         """Multiply something on the right."""
 
-        if isinstance(other, Term):
-            # Delegate to the term for the multiplication.
+        if is_higher(other, self._op_priority):
             return NotImplemented
+
         if isinstance(other, Vec):
             return Term([], _UNITY, [self, other])
         else:
@@ -263,7 +263,9 @@ class Vec:
     def __rmul__(self, other):
         """Multiply something on the left."""
 
-        # In principle, other should not be either a term or a vector.
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        # Now, other cannot not be either a term or a vector.
         return Term([], other, [self])
 
     #
@@ -405,10 +407,13 @@ class Term:
     # Multiplication
     #
 
-    _op_priority = 20.0
+    _op_priority = 19.1
 
     def __mul__(self, other):
         """Multiple something on the right."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
 
         if isinstance(other, Term):
             # Now for tensor term creation, we do not need this yet
@@ -422,6 +427,9 @@ class Term:
 
     def __rmul__(self, other):
         """Multiply something on the left."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
 
         # In principle, the other operand should not be another term.
         if isinstance(other, Vec):
@@ -608,7 +616,7 @@ class Term:
         if isinstance(expanded_amp, Add):
             amp_terms = expanded_amp.args
         else:
-            amp_terms = (expanded_amp, )
+            amp_terms = (expanded_amp,)
         return [self.map(lambda x: x, amp=i) for i in amp_terms]
 
     #
