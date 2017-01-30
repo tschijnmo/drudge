@@ -282,7 +282,7 @@ class Tensor:
 
         n_terms = self.n_terms
         if isinstance(other, Tensor):
-            return self.local_terms == other.local_terms
+            return set(self.local_terms) == set(other.local_terms)
         elif other == 0:
             return n_terms == 0
         else:
