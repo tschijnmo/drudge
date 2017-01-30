@@ -137,16 +137,16 @@ class Tensor:
         )
         return res_terms
 
-    def simplify_amp(self):
-        """Simplify the amplitude in the tensor.
+    def simplify_amps(self):
+        """Simplify the amplitudes in the tensor.
 
         This method simplifies the amplitude in the tensor of the tensor, by
         using the facility from SymPy and tensor specific facilities for deltas.
         The zero terms will be filtered out as well.
         """
-        return self.apply(self._simplify_amp)
+        return self.apply(self._simplify_amps)
 
-    def _simplify_amp(self, terms):
+    def _simplify_amps(self, terms):
         """Get the terms with amplitude simplified."""
         resolvers = self._drudge.resolvers
         simplified_terms = terms.map(
@@ -251,7 +251,7 @@ class Tensor:
         terms = self._drudge.normal_order(terms)
 
         # Simplify things like zero or deltas.
-        terms = self._simplify_amp(terms)
+        terms = self._simplify_amps(terms)
 
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms)
@@ -260,7 +260,7 @@ class Tensor:
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
-        terms = self._simplify_amp(terms)
+        terms = self._simplify_amps(terms)
 
         return terms
 
