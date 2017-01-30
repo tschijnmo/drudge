@@ -92,3 +92,47 @@ def test_tensor_has_basic_operations(free_alg):
     assert merged.n_terms == 1
     term = merged.local_terms[0]
     assert term == Term([(k, r)], x[i, k] + x[j, k], [v[k]])
+
+
+def test_tensor_can_be_simplified_amp(free_alg):
+    """Test the amplitude simplification for tensors.
+
+    More than trivial tensor amplitude simplification is tested here.  Currently
+    it mostly concentrates on the dispatching to SymPy and delta simplification.
+    The master simplification is also tested.
+    """
+
+    dr, p = free_alg
+    r = p.r
+    s = p.s
+    v = p.v
+    i, j = p.dumms[:2]
+    alpha = p.s_dumms[0]
+
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+    theta = sympify('theta')
+
+    tensor = (
+        dr.sum((i, r), sin(theta) ** 2 * x[i] * v[i]) +
+        dr.sum(
+            (i, r), (j, r),
+            cos(theta) ** 2 * x[j] * KroneckerDelta(i, j) * v[i]
+        ) +
+        dr.sum((i, r), (alpha, s), KroneckerDelta(i, alpha) * y[i] * v[i])
+    )
+    assert tensor.n_terms == 3
+
+    first = tensor.simplify_amps()
+    # Now we should have one term killed.
+    assert first.n_terms == 2
+
+    # Merge again should really simplify.
+    merged = first.reset_dumms().merge().simplify_amps()
+    assert merged.n_terms == 1
+    expected = dr.sum((i, r), x[i] * v[i])
+    assert merged == expected
+
+    # The master simplification should do it in one turn.
+    simpl = tensor.simplify()
+    assert simpl == expected
