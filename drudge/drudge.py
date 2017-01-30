@@ -298,6 +298,8 @@ class Tensor:
     # Mathematical operations
     #
 
+    _op_priority = 20.0
+
     def __add__(self, other):
         """Add the two tensors together.
 
