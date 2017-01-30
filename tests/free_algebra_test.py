@@ -6,7 +6,7 @@ import pytest
 from pyspark import SparkContext, SparkConf
 from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
 
-from drudge import Drudge, Range, Vec, Term
+from drudge import Drudge, Range, Vec, Term, Perm, NEG
 
 
 @pytest.fixture(scope='module')
@@ -27,8 +27,11 @@ def free_alg():
 
     v = Vec('v')
 
+    m = IndexedBase('m')
+    dr.set_symm(m, Perm([1, 0], NEG))
+
     return dr, types.SimpleNamespace(
-        r=r, dumms=dumms, s=s, s_dumms=s_dumms, v=v
+        r=r, dumms=dumms, s=s, s_dumms=s_dumms, v=v, m=m
     )
 
 
@@ -136,3 +139,26 @@ def test_tensor_can_be_simplified_amp(free_alg):
     # The master simplification should do it in one turn.
     simpl = tensor.simplify()
     assert simpl == expected
+
+
+def test_tensor_can_be_canonicalized(free_alg):
+    """Test tensor canonicalization in simplification.
+
+    The master simplification function is tested, the core simplification is at
+    the canonicalization.  Equality testing with zero is also tested.
+    """
+
+    dr, p = free_alg
+    i, j = p.dumms[:2]
+    r = p.r
+    m = p.m
+    v = p.v
+
+    tensor = (
+        dr.sum((i, r), (j, r), m[i, j] * v[i] * v[j]) +
+        dr.sum((i, r), (j, r), m[j, i] * v[i] * v[j])
+    )
+    assert tensor.n_terms == 2
+
+    res = tensor.simplify()
+    assert res == 0
