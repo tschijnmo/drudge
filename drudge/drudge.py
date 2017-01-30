@@ -265,7 +265,6 @@ class Tensor:
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms)
         terms = self._reset_dumms(terms)
-        terms = self._sort(terms)
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
