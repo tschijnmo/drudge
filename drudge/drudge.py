@@ -305,6 +305,9 @@ class Tensor:
 
         The terms in the two tensors will be concatenated together, without any
         further processing.
+
+        In addition to full tensors, tensors can also be directly added to
+        scalar objects.
         """
         return self._add(other)
 
@@ -319,7 +322,16 @@ class Tensor:
         return Tensor(self._drudge, self._terms.union(other.terms))
 
     def __mul__(self, other):
-        """Multiply the tensor."""
+        """Multiply the tensor.
+
+        This multiplication operation is done completely within the framework of
+        free algebras.  The vectors are only concatenated without further
+        processing.  The actual handling of the commutativity should be carried
+        out at the normal ordering operation for different problems.
+
+        In addition to full tensors, tensors can also be multiplied to vectors
+        or scalars directly.
+        """
         return self._mul(other)
 
     def __rmul__(self, other):
