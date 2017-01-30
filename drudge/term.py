@@ -632,6 +632,10 @@ class Term:
         wrapper_base = IndexedBase('internalWrapper', shape=('internalShape',))
         amp_factors, coeff = self.amp_factors
         for i in amp_factors:
+            # TODO: make it able to treat indexed inside function.
+            #
+            # Currently it cannot gracefully treat expressions like the
+            # conjugate of an indexed quantity.
             if not isinstance(i, Indexed):
                 i = wrapper_base[i]
             factors.append((
