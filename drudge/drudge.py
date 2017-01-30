@@ -28,7 +28,7 @@ class Tensor:
     # Term creation
     #
 
-    def __init__(self, drudge: Drudge, terms: RDD):
+    def __init__(self, drudge, terms: RDD):
         """Initialize the tensor.
 
         This function is not designed to be called by users directly.  Tensor
@@ -456,7 +456,7 @@ class Drudge:
     # Tensor creation
     #
 
-    def sum(self, *args):
+    def sum(self, *args) -> Tensor:
         """Create a tensor for the given summation.
 
         This is the core function for creating tensors from scratch.  The last
