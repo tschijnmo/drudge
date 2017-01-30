@@ -61,6 +61,7 @@ def test_tensor_has_basic_operations(free_alg):
         3. Free variable.
         4. Dummy reset.
         5. Equality comparison.
+        6. Expansion
     """
 
     dr, p = free_alg
@@ -95,6 +96,19 @@ def test_tensor_has_basic_operations(free_alg):
     assert merged.n_terms == 1
     term = merged.local_terms[0]
     assert term == Term([(k, r)], x[i, k] + x[j, k], [v[k]])
+
+    # Slightly separate test for expansion.
+    c, d = symbols('c d')
+    tensor = dr.sum((i, r), x[i] * (c + d) * v[i])
+    assert tensor.n_terms == 1
+    expanded = tensor.expand()
+    assert expanded.n_terms == 2
+
+    # Here we also test concrete summation facility.
+    expected = dr.sum(
+        (i, r), (j, [c, d]), x[i] * j * v[i]
+    )
+    assert set(expected.local_terms) == set(expected.local_terms)
 
 
 def test_tensor_can_be_simplified_amp(free_alg):
