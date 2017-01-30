@@ -116,6 +116,10 @@ def canon_factors(sums, factors, symms):
     sums = list(sums)
     factors = list(factors)
 
+    # TODO: make handling of empty eldags more elegant.
+    if len(factors) == 0 and len(sums) == 0:
+        return sums, factors, 1
+
     eldag, factor_idxes = _build_eldag(sums, factors, symms)
     node_order, perms = eldag.canon()
 
