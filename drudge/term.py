@@ -437,6 +437,14 @@ class Term:
         else:
             return Term(self._sums, sympify(other) * self._amp, self._vecs)
 
+    def mul_term(self, other, dumms=None, excl=None):
+        """Multiply with another tensor term."""
+        lhs, dummbegs = self.reset_dumms(dumms, excl=excl)
+        rhs = other.reset_dumms(dumms, dummbegs=dummbegs, excl=excl)
+        return Term(
+            lhs.sums + rhs.sums, lhs.amp * rhs.amp, lhs.vecs + rhs.vecs
+        )
+
     #
     # SymPy related
     #

@@ -318,6 +318,31 @@ class Tensor:
             other = self._drudge.sum(other)
         return Tensor(self._drudge, self._terms.union(other.terms))
 
+    def __mul__(self, other):
+        """Multiply the tensor."""
+        return self._mul(other)
+
+    def __rmul__(self, other):
+        """Multiply the tensor"""
+        return self._mul(other, right=True)
+
+    def _mul(self, other, right=False):
+        """Multiplies the tensor with another."""
+        if not isinstance(other, Tensor):
+            other = self._drudge.sum(other)
+
+        if right:
+            prod = other.terms.cartesian(self._terms)
+        else:
+            prod = self._terms.cartesian(other.terms)
+
+        dumms = self._drudge.dumms
+        free_vars = self.free_vars | other.free_vars
+
+        return Tensor(self._drudge, prod.map(
+            lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
+        ))
+
 
 class Drudge:
     """The main drudge class.
