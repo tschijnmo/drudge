@@ -2,10 +2,9 @@
 
 from collections.abc import Sequence
 
+from pyspark import SparkContext
 from sympy import (sympify, Symbol, Expr, SympifyError, count_ops,
                    default_sort_key)
-
-from pyspark import SparkContext
 
 
 #
@@ -50,6 +49,16 @@ def sympy_key(expr):
     """
 
     return count_ops(expr), default_sort_key(expr)
+
+
+def is_higher(obj, priority):
+    """Test if the object has higher operation priority.
+
+    When the given object does not have defined priority, it is considered
+    lower.
+    """
+
+    return getattr(obj, '_op_priority', priority - 1) > priority
 
 
 #
