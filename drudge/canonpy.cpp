@@ -1262,7 +1262,7 @@ an Eldag.
 
 static PyMethodDef canonpy_methods[]
     = { { "canon_eldag", (PyCFunction)canon_eldag_func,
-            METH_VARARGS | METH_KEYWORDS, canonpy_docstring },
+            METH_VARARGS | METH_KEYWORDS, canon_eldag_docstring},
         { NULL, NULL, 0, NULL } };
 
 /** Executes the initialization of the canonpy module.
