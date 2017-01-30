@@ -242,7 +242,7 @@ class Tensor:
 
         This is the master driver function for tensor simplification.
         """
-        self.apply(self._simplify)
+        return self.apply(self._simplify)
 
     def _simplify(self, terms):
         """Get the terms in the simplified form."""
