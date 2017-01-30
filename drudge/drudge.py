@@ -306,7 +306,14 @@ class Tensor:
         The terms in the two tensors will be concatenated together, without any
         further processing.
         """
+        return self._add(other)
 
+    def __radd__(self, other):
+        """Add tensor with something in front."""
+        return self._add(other)
+
+    def _add(self, other):
+        """Add tensor with another thing."""
         if not isinstance(other, Tensor):
             other = self._drudge.sum(other)
         return Tensor(self._drudge, self._terms.union(other.terms))
