@@ -4,7 +4,7 @@ import types
 
 import pytest
 from pyspark import SparkContext, SparkConf
-from sympy import sympify, IndexedBase
+from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
 
 from drudge import Drudge, Range, Vec, Term
 
@@ -21,9 +21,15 @@ def free_alg():
     dumms = sympify('i, j, k, l, m, n')
     dr.set_dumms(r, dumms)
 
+    s = Range('S')
+    s_dumms = symbols('alpha beta')
+    dr.set_dumms(s, s_dumms)
+
     v = Vec('v')
 
-    return dr, types.SimpleNamespace(r=r, dumms=dumms, v=v)
+    return dr, types.SimpleNamespace(
+        r=r, dumms=dumms, s=s, s_dumms=s_dumms, v=v
+    )
 
 
 def test_tensor_can_be_created(free_alg):
