@@ -281,7 +281,7 @@ class Tensor:
             return other.n_terms == n_terms and (
                 self._terms
                     .zip(other.terms)
-                    .map(lambda x: x[0] == x[1])
+                    .map(lambda x: x[0] != x[1])
                     .filter(lambda x: x)
                     .isEmpty()
             )
