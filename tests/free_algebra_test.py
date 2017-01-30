@@ -176,3 +176,39 @@ def test_tensor_can_be_canonicalized(free_alg):
 
     res = tensor.simplify()
     assert res == 0
+
+
+def test_tensor_math_ops(free_alg):
+    """Test tensor math operations.
+
+    Mainly here we test addition and multiplication.
+    """
+
+    dr, p = free_alg
+    r = p.r
+    v = p.v
+    w = Vec('w')
+    x = IndexedBase('x')
+    i, j, k = p.dumms[:3]
+    a = sympify('a')
+
+    v1 = dr.sum((i, r), x[i] * v[i])
+    w1 = dr.sum((i, r), x[i] * w[i])
+    assert v1.n_terms == 1
+    assert w1.n_terms == 1
+
+    v1_1 = v1 + 2
+    assert v1_1.n_terms == 2
+    assert v1_1 == 2 + v1
+
+    w1_1 = w1 + a
+    assert w1_1.n_terms == 2
+    assert w1_1 == a + w1
+
+    prod = v1_1 * w1_1
+    # Test scalar multiplication here as well.
+    expected = (
+        2 * a + a * v1 + 2 * w1 +
+        dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j])
+    )
+    assert prod.simplify() == expected.simplify()
