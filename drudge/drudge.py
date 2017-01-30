@@ -274,17 +274,15 @@ class Tensor:
         Note that this function only compares the syntactical equality of
         tensors.  Mathematically equal tensors might be compared to be unequal
         by this function when they are not simplified.
+
+        Note that this function gathers all terms in the tensor and can be very
+        expensive.  So it is mostly suitable for testing and debugging on small
+        problems only.
         """
 
         n_terms = self.n_terms
         if isinstance(other, Tensor):
-            return other.n_terms == n_terms and (
-                self._terms
-                    .zip(other.terms)
-                    .map(lambda x: x[0] != x[1])
-                    .filter(lambda x: x)
-                    .isEmpty()
-            )
+            return self.local_terms == other.local_terms
         elif other == 0:
             return n_terms == 0
         else:
