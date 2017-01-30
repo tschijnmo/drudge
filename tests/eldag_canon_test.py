@@ -1,6 +1,7 @@
 """Tests for the canonicalization facility for Eldags."""
 
-from drudge import Perm, Group, canon_eldag
+from drudge import Perm, Group
+from drudge.canonpy import canon_eldag
 
 
 def test_eldag_can_be_canonicalized():
