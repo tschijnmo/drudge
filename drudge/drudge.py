@@ -112,7 +112,16 @@ class Tensor:
 
     @staticmethod
     def _free_vars(terms):
-        return terms.map(lambda term: term.symbs[0]).reduce(operator.or_)
+        """Get the free variables in terms."""
+
+        def _union(orig, new):
+            """Union the two sets and return the first."""
+            orig |= new
+            return orig
+
+        return terms.map(lambda term: term.symbs[0]).aggregate(
+            set(), _union, _union
+        )
 
     def reset_dumms(self):
         """Reset the dummies.
