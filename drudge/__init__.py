@@ -8,6 +8,7 @@ from .canonpy import Perm, Group
 from .term import Range, Vec, Term
 from .canon import IDENT, NEG, CONJ
 from .drudge import Tensor, Drudge
+from .wick import WickDrudge
 
 __all__ = [
     # Canonpy.
@@ -29,4 +30,7 @@ __all__ = [
     # Drudge.
     'Tensor',
     'Drudge',
+
+    # Different problem-specific drudges.
+    'WickDrudge'
 ]
