@@ -545,12 +545,26 @@ class Term:
         ValueError will be raised when no more dummies are available.
         """
 
+        new_sums, substs, dummbegs = self.reset_sums(
+            self._sums, dumms, dummbegs, excl
+        )
+
+        return self.subst(substs, new_sums), dummbegs
+
+    @staticmethod
+    def reset_sums(sums, dumms, dummbegs=None, excl=None):
+        """Reset the given summations.
+
+        The new summation list, substitution list, and the new dummy begin
+        dictionary will be returned.
+        """
+
         if dummbegs is None:
             dummbegs = {}
 
         new_sums = []
         substs = []
-        for dumm_i, range_i in self.sums:
+        for dumm_i, range_i in sums:
 
             # For linter.
             new_dumm = None
@@ -580,7 +594,7 @@ class Term:
 
             continue
 
-        return self.subst(substs, new_sums), dummbegs
+        return new_sums, substs, dummbegs
 
     #
     # Amplitude simplification
