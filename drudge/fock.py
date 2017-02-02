@@ -7,8 +7,10 @@ and annihilation operators acting on fermion or boson Fock spaces.
 
 import functools
 
-from sympy import Integer, KroneckerDelta
+from sympy import Integer, KroneckerDelta, IndexedBase
 
+from .canon import NEG, IDENT
+from .canonpy import Perm
 from .drudge import Tensor
 from .term import Vec
 from .utils import sympy_key
@@ -129,6 +131,83 @@ class FockDrudge(WickDrudge):
         )
 
         return tensor.apply(lambda terms: terms.flatMap(term_op))
+
+    def set_n_body_base(self, base: IndexedBase, n_body: int):
+        """Set an indexed base as an n-body interaction.
+
+        The symmetry of an n-body interaction has full permutation symmetry
+        among the corresponding slots in the first and second half.
+
+        When the body count if less than two, no symmetry is added.
+
+        """
+
+        # No symmtry going to be added for less than two body.
+        if n_body < 2:
+            return
+
+        begin1 = 0
+        end1 = n_body
+        begin2 = end1
+        end2 = 2 * n_body
+
+        cycl = Perm(
+            self._form_cycl(begin1, end1) + self._form_cycl(begin2, end2)
+        )
+        transp = Perm(
+            self._form_transp(begin1, end1) + self._form_transp(begin2, end2)
+        )
+
+        self.set_symm(base, cycl, transp)
+
+        return
+
+    def set_dbbar_base(self, base: IndexedBase, n_body: int, n_body2=None):
+        """Set an indexed base as a double-bar interaction.
+
+        A double barred interaction has full permutation symmetry among its
+        first half of slots and its second half individually.  For fermion
+        field, the permutation is assumed to be anti-commutative.
+
+        The size of the second half can be given by another optional argument,
+        or it is assumed to have the same size as the first half.
+        """
+
+        n_body2 = n_body if n_body2 is None else n_body2
+
+        gens = []
+        begin = 0
+        for i in [n_body, n_body2]:
+            end = begin + i
+            if i > 1:
+                cycl_accs = NEG if self._exch == FERMI and i % 2 == 0 else IDENT
+                transp_acc = NEG if self._exch == FERMI else IDENT
+                gens.append(Perm(
+                    self._form_cycl(begin, end), cycl_accs
+                ))
+                gens.append(Perm(
+                    self._form_transp(begin, end), transp_acc
+                ))
+            begin = end
+
+        self.set_symm(base, gens)
+
+        return
+
+    @staticmethod
+    def _form_cycl(begin, end):
+        """Form the pre-image for a cyclic permutation over the given range."""
+        before_end = end - 1
+        res = [before_end]
+        res.extend(range(begin, before_end))
+        return res
+
+    @staticmethod
+    def _form_transp(begin, end):
+        """Form a pre-image array with the first two points transposed."""
+        res = list(range(begin, end))
+        res[0], res[1] = res[1], res[0]
+        return res
 
 
 def parse_field_op(op: Vec):
