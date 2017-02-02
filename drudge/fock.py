@@ -6,8 +6,9 @@ and annihilation operators acting on fermion or boson Fock spaces.
 """
 
 import functools
+import typing
 
-from sympy import Integer, KroneckerDelta, IndexedBase
+from sympy import Integer, KroneckerDelta, IndexedBase, Expr
 
 from .canon import NEG, IDENT
 from .canonpy import Perm
@@ -68,9 +69,12 @@ class FockDrudge(WickDrudge):
     systems, but no problem specific information, like ranges or operator base,
     is defined.
 
+    To customize the details of the commutation rules, properties ``op_parser``
+    and ``ancr_contractor`` can be overridden.
+
     """
 
-    def __init__(self, ctx, exch, contractor=None):
+    def __init__(self, ctx, exch):
         """Initialize the drudge.
 
         Parameters
@@ -81,12 +85,6 @@ class FockDrudge(WickDrudge):
             The exchange symmetry for the Fock space.  Constants ``FERMI`` and
             ``BOSE`` can be used.
 
-        contractor : Callable
-
-            A callable going to be called with an annihilation operator and a
-            creation operator to get their contraction.  By default, delta
-            values are assumed.
-
         """
 
         super().__init__(ctx)
@@ -95,14 +93,21 @@ class FockDrudge(WickDrudge):
         else:
             raise ValueError('Invalid exchange', exch, 'expecting plus/minus 1')
 
-        self._contractor = functools.partial(
-            _contr_field_ops, contractor=contractor
-        )
-
     @property
     def contractor(self):
-        """Get the contractor for the algebra."""
-        return self._contractor
+        """Get the contractor for the algebra.
+
+        The operations are read here on-the-fly so that possibly custemized
+        behaviour from the subclasses can be read.
+        """
+
+        ancr_contractor = self.ancr_contractor
+        op_parser = self.op_parser
+
+        return functools.partial(
+            _contr_field_ops, ancr_contractor=ancr_contractor,
+            op_parser=op_parser
+        )
 
     @property
     def phase(self):
@@ -112,12 +117,55 @@ class FockDrudge(WickDrudge):
     @property
     def comparator(self):
         """Get the comparator for the normal ordering operation."""
-        return _compare_field_ops
+
+        op_parser = self.op_parser
+
+        return functools.partial(_compare_field_ops, op_parser=op_parser)
 
     @property
     def vec_colour(self):
         """Get the vector colour evaluator."""
-        return _get_field_op_colour
+
+        op_parser = self.op_parser
+
+        return functools.partial(_get_field_op_colour, op_parser=op_parser)
+
+    OP_PARSER = typing.Callable[
+        [Vec], typing.Tuple[typing.Any, _OpChar, typing.Sequence[Expr]]
+    ]
+
+    @property
+    def op_parser(self) -> OP_PARSER:
+        """Get the parser for field operators.
+
+        The result should be a callable taking an vector and return a triple of
+        operator base, operator character, and the actual indices to the
+        operator.  This can be helpful for cases where the interpretation of the
+        operators needs to be tweeked.
+        """
+        return parse_field_op
+
+    ANCR_CONTRACTOR = typing.Callable[
+        [typing.Any, typing.Sequence[Expr], typing.Any, typing.Sequence[Expr]],
+        Expr
+    ]
+
+    @property
+    def ancr_contractor(self) -> ANCR_CONTRACTOR:
+        """Get the contractor for annihilation and creation operators.
+
+        In this drudge, the contraction between creation/creation,
+        annihilation/annihilation, and creation/annihilation operators are
+        fixed.  By this property, a callable for contracting annihilation
+        operators with a creation operator can be given.  It will be called with
+        the base and indices (excluding the character) of the annihilation
+        operators and the base and indices of the creation operator.  A simple
+        SymPy expression is expected in the result.
+
+        By default, the result will be a simple delta.
+        """
+
+        return _contr_ancr_by_delta
 
     def eval_vev(self, tensor: Tensor, contractor):
         """Evaluate vacuum expectation value.
@@ -225,15 +273,15 @@ def parse_field_op(op: Vec):
     return op.label, indices[0], indices[1:]
 
 
-def _compare_field_ops(op1: Vec, op2: Vec):
+def _compare_field_ops(op1: Vec, op2: Vec, op_parser: FockDrudge.OP_PARSER):
     """Compare the given field operators.
 
     Here we try to emulate physicists' convention as much as possible.  The
     annihilation operators are ordered in reversed direction.
     """
 
-    label1, char1, indices1 = parse_field_op(op1)
-    label2, char2, indices2 = parse_field_op(op2)
+    label1, char1, indices1 = op_parser(op1)
+    label2, char2, indices2 = op_parser(op2)
 
     if char1 == CR and char2 == AN:
         return True
@@ -250,7 +298,9 @@ def _compare_field_ops(op1: Vec, op2: Vec):
         return key1 >= key2
 
 
-def _contr_field_ops(op1: Vec, op2: Vec, contractor=None):
+def _contr_field_ops(op1: Vec, op2: Vec,
+                     ancr_contractor: FockDrudge.ANCR_CONTRACTOR,
+                     op_parser: FockDrudge.OP_PARSER):
     """Contract two field operators.
 
     Here we work by the fermion-boson commutation rules.  The contractor is only
@@ -259,17 +309,20 @@ def _contr_field_ops(op1: Vec, op2: Vec, contractor=None):
 
     """
 
-    label1, char1, indices1 = parse_field_op(op1)
-    label2, char2, indices2 = parse_field_op(op2)
+    label1, char1, indices1 = op_parser(op1)
+    label2, char2, indices2 = op_parser(op2)
 
     if char1 == char2 or char1 == CR:
         return 0
 
-    if contractor is not None:
-        return contractor(op1, op2)
+    return ancr_contractor(label1, indices1, label2, indices2)
 
-    # Else, internal delta contraction is attempted.  For the delta contraction,
-    # some additional checking is needed for it to make sense.
+
+def _contr_ancr_by_delta(label1, indices1, label2, indices2):
+    """Contract an annihilation and a creation operator by delta."""
+
+    # For the delta contraction, some additional checking is needed for it to
+    # make sense.
 
     err_header = 'Invalid field operators to contract by delta'
 
@@ -277,10 +330,11 @@ def _contr_field_ops(op1: Vec, op2: Vec, contractor=None):
     # what is intended.
 
     if label1 != label2:
-        raise ValueError(err_header, op1, op2, 'expecting the same base')
+        raise ValueError(err_header, (label1, label2),
+                         'expecting the same base')
 
     if len(indices1) != len(indices2):
-        raise ValueError(err_header, op1, op2,
+        raise ValueError(err_header, (indices1, indices2),
                          'expecting same number of indices')
 
     res = 1
@@ -292,14 +346,14 @@ def _contr_field_ops(op1: Vec, op2: Vec, contractor=None):
     return res
 
 
-def _get_field_op_colour(idx, vec):
+def _get_field_op_colour(idx, vec, op_parser: FockDrudge.OP_PARSER):
     """Get the colour of field operators.
 
     Here the annihilation part is specially treated for better compliance with
     conventions in physics.
     """
 
-    _, char, _ = parse_field_op(vec)
+    _, char, _ = op_parser(vec)
     return char, idx if char == CR else -idx
 
 #
