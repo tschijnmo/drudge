@@ -470,6 +470,8 @@ class Drudge:
             for i in new_dumms:
                 self.set_name(i)
 
+        return new_dumms
+
     @property
     def dumms(self):
         """Get the broadcast form of the dummies dictionary.
@@ -495,10 +497,13 @@ class Drudge:
                                 'expecting Perm or iterable of Perms')
             continue
 
-        self._symms.var[base] = Group(gens)
+        group = Group(gens)
+        self._symms.var[base] = group
 
         if set_base_name:
             self.set_name(base, label=base.label)
+
+        return group
 
     @property
     def symms(self):
