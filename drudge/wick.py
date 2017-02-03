@@ -162,12 +162,16 @@ def _prepare_vecs(term):
         i.sort(key=sympy_key)  # Not necessary, for ease of debugging.
     sums = term.sums
 
+    symms = {}
+    # Mock symmetry dictionary.
+    #
+    # TODO: Maybe make symmetries on vectors available here.
+    #
+    # Normally this should not be useful.  What we have here is sufficient.
+
     vecs = []  # The result.
     for idx, vec in enumerate(term.vecs):
-        new_sums, factors, _ = canon_factors(sums, [(vec, 0)], None)
-        # TODO: Maybe make symmetries on vectors available here.
-        #
-        # Normally this should not be useful.  What we have here is sufficient.
+        new_sums, factors, _ = canon_factors(sums, [(vec, 0)], symms)
 
         # The dummies are all original dummies, hence cannot conflict with free
         # variables.
