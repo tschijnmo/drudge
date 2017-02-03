@@ -401,7 +401,6 @@ class Drudge:
     # be overridden.
     #
 
-    def set_dumms(self, range_: Range, dumms):
     def set_name(self, obj: typing.Any, label: typing.Any = None):
         """Set the object into the name archive of the drudge.
 
@@ -447,12 +446,25 @@ class Drudge:
 
         return
 
+    def set_dumms(self, range_: Range, dumms,
+                  set_range_name=True, dumms_suffix='_dumms',
+                  set_dumm_names=True):
         """Set the dummies for a range.
 
         Note that this function overwrites the existing dummies if the range has
         already been given.
         """
-        self._dumms.var[range_] = [ensure_symb(i) for i in dumms]
+
+        new_dumms = [ensure_symb(i) for i in dumms]
+        self._dumms.var[range_] = new_dumms
+
+        if set_range_name:
+            self.set_name(range_)
+        if dumms_suffix:
+            self.set_name(new_dumms, str(range_) + dumms_suffix)
+        if set_dumm_names:
+            for i in new_dumms:
+                self.set_name(i)
 
     @property
     def dumms(self):
@@ -460,7 +472,7 @@ class Drudge:
         """
         return self._dumms.bcast
 
-    def set_symm(self, base, *symms):
+    def set_symm(self, base, *symms, set_base_name=True):
         """Get the symmetry for a given base.
 
         Permutation objects in the arguments are interpreted as single
@@ -480,6 +492,9 @@ class Drudge:
             continue
 
         self._symms.var[base] = Group(gens)
+
+        if set_base_name:
+            self.set_name(base, label=base.label)
 
     @property
     def symms(self):
