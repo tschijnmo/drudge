@@ -7,14 +7,15 @@ and annihilation operators acting on fermion or boson Fock spaces.
 
 import functools
 import typing
+import warnings
 
-from sympy import Integer, KroneckerDelta, IndexedBase, Expr
+from sympy import Integer, KroneckerDelta, IndexedBase, Expr, Symbol, Rational
 
 from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
-from .term import Vec
-from .utils import sympy_key
+from .term import Vec, Range
+from .utils import sympy_key, ensure_expr
 from .wick import WickDrudge, wick_expand
 
 
@@ -356,7 +357,161 @@ def _get_field_op_colour(idx, vec, op_parser: FockDrudge.OP_PARSER):
     _, char, _ = op_parser(vec)
     return char, idx if char == CR else -idx
 
+
 #
 # Detailed problems
 # -----------------
 #
+
+
+def conserve_spin(*spin_symbs):
+    """Get a callback giving true only if the given spin values are conserved.
+
+    Here by conserving the spin, we mean the very strict sense that the values
+    of the first half of the symbols in the given dictionary exactly matches the
+    corresponding values in the second half.
+    """
+
+    n_symbs = len(spin_symbs)
+    if n_symbs % 2 == 1:
+        raise ValueError('Invalid spin symbols', spin_symbs,
+                         'expecting a even number of them')
+    n_particles = n_symbs // 2
+
+    outs = spin_symbs[0:n_particles]
+    ins = spin_symbs[n_particles:n_symbs]
+
+    def test_conserve(symbs_dict):
+        """Test if the spin values from the dictionary is conserved."""
+        return all(
+            symbs_dict[i] == symbs_dict[j]
+            for i, j in zip(ins, outs)
+        )
+
+    return test_conserve
+
+
+class GenMBDrudge(FockDrudge):
+    """Drudge for general many-body problems.
+
+    In a general many-body problem, a state for the particle is given by a
+    symbolic **orbital** quantum numbers for the external degrees of freedom and
+    optionally a concrete **spin** quantum numbers for the internal states of
+    the particles.  Normally, there is just one orbital quantum number and one
+    or no spin quantum number.
+
+    In this model, a default Hamiltonian of the model is constructed from a
+    one-body and two-body interaction, both of them are assumed to be spin
+    conserving.
+
+    """
+
+    def __init__(self, ctx, exch=FERMI, op_label='c',
+                 orb=((Range('L'), 'abcdefg'),), spin=(),
+                 one_body=IndexedBase('t'), two_body=IndexedBase('u'),
+                 dbbar=False):
+        """Initialize the drudge object.
+
+        TODO: Add details documentation here.
+        """
+
+        super().__init__(ctx, exch)
+
+        #
+        # Create the field operator
+        #
+
+        op = Vec(op_label)
+        cr = op[CR]
+        an = op[AN]
+        self.op = op
+        self.cr = cr
+        self.an = an
+        self.set_name(op)
+
+        #
+        # Hamiltonian creation
+        #
+        # Other aspects of the model will also be set during this stage.
+        #
+
+        orb_ranges = []
+        for range_, dumms in orb:
+            self.set_dumms(range_, dumms)
+            orb_ranges.append(range_)
+            continue
+
+        spin_vals = []
+        for i in spin:
+            spin_vals.append(ensure_expr(i))
+        has_spin = len(spin_vals) > 0
+        if len(spin_vals) == 1:
+            warnings.warn(
+                'Just one spin value is given: '
+                'consider dropping it for better performance'
+            )
+
+        # These dummies are used temporarily and will soon be reset.  They are
+        # here, rather than the given dummies directly, because we might need to
+        # dummy for multiple orbital ranges.
+        #
+        # They are created as tuple so that they can be easily used for
+        # indexing.
+
+        orb_dumms = tuple(
+            Symbol('internalOrbitPlaceholder{}'.format(i))
+            for i in range(4)
+        )
+        spin_dumms = tuple(
+            Symbol('internalSpinPlaceholder{}'.format(i))
+            for i in range(4)
+        )
+
+        orb_sums = [(i, orb_ranges) for i in orb_dumms]
+        spin_sums = [(i, spin_vals) for i in spin_dumms]
+
+        # The indices to get the operators in the hamiltonian.
+        indices = [
+            (i, j) if has_spin else i
+            for i, j in zip(orb_dumms, spin_dumms)
+            ]
+
+        # Actual Hamiltonian building.
+
+        self.one_body = one_body
+        self.set_name(one_body)  # No symmetry for it.
+
+        one_body_sums = orb_sums[:2]
+        if has_spin:
+            one_body_sums.extend(spin_sums[:2])
+
+        one_body_ham = self.sum(
+            *one_body_sums,
+            one_body[orb_dumms[:2]] * cr[indices[0]] * an[indices[1]],
+            predicate=conserve_spin(*spin_dumms[:2]) if has_spin else None
+        )
+
+        if dbbar:
+            two_body_coeff = Rational(1, 4)
+            self.set_dbbar_base(two_body, 2)
+        else:
+            two_body_coeff = Rational(1, 2)
+            self.set_n_body_base(two_body, 2)
+
+        two_body_sums = orb_sums
+        if has_spin:
+            two_body_sums.extend(spin_sums)
+
+        two_body_ham = self.sum(
+            *two_body_sums,
+            two_body_coeff * two_body[orb_dumms] *
+            cr[indices[0]] * cr[indices[1]] * an[indices[3]] * an[indices[2]],
+            predicate=conserve_spin(spin_dumms) if has_spin else None
+        )
+
+        # We need to at lease remove the internal symbols.
+        orig_ham = (one_body_ham + two_body_ham).reset_dumms()
+        self.orig_ham = orig_ham
+
+        simpled_ham = orig_ham.simplify()
+        self.ham = simpled_ham
