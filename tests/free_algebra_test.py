@@ -1,19 +1,16 @@
 """Tests for the basic tensor facilities using free algebra."""
 
 import pytest
-from pyspark import SparkContext, SparkConf
 from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
 
 from drudge import Drudge, Range, Vec, Term, Perm, NEG
 
 
 @pytest.fixture(scope='module')
-def free_alg():
+def free_alg(spark_ctx):
     """Initialize the environment for a free algebra."""
 
-    conf = SparkConf().setMaster('local[2]').setAppName('free-alegra')
-    ctx = SparkContext(conf=conf)
-    dr = Drudge(ctx)
+    dr = Drudge(spark_ctx)
 
     r = Range('R')
     dumms = sympify('i, j, k, l, m, n')
