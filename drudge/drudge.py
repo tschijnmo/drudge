@@ -1,6 +1,9 @@
 """The main drudge and tensor class definition."""
 
+import inspect
 import operator
+import types
+import typing
 from collections.abc import Iterable
 
 from pyspark import RDD, SparkContext
@@ -388,6 +391,8 @@ class Drudge:
         self._symms = BCastVar(self._ctx, {})
         self._resolvers = BCastVar(self._ctx, [])
 
+        self._names = types.SimpleNamespace()
+
     #
     # General properties
     #
@@ -397,6 +402,51 @@ class Drudge:
     #
 
     def set_dumms(self, range_: Range, dumms):
+    def set_name(self, obj: typing.Any, label: typing.Any = None):
+        """Set the object into the name archive of the drudge.
+
+        The str form of the give label is going to be used for the name of the
+        object when given, or the str form of the object itself will be used.
+        """
+
+        if label is None:
+            label = obj
+        setattr(self._names, str(label), obj)
+        return
+
+    @property
+    def names(self):
+        """Get the name archive for the drudge.
+
+        The name archive object will be returned, which can be used for
+        convenient accessing of objects related to the problem.
+
+        """
+        return self._names
+
+    def inject_names(self, prefix='', suffix=''):
+        """Inject the names in the name archive into the current global scope.
+
+        This function is for the convenience of users, especially interactive
+        users.  Itself is not used in official drudge code except its tests.
+
+        Note that this function injects the names in the name archive into the
+        **global** scope of the caller, rather than the local scope, even when
+        called inside a function.
+        """
+
+        # Find the global scope for the caller.
+        stack = inspect.stack()
+        try:
+            globals_ = stack[1][0].f_globals
+        finally:
+            del stack
+
+        for k, v in self._names.__dict__.items():
+            globals_[''.join([prefix, k, suffix])] = v
+
+        return
+
         """Set the dummies for a range.
 
         Note that this function overwrites the existing dummies if the range has
