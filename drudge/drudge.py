@@ -582,7 +582,7 @@ class Drudge:
     # Tensor creation
     #
 
-    def sum(self, *args) -> Tensor:
+    def sum(self, *args, predicate=None) -> Tensor:
         """Create a tensor for the given summation.
 
         This is the core function for creating tensors from scratch.  The last
@@ -592,5 +592,5 @@ class Drudge:
         summations to be carried out.
         """
         return Tensor(
-            self, self._ctx.parallelize(sum_term(*args))
+            self, self._ctx.parallelize(sum_term(*args, predicate=predicate))
         )
