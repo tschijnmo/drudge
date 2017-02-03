@@ -6,11 +6,9 @@ as well as function helpful for its subclasses.
 
 import abc
 import collections
-import functools
 
 from pyspark import RDD
 
-from .canon import canon_factors
 from .drudge import Drudge
 from .term import Term
 from .utils import sympy_key
@@ -90,7 +88,8 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
 
     symms = {} if symms is None else symms
     contr_all = comparator is None
-    n_vecs = len(term.vecs)
+    vecs = term.vecs
+    n_vecs = len(vecs)
 
     if n_vecs == 0:
         return [term]
@@ -101,23 +100,20 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
     # Wick expander.
 
     if contr_all:
-        vecs, contrs = _get_all_contrs(term.vecs, contractor)
-        base_amp = term.amp
+        contrs = _get_all_contrs(vecs, contractor)
+        vec_order = list(range(n_vecs))
     else:
         term = _preproc_term(term, symms)
-        vecs = list(enumerate(term.vecs))
-        res_phase, vecs, contrs = _sort_vecs(
-            vecs, comparator, contractor, phase
-        )
-        base_amp = term.amp * res_phase
+        vecs = term.vecs
+        vec_order, contrs = _sort_vecs(vecs, comparator, contractor)
 
-    expander = _WickExpander(vecs, contrs, phase, contr_all)
-    expanded = expander.expand(base_amp)
+    expander = _WickExpander(vecs, vec_order, contrs, phase, contr_all)
+    expanded = expander.expand(term.amp)
 
     return [Term(term.sums, i[0], i[1]) for i in expanded]
 
 
-def _sort_vecs(vecs, comparator, contractor, phase):
+def _sort_vecs(vecs, comparator, contractor):
     """Sort the vectors and get the contraction values.
 
     Here insertion sort is used to sort the vectors into the normal order
@@ -126,31 +122,33 @@ def _sort_vecs(vecs, comparator, contractor, phase):
 
     n_vecs = len(vecs)
     contrs = [{} for _ in range(n_vecs)]
-    res_phase = 1
+
+    vec_order = list(range(0, n_vecs))
 
     front = 2
     pivot = 1
     while pivot < n_vecs:
 
-        pivot_vec = vecs[pivot]
+        pivot_i = vec_order[pivot]
+        pivot_vec = vecs[pivot_i]
         prev = pivot - 1
-        prev_vec = vecs[prev]
 
-        if pivot == 0 or comparator(prev_vec[1], pivot_vec[1]):
+        if pivot == 0 or comparator(vecs[vec_order[prev]], pivot_vec):
             pivot, front = front, front + 1
         else:
-            vecs[pivot] = vecs[prev]
-            vecs[prev] = pivot_vec
-            res_phase *= phase
 
-            contr_val = contractor(prev_vec[1], pivot_vec[1])
+            prev_i = vec_order[prev]
+            prev_vec = vecs[prev_i]
+            vec_order[prev], vec_order[pivot] = pivot_i, prev_i
+
+            contr_val = contractor(prev_vec, pivot_vec)
             if contr_val != 0:
-                contrs[pivot_vec[0]][prev_vec[0]] = contr_val
+                contrs[prev_i][pivot_i] = contr_val
             pivot -= 1
 
         continue
 
-    return res_phase, vecs, contrs
+    return vec_order, contrs
 
 
 def _preproc_term(term, symms):
@@ -182,17 +180,22 @@ def _get_all_contrs(vecs, contractor):
     order the vectors and only need the results where all the vectors are
     contracted.
     """
-    vecs = list(enumerate(vecs))
+    n_vecs = len(vecs)
     contrs = []
-    for vec in vecs:
+
+    for i in range(n_vecs):
         curr_contrs = {}
-        for i, v in vecs[vec[0] + 1:]:
-            contr_val = contractor(vec[1], v)
+        for j in range(i, n_vecs):
+            vec_prev = vecs[i]
+            vec_lat = vecs[j]
+            contr_val = contractor(vec_prev, vec_lat)
             if contr_val != 0:
-                curr_contrs[i] = contr_val
+                curr_contrs[j] = contr_val
+            continue
         contrs.append(curr_contrs)
         continue
-    return vecs, contrs
+
+    return contrs
 
 
 class _WickExpander:
@@ -205,10 +208,11 @@ class _WickExpander:
     contractions with vectors **later** in the sequence.
     """
 
-    def __init__(self, vecs, contrs, phase, contr_all):
+    def __init__(self, vecs, vec_order, contrs, phase, contr_all):
         """Initialize the expander."""
 
         self.vecs = vecs
+        self.vec_order = vec_order
         self.contrs = contrs
         self.phase = phase
         self.contr_all = contr_all
@@ -226,34 +230,36 @@ class _WickExpander:
         """Add terms recursively."""
 
         vecs = self.vecs
+        vec_order = self.vec_order
         contrs = self.contrs
         contr_all = self.contr_all
+        phase = self.phase
 
         if pivot == self.n_vecs - 1:
             # Add the current term.
             if not contr_all or all(not i for i in avail):
+                rem_idxes = [i for i in vec_order if avail[i]]
+                final_phase = _get_perm_phase(rem_idxes, phase)
                 expanded.append((
-                    amp, [j[1] for i, j in zip(avail, vecs) if i]
+                    final_phase * amp, [vecs[i] for i in rem_idxes]
                 ))
             return
 
-        pivot_idx = vecs[pivot][0]
-        pivot_contrs = contrs[pivot_idx]
+        pivot_contrs = contrs[pivot]
         if contr_all and len(pivot_contrs) == 0:
             return
 
         if not contr_all:
             self._add_terms(expanded, amp, avail, pivot + 1)
 
-        avail[pivot_idx] = False
+        avail[pivot] = False
         n_vecs_between = 0
-        for vec in vecs[pivot + 1:]:
-            vec_idx = vec[0]
+        for vec_idx in range(pivot + 1, self.n_vecs):
             if avail[vec_idx]:
                 if vec_idx in pivot_contrs:
                     avail[vec_idx] = False
                     contr_val = pivot_contrs[vec_idx]
-                    contr_phase = self.phase ** n_vecs_between
+                    contr_phase = phase ** n_vecs_between
                     self._add_terms(
                         expanded, amp * contr_val * contr_phase,
                         avail, pivot + 1
@@ -262,5 +268,14 @@ class _WickExpander:
                 n_vecs_between += 1
             continue
 
-        avail[pivot_idx] = True
+        avail[pivot] = True
         return
+
+
+def _get_perm_phase(order, phase):
+    """Get the phase of the given permutation of points."""
+    n_points = len(order)
+    return phase ** sum(
+        1 for i in range(n_points) for j in range(i + 1, n_points)
+        if order[i] > order[j]
+    )
