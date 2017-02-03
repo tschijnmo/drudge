@@ -4,11 +4,11 @@ import collections
 import functools
 import itertools
 import typing
-from collections.abc import Iterable, Mapping, Callable
+from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
     sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
-    Add, Mul, Indexed, IndexedBase, Expr)
+    Add, Mul, Indexed, IndexedBase, Expr, Basic)
 
 from .canon import canon_factors
 from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key, is_higher
@@ -717,14 +717,18 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     This method is meant for easy creation of tensor terms.  The arguments
     should start with summations and ends with the expression that is summed.
 
-    The summations should be given as pairs, all with the first field being a
-    SymPy symbol for summation.  The second field can be a symbolic range,
-    for which the dummy is summed over.  Or an iterable can also be given,
-    whose entries can be both symbolic ranges or SymPy expressions.
+    The summations should be given as sequences, all with the first field being
+    a SymPy symbol for the summation dummy.  Then comes description of the
+    summation, which can be a symbolic range, SymPy expression, or iterable over
+    them.
 
-    The predicate can be a callable going to return a boolean when given a
-    dictionary giving the action on each of the dummies.  False values
-    can be used the skip some terms.
+    The last argument should give the actual term to be summed, which can be
+    something that can be interpreted as a term, or a callable that is going to
+    return a term when given a dictionary giving the action on each of the
+    dummies.
+
+    The predicate can be a callable going to return a boolean when called with
+    same dictionary.  False values can be used the skip some terms.
 
     This core function is designed to be wrapped in functions working with
     full symbolic tensors.
@@ -734,9 +738,16 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     if len(args) == 0:
         return []
 
-    inp_term = parse_term(args[-1])
-    if len(args) == 1:
-        return [inp_term]
+    term_arg = args[-1]
+    # Too many SymPy stuff are callable.
+    if isinstance(term_arg, Callable) and not isinstance(term_arg, Basic):
+        inp_term = None
+        inp_func = term_arg
+    else:
+        inp_term = parse_term(term_arg)
+        inp_func = None
+        if len(args) == 1:
+            return [inp_term]
 
     sums, substs = _parse_sums(args[:-1])
 
@@ -744,14 +755,23 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     for sum_i in itertools.product(*sums):
         for subst_i in itertools.product(*substs):
 
-            if predicate is not None:
-                full_dict = dict(sum_i)
-                full_dict.update(subst_i)
-                if not predicate(full_dict):
-                    continue
+            if predicate is not None or inp_func is not None:
+                call_seq = dict(sum_i)
+                call_seq.update(subst_i)
+            else:
+                call_seq = None
 
-            res.append(inp_term.subst(
-                subst_i, itertools.chain(inp_term.sums, sum_i)))
+            if not (predicate is None or predicate(call_seq)):
+                continue
+
+            if inp_term is not None:
+                curr_term = inp_term.subst(
+                    subst_i, sums=itertools.chain(inp_term.sums, sum_i)
+                )
+            else:
+                curr_term = parse_term(inp_func(call_seq))
+
+            res.append(curr_term)
 
             continue
         continue
@@ -762,36 +782,55 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 def _parse_sums(args):
     """Parse the summation arguments passed to the sum interface.
 
-    The result will be the decomposed form of the summations and
-    substitutions from the arguments.
+    The result will be the decomposed form of the summations and substitutions
+    from the arguments.  For either of them, each entry in the result is a list
+    of pairs of the dummy with the actual range or symbolic expression.
     """
 
     sums = []
     substs = []
 
-    for i in args:
+    for arg in args:
 
-        i = ensure_pair(i, 'summation')
-        dumm = ensure_symb(i[0], 'dummy')
+        if not isinstance(arg, Sequence):
+            raise TypeError('Invalid summation', arg, 'expecting a sequence')
+        if len(arg) < 2:
+            raise ValueError('Invalid summation', arg,
+                             'expecting dummy and range')
 
-        if isinstance(i[1], Range):
-            sums.append([(dumm, i[1])])
-        else:
-            if not isinstance(i[1], Iterable):
-                raise TypeError(
-                    'Invalid range: ', i[1], 'expecting range or iterable')
-            entries = list(i[1])
-            if len(entries) < 1:
-                raise ValueError('Invalid summation range for ', dumm,
-                                 'expecting non-empty iterable')
-            if any(isinstance(j, Range) for j in entries):
-                if all(isinstance(j, Range) for j in entries):
-                    sums.append([(dumm, j) for j in entries])
-                else:
-                    raise TypeError('Invalid summation range: ', entries,
-                                    'expecting all ranges')
+        dumm = ensure_symb(arg[0], 'dummy')
+
+        flattened = []
+        for i in arg[1:]:
+            if isinstance(i, Iterable):
+                flattened.extend(i)
             else:
-                substs.append([(dumm, ensure_expr(j)) for j in entries])
+                flattened.append(i)
+            continue
+
+        contents = []
+        expecting_range = None
+        for i in flattened:
+            if isinstance(i, Range):
+                if expecting_range is None:
+                    expecting_range = True
+                elif not expecting_range:
+                    raise ValueError('Invalid summation on', i,
+                                     'expecting expression')
+                contents.append((dumm, i))
+            else:
+                if expecting_range is None:
+                    expecting_range = False
+                elif expecting_range:
+                    raise ValueError('Invalid summation on', i,
+                                     'expecting a range')
+                expr = ensure_expr(i)
+                contents.append((dumm, expr))
+
+        if expecting_range:
+            sums.append(contents)
+        else:
+            substs.append(contents)
 
     return sums, substs
 
