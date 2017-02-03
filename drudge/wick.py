@@ -65,9 +65,13 @@ class WickDrudge(Drudge, abc.ABC):
         by the abstract properties.
 
         """
-        return terms.flatMap(functools.partial(
-            wick_expand, comparator=self.comparator,
-            contractor=self.contractor, phase=self.phase
+        comparator = self.comparator
+        contractor = self.contractor
+        phase = self.phase
+        symms = self.symms
+        return terms.flatMap(lambda term: wick_expand(
+            term, comparator=comparator, contractor=contractor, phase=phase,
+            symms=symms.value
         ))
 
 
@@ -75,7 +79,7 @@ class WickDrudge(Drudge, abc.ABC):
 # Utility functions.
 #
 
-def wick_expand(term: Term, comparator, contractor, phase):
+def wick_expand(term: Term, comparator, contractor, phase, symms=None):
     """Expand a Term by wick theorem.
 
     When the comparator is None, it is assumed that only terms with all the
@@ -84,8 +88,10 @@ def wick_expand(term: Term, comparator, contractor, phase):
 
     """
 
+    symms = {} if symms is None else symms
     contr_all = comparator is None
     n_vecs = len(term.vecs)
+
     if n_vecs == 0:
         return [term]
     elif n_vecs == 1:
@@ -98,7 +104,8 @@ def wick_expand(term: Term, comparator, contractor, phase):
         vecs, contrs = _get_all_contrs(term.vecs, contractor)
         base_amp = term.amp
     else:
-        vecs = _prepare_vecs(term)
+        term = _preproc_term(term, symms)
+        vecs = list(enumerate(term.vecs))
         res_phase, vecs, contrs = _sort_vecs(
             vecs, comparator, contractor, phase
         )
@@ -129,7 +136,7 @@ def _sort_vecs(vecs, comparator, contractor, phase):
         prev = pivot - 1
         prev_vec = vecs[prev]
 
-        if pivot == 0 or comparator(prev_vec[2], pivot_vec[2]):
+        if pivot == 0 or comparator(prev_vec[1], pivot_vec[1]):
             pivot, front = front, front + 1
         else:
             vecs[pivot] = vecs[prev]
@@ -146,12 +153,11 @@ def _sort_vecs(vecs, comparator, contractor, phase):
     return res_phase, vecs, contrs
 
 
-def _prepare_vecs(term):
-    """Prepare the vectors.
+def _preproc_term(term, symms):
+    """Prepare the term for Wick expansion.
 
-    This is the preparation task for normal ordering.  The vectors will be
-    transformed into triples: original index, original vector, canonicalized
-    vector.
+    This is the preparation task for normal ordering.  The term will be
+    canonicalized with all the vectors considered the same.
     """
 
     # Make the dummies factory to canonicalize the vectors.
@@ -159,27 +165,14 @@ def _prepare_vecs(term):
     for i, v in term.sums:
         dumms[v].append(i)
     for i in dumms.values():
-        i.sort(key=sympy_key)  # Not necessary, for ease of debugging.
-    sums = term.sums
+        i.sort(key=sympy_key)
 
-    symms = {}
-    # Mock symmetry dictionary.
-    #
-    # TODO: Maybe make symmetries on vectors available here.
-    #
-    # Normally this should not be useful.  What we have here is sufficient.
+    canon_term = (
+        term.canon(symms=symms, vec_colour=lambda idx, vec: 0)
+            .reset_dumms(dumms)[0]
+    )
 
-    vecs = []  # The result.
-    for idx, vec in enumerate(term.vecs):
-        new_sums, factors, _ = canon_factors(sums, [(vec, 0)], symms)
-
-        # The dummies are all original dummies, hence cannot conflict with free
-        # variables.
-        _, substs, _ = term.reset_sums(new_sums, dumms)
-        canoned_vec = vec.map(lambda x: x.subs(substs, simultaneous=True))
-        vecs.append((idx, vec, canoned_vec))
-
-    return vecs
+    return canon_term
 
 
 def _get_all_contrs(vecs, contractor):
