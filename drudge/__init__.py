@@ -9,6 +9,7 @@ from .term import Range, Vec, Term
 from .canon import IDENT, NEG, CONJ
 from .drudge import Tensor, Drudge
 from .wick import WickDrudge
+from .fock import (CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge)
 
 __all__ = [
     # Canonpy.
@@ -32,5 +33,12 @@ __all__ = [
     'Drudge',
 
     # Different problem-specific drudges.
-    'WickDrudge'
+    #
+    # Base Wick algebra.
+    'WickDrudge',
+
+    # Many-body theories.
+    'CR', 'AN', 'FERMI', 'BOSE',
+    'FockDrudge',
+    'GenMBDrudge', 'PartHoleDrudge'
 ]
