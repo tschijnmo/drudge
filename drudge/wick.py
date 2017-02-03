@@ -232,23 +232,22 @@ class _WickExpander:
     def _add_terms(self, expanded, amp, avail, pivot):
         """Add terms recursively."""
 
-        if pivot >= self.n_vecs - 1:
-            return
-
         vecs = self.vecs
         contrs = self.contrs
         contr_all = self.contr_all
+
+        if pivot == self.n_vecs - 1:
+            # Add the current term.
+            if not contr_all or all(not i for i in avail):
+                expanded.append((
+                    amp, [j[1] for i, j in zip(avail, vecs) if i]
+                ))
+            return
 
         pivot_idx = vecs[pivot][0]
         pivot_contrs = contrs[pivot_idx]
         if contr_all and len(pivot_contrs) == 0:
             return
-
-        # Add the current term.
-        if not contr_all or all(not i for i in avail):
-            expanded.append((
-                amp, [j[1] for i, j in zip(avail, vecs) if i]
-            ))
 
         if not contr_all:
             self._add_terms(expanded, amp, avail, pivot + 1)
