@@ -26,6 +26,7 @@ def free_alg():
     dr.set_dumms(s, s_dumms)
 
     v = Vec('v')
+    dr.set_name(v)
 
     m = IndexedBase('m')
     dr.set_symm(m, Perm([1, 0], NEG))
@@ -33,6 +34,28 @@ def free_alg():
     return dr, types.SimpleNamespace(
         r=r, dumms=dumms, s=s, s_dumms=s_dumms, v=v, m=m
     )
+
+
+def test_drudge_has_names(free_alg):
+    """Test the name archive for drudge objects.
+
+    Here selected names are tested to makes sure all the code are covered.
+    """
+
+    free_alg = free_alg[0]
+    p = free_alg.names
+
+    # Range and dummy related.
+    assert p.R == Range('R')
+    assert len(p.R_dumms) == 6
+    assert p.R_dumms[0] == p.i
+    assert p.R_dumms[-1] == p.n
+
+    # Vector bases.
+    assert p.v == Vec('v')
+
+    # Scalar bases.
+    assert p.m == IndexedBase('m')
 
 
 def test_tensor_can_be_created(free_alg):
