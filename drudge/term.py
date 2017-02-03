@@ -886,7 +886,7 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
         elif len(sol) > 0:
             for i in sol:
                 # Try to get the range of the substituting expression.
-                range_of_i = _try_resolve_range(i, sums_dict, resolvers)
+                range_of_i = try_resolve_range(i, sums_dict, resolvers)
                 if range_of_i is None:
                     continue
                 if range_of_i == range_:
@@ -907,7 +907,7 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
     return orig
 
 
-def _try_resolve_range(i, sums_dict, resolvers):
+def try_resolve_range(i, sums_dict, resolvers):
     """Attempt to resolve the range of an expression.
 
     None will be returned if it cannot be resolved.
