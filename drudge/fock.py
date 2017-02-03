@@ -14,7 +14,7 @@ from sympy import Integer, KroneckerDelta, IndexedBase, Expr, Symbol, Rational
 from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
-from .term import Vec, Range
+from .term import Vec, Range, try_resolve_range
 from .utils import sympy_key, ensure_expr
 from .wick import WickDrudge, wick_expand
 
@@ -515,3 +515,50 @@ class GenMBDrudge(FockDrudge):
 
         simpled_ham = orig_ham.simplify()
         self.ham = simpled_ham
+
+
+class PartHoleDrudge(GenMBDrudge):
+    """Drudge for the particle-hole problems.
+
+    TODO: Add documentation here.
+    """
+
+    def __init__(self, ctx, op_label='c',
+                 part_orb=(Range('V'), 'abcdefgh'),
+                 hole_orb=(Range('O'), 'ijklmnpq'),
+                 spin=(),
+                 one_body=IndexedBase('t'), two_body=IndexedBase('u'),
+                 dbbar=True):
+        """Initialize the particle-hole drudge."""
+
+        super().__init__(ctx, exch=FERMI, op_label=op_label,
+                         orb=(part_orb, hole_orb), spin=spin,
+                         one_body=one_body, two_body=two_body, dbbar=dbbar)
+
+        self.parts = part_orb[0]
+        self.holes = part_orb[1]
+
+    @property
+    def op_parser(self):
+        """Get the special operator parser for particle-hole problems.
+
+        Here when the first index to the operator is resolved to be a hole
+        state, the creation/annihilation character of the operator will be
+        flipped.
+        """
+
+        resolvers = self.resolvers
+        holes = self.holes
+
+        def parse_parthole_ops(op):
+            """Parse the operator for particle/hole field operator."""
+            label, char, indices = parse_field_op(op)
+            orb_range = try_resolve_range(indices[0], op.sums, resolvers.value)
+            if orb_range is None:
+                raise ValueError('Invalid orbit value', indices[0],
+                                 'expecting particle or hole')
+            if orb_range == holes:
+                char = AN if char == CR else CR
+            return label, char, indices
+
+        return parse_parthole_ops
