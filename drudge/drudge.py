@@ -394,11 +394,7 @@ class Drudge:
         self._names = types.SimpleNamespace()
 
     #
-    # General properties
-    #
-    # Subclasses normally just need to use the methods in this section to add
-    # some additional information.  The method here generally does not need to
-    # be overridden.
+    # Name archive utilities.
     #
 
     def set_name(self, obj: typing.Any, label: typing.Any = None):
@@ -445,6 +441,14 @@ class Drudge:
             globals_[''.join([prefix, k, suffix])] = v
 
         return
+
+    #
+    # General properties
+    #
+    # Subclasses normally just need to use the methods in this section to add
+    # some additional information.  The method here generally does not need to
+    # be overridden.
+    #
 
     def set_dumms(self, range_: Range, dumms,
                   set_range_name=True, dumms_suffix='_dumms',
