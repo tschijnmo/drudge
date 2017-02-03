@@ -1,7 +1,5 @@
 """Tests for the basic tensor facilities using free algebra."""
 
-import types
-
 import pytest
 from pyspark import SparkContext, SparkConf
 from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
@@ -31,9 +29,7 @@ def free_alg():
     m = IndexedBase('m')
     dr.set_symm(m, Perm([1, 0], NEG))
 
-    return dr, types.SimpleNamespace(
-        r=r, dumms=dumms, s=s, s_dumms=s_dumms, v=v, m=m
-    )
+    return dr
 
 
 def test_drudge_has_names(free_alg):
@@ -42,7 +38,6 @@ def test_drudge_has_names(free_alg):
     Here selected names are tested to makes sure all the code are covered.
     """
 
-    free_alg = free_alg[0]
     p = free_alg.names
 
     # Range and dummy related.
@@ -61,17 +56,18 @@ def test_drudge_has_names(free_alg):
 def test_tensor_can_be_created(free_alg):
     """Test simple tensor creation."""
 
-    dr, p = free_alg
-    i = p.dumms[0]
+    dr = free_alg
+    p = dr.names
+    i, v, r = p.i, p.v, p.R
     x = IndexedBase('x')
-    tensor = dr.sum((i, p.r), x[i] * p.v[i])
+    tensor = dr.sum((i, r), x[i] * v[i])
 
     assert tensor.n_terms == 1
 
     terms = tensor.local_terms
     assert len(terms) == 1
     term = terms[0]
-    assert term == Term([(i, p.r)], x[i], [p.v[i]])
+    assert term == Term([(i, r)], x[i], [v[i]])
 
 
 def test_tensor_has_basic_operations(free_alg):
@@ -87,10 +83,11 @@ def test_tensor_has_basic_operations(free_alg):
         6. Expansion
     """
 
-    dr, p = free_alg
-    i, j, k, l, m = p.dumms[:5]
+    dr = free_alg
+    p = dr.names
+    i, j, k, l, m = p.R_dumms[:5]
     x = IndexedBase('x')
-    r = p.r
+    r = p.R
     v = p.v
     tensor = (
         dr.sum((l, r), x[i, l] * v[l]) +
@@ -142,12 +139,13 @@ def test_tensor_can_be_simplified_amp(free_alg):
     The master simplification is also tested.
     """
 
-    dr, p = free_alg
-    r = p.r
-    s = p.s
+    dr = free_alg
+    p = dr.names
+    r = p.R
+    s = p.S
     v = p.v
-    i, j = p.dumms[:2]
-    alpha = p.s_dumms[0]
+    i, j = p.R_dumms[:2]
+    alpha = p.alpha
 
     x = IndexedBase('x')
     y = IndexedBase('y')
@@ -185,9 +183,10 @@ def test_tensor_can_be_canonicalized(free_alg):
     the canonicalization.  Equality testing with zero is also tested.
     """
 
-    dr, p = free_alg
-    i, j = p.dumms[:2]
-    r = p.r
+    dr = free_alg
+    p = dr.names
+    i, j = p.R_dumms[:2]
+    r = p.R
     m = p.m
     v = p.v
 
@@ -207,12 +206,13 @@ def test_tensor_math_ops(free_alg):
     Mainly here we test addition and multiplication.
     """
 
-    dr, p = free_alg
-    r = p.r
+    dr = free_alg
+    p = dr.names
+    r = p.R
     v = p.v
     w = Vec('w')
     x = IndexedBase('x')
-    i, j, k = p.dumms[:3]
+    i, j, k = p.R_dumms[:3]
     a = sympify('a')
 
     v1 = dr.sum((i, r), x[i] * v[i])
