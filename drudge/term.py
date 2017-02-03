@@ -215,9 +215,15 @@ class Vec:
     def __str__(self):
         """Form a more readable string representation."""
 
-        return ''.join([
-            str(self._label), '[', ', '.join(str(i) for i in self._indices), ']'
-        ])
+        label = str(self._label)
+        if len(self._indices) > 0:
+            indices = ''.join([
+                '[', ', '.join(str(i) for i in self._indices), ']'
+            ])
+        else:
+            indices = ''
+
+        return label + indices
 
     def __hash__(self):
         """Compute the hash value of a vector."""
