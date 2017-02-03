@@ -850,6 +850,42 @@ def parse_term(term):
 
 
 #
+# Misc public functions
+#
+
+def try_resolve_range(i, sums_dict, resolvers):
+    """Attempt to resolve the range of an expression.
+
+    None will be returned if it cannot be resolved.
+    """
+
+    for resolver in itertools.chain([sums_dict], resolvers):
+
+        if isinstance(resolver, Mapping):
+            if i in resolver:
+                return resolver[i]
+            else:
+                continue
+        elif isinstance(resolver, Callable):
+            range_ = resolver(i)
+            if range_ is None:
+                continue
+            else:
+                if isinstance(range_, Range):
+                    return range_
+                else:
+                    raise TypeError('Invalid range: ', range_,
+                                    'from resolver', resolver,
+                                    'expecting range or None')
+        else:
+            raise TypeError('Invalid resolver: ', resolver,
+                            'expecting callable or mapping')
+
+    # Never resolved nor error found.
+    return None
+
+
+#
 # Internal functions
 # ------------------
 #
@@ -905,38 +941,6 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
     # When we got here, all the solutions we found have undetermined range, we
     # have to return the original form.
     return orig
-
-
-def try_resolve_range(i, sums_dict, resolvers):
-    """Attempt to resolve the range of an expression.
-
-    None will be returned if it cannot be resolved.
-    """
-
-    for resolver in itertools.chain([sums_dict], resolvers):
-
-        if isinstance(resolver, Mapping):
-            if i in resolver:
-                return resolver[i]
-            else:
-                continue
-        elif isinstance(resolver, Callable):
-            range_ = resolver(i)
-            if range_ is None:
-                continue
-            else:
-                if isinstance(range_, Range):
-                    return range_
-                else:
-                    raise TypeError('Invalid range: ', range_,
-                                    'from resolver', resolver,
-                                    'expecting range or None')
-        else:
-            raise TypeError('Invalid resolver: ', resolver,
-                            'expecting callable or mapping')
-
-    # Never resolved nor error found.
-    return None
 
 
 #
