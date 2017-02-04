@@ -450,6 +450,16 @@ class Term:
             lhs.sums + rhs.sums, lhs.amp * rhs.amp, lhs.vecs + rhs.vecs
         )
 
+    def comm_term(self, other, dumms=None, excl=None):
+        """Commute with another tensor term."""
+        lhs, rhs = self.reconcile_dumms(other, dumms, excl)
+        sums = lhs.sums + rhs.sums
+        amp0 = lhs.amp * rhs.amp
+        return [
+            Term(sums, amp0, lhs.vecs + rhs.vecs),
+            Term(sums, -amp0, rhs.vecs + lhs.vecs)
+        ]
+
     def reconcile_dumms(self, other, dumms, excl):
         """Reconcile the dummies in two terms."""
         lhs, dummbegs = self.reset_dumms(dumms, excl=excl)

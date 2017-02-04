@@ -358,6 +358,23 @@ class Tensor:
             lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
         ))
 
+    def __or__(self, other):
+        """Compute the commutator with another tensor."""
+        return self._comm(other)
+
+    def __ror__(self, other):
+        """Compute the commutator with another tensor."""
+        return self._comm(other, right=True)
+
+    def _comm(self, other, right=False):
+        """Compute the commutator."""
+        prod, free_vars = self._cartesian_terms(other, right)
+
+        dumms = self._drudge.dumms
+        return Tensor(self._drudge, prod.flatMap(
+            lambda x: x[0].comm_term(x[1], dumms=dumms.value, excl=free_vars)
+        ))
+
     def _cartesian_terms(self, other, right):
         """Cartesian the terms with the terms in another tensor.
 
