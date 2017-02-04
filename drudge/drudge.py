@@ -332,6 +332,15 @@ class Tensor:
             other = self._drudge.sum(other)
         return Tensor(self._drudge, self._terms.union(other.terms))
 
+    def __sub__(self, other):
+        """Subtract another tensor from this tensor.
+        """
+        return self._add(other * -1)
+
+    def __rsub__(self, other):
+        """Subtract the tensor from another quantity."""
+        return (self * -1)._add(other)
+
     def __mul__(self, other):
         """Multiply the tensor.
 
