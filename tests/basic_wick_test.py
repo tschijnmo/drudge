@@ -79,8 +79,8 @@ def test_ancr_character_has_basic_properties():
         # Printing, all kinds of printing.
         assert str(cr) == 'CR'
         assert str(an) == 'AN'
-        assert repr(cr) == '_OpChar.CR'
-        assert repr(an) == '_OpChar.AN'
+        assert repr(cr) == 'CranChar.CR'
+        assert repr(an) == 'CranChar.AN'
         assert latex(cr) == r'\dag'
         assert latex(an) == ''
 

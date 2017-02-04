@@ -25,15 +25,12 @@ from .wick import WickDrudge, wick_expand
 #
 
 
-class _OpChar(ConcrSymbs):
-    """Transformation characters of vectors.
+class CranChar(ConcrSymbs):
+    """Transformation characters of creation/annihilation operators.
 
-    The purpose of this class is mostly twofold.  First, better string
-    representation of its values can be possible.  Second, simple comparison can
-    be used to put creation operators ahead of annihilation operators.
-
-    This class is kept private, while its two singleton constant instances are
-    exposed.
+    It values, which can be accessed as the class attributes ``CR`` and ``AN``
+    also forwarded to module scope, should be used as the first index to vectors
+    representing creation and annihilation operators.
     """
 
     _symbs_ = [
@@ -42,8 +39,8 @@ class _OpChar(ConcrSymbs):
     ]
 
 
-CR = _OpChar.CR
-AN = _OpChar.AN
+CR = CranChar.CR
+AN = CranChar.AN
 
 FERMI = -1
 BOSE = 1
@@ -119,7 +116,7 @@ class FockDrudge(WickDrudge):
         return functools.partial(_get_field_op_colour, op_parser=op_parser)
 
     OP_PARSER = typing.Callable[
-        [Vec], typing.Tuple[typing.Any, _OpChar, typing.Sequence[Expr]]
+        [Vec], typing.Tuple[typing.Any, CranChar, typing.Sequence[Expr]]
     ]
 
     @property
