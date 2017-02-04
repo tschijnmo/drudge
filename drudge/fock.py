@@ -411,7 +411,8 @@ class GenMBDrudge(FockDrudge):
         self.op = op
         self.cr = cr
         self.an = an
-        self.set_name(op)
+        # Register the name of the operator later to avoid being shallowed by
+        # dummies.
 
         #
         # Hamiltonian creation
@@ -425,6 +426,9 @@ class GenMBDrudge(FockDrudge):
             orb_ranges.append(range_)
             continue
         self.orb_ranges = orb_ranges
+
+        # Register core field operator name.
+        self.set_name(op)
 
         spin_vals = []
         for i in spin:
