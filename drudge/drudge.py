@@ -350,7 +350,22 @@ class Tensor:
         return self._mul(other, right=True)
 
     def _mul(self, other, right=False):
-        """Multiplies the tensor with another."""
+        """Multiply the tensor with another."""
+        prod, free_vars = self._cartesian_terms(other, right)
+
+        dumms = self._drudge.dumms
+        return Tensor(self._drudge, prod.map(
+            lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
+        ))
+
+    def _cartesian_terms(self, other, right):
+        """Cartesian the terms with the terms in another tensor.
+
+        The other tensor will be attempted to be interpreted as a tensor when it
+        is not given as one.  And the free variables used in both tensors will
+        also be returned since it is going to be used frequently.
+        """
+
         if not isinstance(other, Tensor):
             other = self._drudge.sum(other)
 
@@ -359,12 +374,8 @@ class Tensor:
         else:
             prod = self._terms.cartesian(other.terms)
 
-        dumms = self._drudge.dumms
         free_vars = self.free_vars | other.free_vars
-
-        return Tensor(self._drudge, prod.map(
-            lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
-        ))
+        return prod, free_vars
 
 
 class Drudge:
