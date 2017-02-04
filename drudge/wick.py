@@ -230,13 +230,17 @@ class _WickExpander:
         """Add terms recursively."""
 
         vecs = self.vecs
+        n_vecs = len(vecs)
         vec_order = self.vec_order
         contrs = self.contrs
         contr_all = self.contr_all
         phase = self.phase
 
-        if pivot == self.n_vecs - 1:
-            # Add the current term.
+        # Find the actual pivot, which has to be available.
+        try:
+            pivot = next(i for i in range(pivot, n_vecs - 1) if avail[i])
+        except StopIteration:
+            # When everything is already decided, add the current term.
             if not contr_all or all(not i for i in avail):
                 rem_idxes = [i for i in vec_order if avail[i]]
                 final_phase = _get_perm_phase(rem_idxes, phase)
