@@ -91,3 +91,7 @@ ENV/
 # For PyCharm
 /.idea/workspace.xml
 /.idea/tasks.xml
+
+# For testing files
+/tests/metastore_db
+/tests/test-env.sh
