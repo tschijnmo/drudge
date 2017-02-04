@@ -426,6 +426,7 @@ class GenMBDrudge(FockDrudge):
             orb_ranges.append(range_)
             continue
         self.orb_ranges = orb_ranges
+        self.add_resolver_for_dumms()
 
         # Register core field operator name.
         self.set_name(op)
