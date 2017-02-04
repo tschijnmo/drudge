@@ -64,11 +64,11 @@ def is_higher(obj, priority):
     return getattr(obj, '_op_priority', priority - 1) > priority
 
 
-class _ConcrSymbsMeta(ManagedProperties):
-    """The meta class for concrete symbols.
+class _EnumSymbsMeta(ManagedProperties):
+    """The meta class for enumeration symbols.
 
     The primary purpose of this metaclass is to set the concrete singleton
-    values from the symbols set in the class body.
+    values from the enumerated symbols set in the class body.
     """
 
     SYMBS_INPUT = '_symbs_'
@@ -110,15 +110,15 @@ class _ConcrSymbsMeta(ManagedProperties):
         return cls
 
 
-class ConcrSymbs(AtomicExpr, metaclass=_ConcrSymbsMeta):
-    """Base class for concrete symbols.
+class EnumSymbs(AtomicExpr, metaclass=_EnumSymbsMeta):
+    """Base class for enumeration symbols.
 
     Subclasses can set `_symbs_` inside the class body to be a sequence of
     string pairs.  Then attributes named after the first field of the pairs will
     be created, with the LaTeX form controlled by the second pair.
 
     The resulted values are valid SymPy expressions.  They are ordered according
-    to their order in the given sequence.
+    to their order in the given enumeration sequence.
 
     """
 
@@ -131,7 +131,7 @@ class ConcrSymbs(AtomicExpr, metaclass=_ConcrSymbsMeta):
         """Initialize the concrete symbol object.
         """
         if self._symbs_ is None:
-            raise ValueError('Base ConcrSymbs class cannot be instantiated')
+            raise ValueError('Base EnumSymbs class cannot be instantiated')
         setattr(self, self._VAL_FIELD, val_index)
 
     @property

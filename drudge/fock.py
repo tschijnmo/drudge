@@ -15,7 +15,7 @@ from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
 from .term import Vec, Range, try_resolve_range
-from .utils import sympy_key, ensure_expr, ConcrSymbs
+from .utils import sympy_key, ensure_expr, EnumSymbs
 from .wick import WickDrudge, wick_expand
 
 
@@ -25,7 +25,7 @@ from .wick import WickDrudge, wick_expand
 #
 
 
-class CranChar(ConcrSymbs):
+class CranChar(EnumSymbs):
     """Transformation characters of creation/annihilation operators.
 
     It values, which can be accessed as the class attributes ``CR`` and ``AN``
