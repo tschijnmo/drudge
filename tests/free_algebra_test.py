@@ -232,3 +232,14 @@ def test_tensor_math_ops(free_alg):
         dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j])
     )
     assert prod.simplify() == expected.simplify()
+
+    # Test the commutator operation.
+    comm_v1v1 = v1 | v1
+    assert comm_v1v1.simplify() == 0
+    # Here the tensor subtraction can also be tested.
+    comm_v1w1 = v1 | w1
+    expected = (
+        dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j]) -
+        dr.sum((i, r), (j, r), x[j] * x[i] * w[i] * v[j])
+    )
+    assert comm_v1w1.simplify() == expected.simplify()
