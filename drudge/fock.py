@@ -9,13 +9,13 @@ import functools
 import typing
 import warnings
 
-from sympy import Integer, KroneckerDelta, IndexedBase, Expr, Symbol, Rational
+from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational
 
 from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
 from .term import Vec, Range, try_resolve_range
-from .utils import sympy_key, ensure_expr
+from .utils import sympy_key, ensure_expr, ConcrSymbs
 from .wick import WickDrudge, wick_expand
 
 
@@ -25,7 +25,7 @@ from .wick import WickDrudge, wick_expand
 #
 
 
-class _OpChar(Integer):
+class _OpChar(ConcrSymbs):
     """Transformation characters of vectors.
 
     The purpose of this class is mostly twofold.  First, better string
@@ -36,27 +36,14 @@ class _OpChar(Integer):
     exposed.
     """
 
-    CR = -1
-    AN = 1
-
-    def __new__(cls, val):
-        """Create an operator character."""
-        return super().__new__(cls, val)
-
-    def __str__(self):
-        """Get the string representation of the character."""
-        if self == self.CR:
-            return 'CR'
-        elif self == self.AN:
-            return 'AN'
-        else:
-            assert False
-
-    __repr__ = __str__
+    _symbs_ = [
+        ('CR', r'\dag'),
+        ('AN', '')
+    ]
 
 
-CR = _OpChar(_OpChar.CR)
-AN = _OpChar(_OpChar.AN)
+CR = _OpChar.CR
+AN = _OpChar.AN
 
 FERMI = -1
 BOSE = 1
