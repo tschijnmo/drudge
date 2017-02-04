@@ -445,11 +445,16 @@ class Term:
 
     def mul_term(self, other, dumms=None, excl=None):
         """Multiply with another tensor term."""
-        lhs, dummbegs = self.reset_dumms(dumms, excl=excl)
-        rhs, _ = other.reset_dumms(dumms, dummbegs=dummbegs, excl=excl)
+        lhs, rhs = self.reconcile_dumms(other, dumms, excl)
         return Term(
             lhs.sums + rhs.sums, lhs.amp * rhs.amp, lhs.vecs + rhs.vecs
         )
+
+    def reconcile_dumms(self, other, dumms, excl):
+        """Reconcile the dummies in two terms."""
+        lhs, dummbegs = self.reset_dumms(dumms, excl=excl)
+        rhs, _ = other.reset_dumms(dumms, dummbegs=dummbegs, excl=excl)
+        return lhs, rhs
 
     #
     # SymPy related
