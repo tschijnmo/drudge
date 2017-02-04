@@ -424,6 +424,7 @@ class GenMBDrudge(FockDrudge):
             self.set_dumms(range_, dumms)
             orb_ranges.append(range_)
             continue
+        self.orb_ranges = orb_ranges
 
         spin_vals = []
         for i in spin:
@@ -434,6 +435,7 @@ class GenMBDrudge(FockDrudge):
                 'Just one spin value is given: '
                 'consider dropping it for better performance'
             )
+        self.spin_vals = spin_vals
 
         # These dummies are used temporarily and will soon be reset.  They are
         # here, rather than the given dummies directly, because we might need to
@@ -481,6 +483,7 @@ class GenMBDrudge(FockDrudge):
         else:
             two_body_coeff = Rational(1, 2)
             self.set_n_body_base(two_body, 2)
+        self.two_body = two_body
 
         two_body_sums = orb_sums
         if has_spin:
@@ -519,8 +522,8 @@ class PartHoleDrudge(GenMBDrudge):
                          orb=(part_orb, hole_orb), spin=spin,
                          one_body=one_body, two_body=two_body, dbbar=dbbar)
 
-        self.parts = part_orb[0]
-        self.holes = part_orb[1]
+        self.part_range = part_orb[0]
+        self.hole_range = part_orb[1]
 
     @property
     def op_parser(self):
@@ -532,7 +535,7 @@ class PartHoleDrudge(GenMBDrudge):
         """
 
         resolvers = self.resolvers
-        holes = self.holes
+        holes = self.hole_range
 
         def parse_parthole_ops(op):
             """Parse the operator for particle/hole field operator."""
