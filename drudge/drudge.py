@@ -4,9 +4,10 @@ import inspect
 import operator
 import types
 import typing
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 from pyspark import RDD, SparkContext
+from sympy import IndexedBase, Symbol, Indexed
 
 from .canonpy import Perm, Group
 from .term import Range, sum_term, Term, parse_term
@@ -411,6 +412,99 @@ class Tensor:
         free_vars = self.free_vars | other.free_vars
         return prod, free_vars
 
+class TensorDef:
+    """Definition of a tensor.
+    """
+
+    __slots__ = [
+        '_tensor',
+        '_base',
+        '_exts',
+        '_is_scalar'
+    ]
+
+    def __init__(self, *args):
+        """Initialize the tensor definition.
+
+        The first argument should be the base, while the last have to be a
+        tensor instance, with the arguments in the middle being the dummy and
+        range pairs for the external indices.
+        """
+
+        if len(args) < 2:
+            raise TypeError(
+                'Invalid tensor definition', args,
+                'expecting base, external indices, and tensor'
+            )
+
+        if isinstance(args[0], Vec):
+            self._base = args[0]
+            self._is_scalar = False
+        elif isinstance(args[0], (IndexedBase, Symbol)):
+            self._base = args[0]
+            self._is_scalar = True
+        else:
+            raise TypeError(
+                'Invalid base for tensor definition', args[0],
+                'expecting vector or scalar base'
+            )
+
+        if isinstance(args[-1], Tensor):
+            self._tensor = args[-1]
+        else:
+            raise TypeError(
+                'Invalid LHS for tensor definition', args[-1],
+                'expecting a tensor instance'
+            )
+
+        self._exts = []
+        for i in args[1:-1]:
+            valid_ext = (
+                isinstance(i, Sequence) and len(i) == 2 and
+                isinstance(i[0], Symbol) and isinstance(i[1], Range)
+            )
+            if valid_ext:
+                self._exts.append(tuple(i))
+            else:
+                raise TypeError(
+                    'Invalid external index', i,
+                    'expecting dummy and range pair'
+                )
+            continue
+
+        # Additional processing for scalar replacement.
+        if self._is_scalar:
+            if not self._tensor.is_scalar:
+                raise ValueError(
+                    'Invalid tensor', self._tensor, 'for base', self._base,
+                    'expecting a scalar'
+                )
+            if len(self._exts) == 0 and isinstance(self._base, IndexedBase):
+                self._base = self._base.label
+
+    @property
+    def is_scalar(self):
+        """If the tensor defined is a scalar."""
+        return self._is_scalar
+
+    @property
+    def rhs(self):
+        """Get the right-hand-side of the definition."""
+        return self._tensor
+
+    @property
+    def rhs_terms(self):
+        """Gather the terms on the right-hand-side of the definition."""
+        return self._tensor.local_terms
+
+    @property
+    def lhs(self):
+        """Get the standard left-hand-side of the definition."""
+        if len(self._exts) == 0:
+            return self._base
+        else:
+            return self._base[tuple(i[0] for i in self._exts)]
+
 
 class Drudge:
     """The main drudge class.
@@ -437,6 +531,11 @@ class Drudge:
         self._resolvers = BCastVar(self._ctx, [])
 
         self._names = types.SimpleNamespace()
+
+    @property
+    def ctx(self):
+        """Access the Spark context of the drudge."""
+        return self._ctx
 
     #
     # Name archive utilities.
