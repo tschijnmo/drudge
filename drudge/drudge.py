@@ -496,6 +496,14 @@ class Tensor:
         res_terms.cache()
         return Tensor(self._drudge, res_terms)
 
+    #
+    # Term filter and cherry picking
+    #
+
+    def filter(self, crit):
+        """Filter out terms satisfying the given criterion."""
+        return Tensor(self._drudge, self._terms.filter(crit))
+
 
 class TensorDef:
     """Definition of a tensor.
