@@ -279,6 +279,31 @@ def nest_bind(rdd: RDD, func):
     return ctx.union(res)
 
 
+def nest_bind_serial(data, func):
+    """Nest the flat map of the given function serially.
+
+    This function has the same semantics as the nest bind function for Spark
+    RDD.  It is mainly for the purpose of testing and debugging.
+
+    """
+
+    curr = data
+    res = []
+    while len(curr) > 0:
+        new_curr = []
+        for i in curr:
+            step_res = func(i)
+            if step_res is None:
+                res.append(i)
+            else:
+                new_curr.extend(step_res)
+            continue
+        curr = new_curr
+        continue
+
+    return res
+
+
 #
 # Misc utilities
 # --------------
