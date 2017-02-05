@@ -545,7 +545,7 @@ class PartHoleDrudge(GenMBDrudge):
         """Initialize the particle-hole drudge."""
 
         self.part_range = part_orb[0]
-        self.hole_range = part_orb[1]
+        self.hole_range = hole_orb[0]
 
         super().__init__(ctx, exch=FERMI, op_label=op_label,
                          orb=(part_orb, hole_orb), spin=spin,
