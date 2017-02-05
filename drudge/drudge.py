@@ -57,7 +57,7 @@ class Tensor:
         return self._terms
 
     @property
-    def local_terms(self):
+    def local_terms(self) -> typing.List[Term]:
         """Gather the terms locally into a list.
 
         The list returned by this is for read-only and should **never** be
@@ -86,6 +86,14 @@ class Tensor:
         """
         self._terms.cache()
         return
+
+    @property
+    def is_scalar(self):
+        """Query if the tensor is a scalar."""
+
+        return self._terms.map(
+            lambda x: len(x.vecs) == 0
+        ).reduce(operator.and_)
 
     #
     # Small manipulations
