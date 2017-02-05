@@ -349,7 +349,7 @@ def _contr_ancr_by_delta(label1, indices1, label2, indices2):
     return res
 
 
-def _get_field_op_colour(idx, vec, op_parser: FockDrudge.OP_PARSER):
+def _get_field_op_colour(idx, vec, term, op_parser: FockDrudge.OP_PARSER):
     """Get the colour of field operators.
 
     Here the annihilation part is specially treated for better compliance with

@@ -700,7 +700,9 @@ class Term:
             continue
 
         for i, v in enumerate(self._vecs):
-            colour = i if vec_colour is None else vec_colour(idx=i, vec=v)
+            colour = i if vec_colour is None else vec_colour(
+                idx=i, vec=v, term=self
+            )
             factors.append((
                 v, (_NON_COMMUTATIVE, colour)
             ))

@@ -201,7 +201,7 @@ def test_simple_terms_can_be_canonicalized():
     assert term.canon() == term
 
     # When we flip the colour of the vectors, we should get something different.
-    res = term.canon(vec_colour=lambda idx, vec: -idx)
+    res = term.canon(vec_colour=lambda idx, vec, term: -idx)
     expected = sum_term((j, l), (i, l), v[i] * v[j])[0]
     assert res == expected
 
