@@ -831,6 +831,10 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
 
     amp = amp.replace(Pow, decouple_pow)
     amp = amp.replace(query_func, replace_func)
+
+    if not found[0]:
+        return None
+
     if pow_val[0] is not None:
         amp = amp.subs(pow_placeholder, pow_val[0])
     amp = amp.simplify().expand()
