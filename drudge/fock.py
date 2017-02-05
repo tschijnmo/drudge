@@ -203,25 +203,43 @@ class FockDrudge(WickDrudge):
         field, the permutation is assumed to be anti-commutative.
 
         The size of the second half can be given by another optional argument,
-        or it is assumed to have the same size as the first half.
+        or it is assumed to have the same size as the first half.  It can also
+        be zero, which gives one chunk of symmetric slots only.
         """
 
+        if n_body < 2:
+            raise ValueError(
+                'Invalid body count', n_body,
+                'expecting a number greater than one'
+            )
+
         n_body2 = n_body if n_body2 is None else n_body2
+        n_slots = n_body + n_body2
+
+        transp_acc = NEG if self._exch == FERMI else IDENT
+        cycl_accs = [
+            NEG if self._exch == FERMI and i % 2 == 0 else IDENT
+            for i in [n_body, n_body2]
+            ]  # When n_body2 is zero, this value is kinda wrong but not used.
 
         gens = []
-        begin = 0
-        for i in [n_body, n_body2]:
-            end = begin + i
-            if i > 1:
-                cycl_accs = NEG if self._exch == FERMI and i % 2 == 0 else IDENT
-                transp_acc = NEG if self._exch == FERMI else IDENT
-                gens.append(Perm(
-                    self._form_cycl(begin, end), cycl_accs
-                ))
-                gens.append(Perm(
-                    self._form_transp(begin, end), transp_acc
-                ))
-            begin = end
+
+        second_half = list(range(n_body, n_slots))
+        gens.append(Perm(
+            self._form_cycl(0, n_body) + second_half, cycl_accs[0]
+        ))
+        gens.append(Perm(
+            self._form_transp(0, n_body) + second_half, transp_acc
+        ))
+
+        if n_body2 > 1:
+            first_half = list(range(0, n_body))
+            gens.append(Perm(
+                first_half + self._form_cycl(n_body, n_slots), cycl_accs[1]
+            ))
+            gens.append(Perm(
+                first_half + self._form_transp(n_body, n_slots), transp_acc
+            ))
 
         self.set_symm(base, gens)
 
