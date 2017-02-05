@@ -541,12 +541,12 @@ class PartHoleDrudge(GenMBDrudge):
                  dbbar=True):
         """Initialize the particle-hole drudge."""
 
+        self.part_range = part_orb[0]
+        self.hole_range = part_orb[1]
+
         super().__init__(ctx, exch=FERMI, op_label=op_label,
                          orb=(part_orb, hole_orb), spin=spin,
                          one_body=one_body, two_body=two_body, dbbar=dbbar)
-
-        self.part_range = part_orb[0]
-        self.hole_range = part_orb[1]
 
     @property
     def op_parser(self):
@@ -558,7 +558,7 @@ class PartHoleDrudge(GenMBDrudge):
         """
 
         resolvers = self.resolvers
-        holes = self.hole_range
+        hole_range = self.hole_range
 
         def parse_parthole_ops(op):
             """Parse the operator for particle/hole field operator."""
@@ -567,7 +567,7 @@ class PartHoleDrudge(GenMBDrudge):
             if orb_range is None:
                 raise ValueError('Invalid orbit value', indices[0],
                                  'expecting particle or hole')
-            if orb_range == holes:
+            if orb_range == hole_range:
                 char = AN if char == CR else CR
             return label, char, indices
 
