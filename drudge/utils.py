@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from pyspark import SparkContext
+from pyspark import RDD, SparkContext
 from sympy import (
     sympify, Symbol, Expr, SympifyError, count_ops,
     default_sort_key, AtomicExpr, Integer, S
@@ -243,6 +243,40 @@ class BCastVar:
         if self._bcast is None:
             self._bcast = self._ctx.broadcast(self._var)
         return self._bcast
+
+
+def nest_bind(rdd: RDD, func):
+    """Nest the flat map of the given function.
+
+    When an entry no longer need processing, None can be returned by the call
+    back function.
+
+    """
+
+    ctx = rdd.context
+
+    def wrapped(obj):
+        """Wrapped function for nest bind."""
+        vals = func(obj)
+        if vals is None:
+            return [(False, obj)]
+        else:
+            return [(True, i) for i in vals]
+
+    curr = rdd
+    curr.cache()
+    res = []
+    while curr.count() > 0:
+        step_res = curr.flatMap(wrapped)
+        step_res.cache()
+        new_entries = step_res.filter(lambda x: not x[0]).map(lambda x: x[1])
+        new_entries.cache()
+        res.append(new_entries)
+        curr = step_res.filter(lambda x: x[0]).map(lambda x: x[1])
+        curr.cache()
+        continue
+
+    return ctx.union(res)
 
 
 #
