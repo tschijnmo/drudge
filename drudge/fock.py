@@ -14,7 +14,7 @@ from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational
 from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
-from .term import Vec, Range, try_resolve_range
+from .term import Vec, Range, try_resolve_range, Term
 from .utils import sympy_key, ensure_expr, EnumSymbs
 from .wick import WickDrudge, wick_expand
 
@@ -116,7 +116,7 @@ class FockDrudge(WickDrudge):
         return functools.partial(_get_field_op_colour, op_parser=op_parser)
 
     OP_PARSER = typing.Callable[
-        [Vec], typing.Tuple[typing.Any, CranChar, typing.Sequence[Expr]]
+        [Vec, Term], typing.Tuple[typing.Any, CranChar, typing.Sequence[Expr]]
     ]
 
     @property
@@ -261,7 +261,7 @@ class FockDrudge(WickDrudge):
         return res
 
 
-def parse_field_op(op: Vec):
+def parse_field_op(op: Vec, _: Term):
     """Get the operator label, character and actual indices.
 
     ValueError will be raised if the given operator does not satisfy the format
@@ -276,15 +276,18 @@ def parse_field_op(op: Vec):
     return op.label, indices[0], indices[1:]
 
 
-def _compare_field_ops(op1: Vec, op2: Vec, op_parser: FockDrudge.OP_PARSER):
+def _compare_field_ops(
+        op1: Vec, op2: Vec, term: Term,
+        op_parser: FockDrudge.OP_PARSER
+):
     """Compare the given field operators.
 
     Here we try to emulate physicists' convention as much as possible.  The
     annihilation operators are ordered in reversed direction.
     """
 
-    label1, char1, indices1 = op_parser(op1)
-    label2, char2, indices2 = op_parser(op2)
+    label1, char1, indices1 = op_parser(op1, term)
+    label2, char2, indices2 = op_parser(op2, term)
 
     if char1 == CR and char2 == AN:
         return True
@@ -301,7 +304,7 @@ def _compare_field_ops(op1: Vec, op2: Vec, op_parser: FockDrudge.OP_PARSER):
         return key1 >= key2
 
 
-def _contr_field_ops(op1: Vec, op2: Vec,
+def _contr_field_ops(op1: Vec, op2: Vec, term: Term,
                      ancr_contractor: FockDrudge.ANCR_CONTRACTOR,
                      op_parser: FockDrudge.OP_PARSER):
     """Contract two field operators.
@@ -312,8 +315,8 @@ def _contr_field_ops(op1: Vec, op2: Vec,
 
     """
 
-    label1, char1, indices1 = op_parser(op1)
-    label2, char2, indices2 = op_parser(op2)
+    label1, char1, indices1 = op_parser(op1, term)
+    label2, char2, indices2 = op_parser(op2, term)
 
     if char1 == char2 or char1 == CR:
         return 0
@@ -356,7 +359,7 @@ def _get_field_op_colour(idx, vec, term, op_parser: FockDrudge.OP_PARSER):
     conventions in physics.
     """
 
-    _, char, _ = op_parser(vec)
+    _, char, _ = op_parser(vec, term)
     return char, idx if char == CR else -idx
 
 
@@ -570,10 +573,12 @@ class PartHoleDrudge(GenMBDrudge):
         resolvers = self.resolvers
         hole_range = self.hole_range
 
-        def parse_parthole_ops(op):
+        def parse_parthole_ops(op: Vec, term: Term):
             """Parse the operator for particle/hole field operator."""
-            label, char, indices = parse_field_op(op)
-            orb_range = try_resolve_range(indices[0], op.sums, resolvers.value)
+            label, char, indices = parse_field_op(op, term)
+            orb_range = try_resolve_range(
+                indices[0], dict(term.sums), resolvers.value
+            )
             if orb_range is None:
                 raise ValueError('Invalid orbit value', indices[0],
                                  'expecting particle or hole')
