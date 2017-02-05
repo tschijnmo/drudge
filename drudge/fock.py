@@ -548,6 +548,16 @@ class PartHoleDrudge(GenMBDrudge):
                          orb=(part_orb, hole_orb), spin=spin,
                          one_body=one_body, two_body=two_body, dbbar=dbbar)
 
+        full_ham = self.ham
+        full_ham.cache()
+        self.full_ham = full_ham
+
+        self.ham_energy = full_ham.filter(lambda term: term.is_scalar)
+        self.ham_energy.cache()
+
+        self.ham = full_ham.filter(lambda term: not term.is_scalar)
+        self.ham.cache()
+
     @property
     def op_parser(self):
         """Get the special operator parser for particle-hole problems.
