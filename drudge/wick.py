@@ -6,11 +6,13 @@ as well as function helpful for its subclasses.
 
 import abc
 import collections
+import typing
 
 from pyspark import RDD
+from sympy import Expr
 
 from .drudge import Drudge
-from .term import Term
+from .term import Term, Vec
 from .utils import sympy_key
 
 
@@ -25,7 +27,7 @@ class WickDrudge(Drudge, abc.ABC):
     """
 
     @abc.abstractproperty
-    def contractor(self):
+    def contractor(self) -> typing.Callable[[Vec, Vec, Term], Expr]:
         """Get the contractor for the algebraic system.
 
         The contractor is going to be called with two vectors to return the
@@ -44,7 +46,7 @@ class WickDrudge(Drudge, abc.ABC):
         pass
 
     @abc.abstractproperty
-    def comparator(self):
+    def comparator(self) -> typing.Callable[[Vec, Vec, Term], bool]:
         """Get the comparator for the canonicalized vectors.
 
         The normal ordering operation will be performed according to this
@@ -100,12 +102,12 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
     # Wick expander.
 
     if contr_all:
-        contrs = _get_all_contrs(vecs, contractor)
+        contrs = _get_all_contrs(vecs, contractor, term)
         vec_order = list(range(n_vecs))
     else:
         term = _preproc_term(term, symms)
         vecs = term.vecs
-        vec_order, contrs = _sort_vecs(vecs, comparator, contractor)
+        vec_order, contrs = _sort_vecs(vecs, comparator, contractor, term)
 
     expander = _WickExpander(vecs, vec_order, contrs, phase, contr_all)
     expanded = expander.expand(term.amp)
@@ -113,7 +115,7 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
     return [Term(term.sums, i[0], i[1]) for i in expanded]
 
 
-def _sort_vecs(vecs, comparator, contractor):
+def _sort_vecs(vecs, comparator, contractor, term):
     """Sort the vectors and get the contraction values.
 
     Here insertion sort is used to sort the vectors into the normal order
@@ -133,7 +135,7 @@ def _sort_vecs(vecs, comparator, contractor):
         pivot_vec = vecs[pivot_i]
         prev = pivot - 1
 
-        if pivot == 0 or comparator(vecs[vec_order[prev]], pivot_vec):
+        if pivot == 0 or comparator(vecs[vec_order[prev]], pivot_vec, term):
             pivot, front = front, front + 1
         else:
 
@@ -141,7 +143,7 @@ def _sort_vecs(vecs, comparator, contractor):
             prev_vec = vecs[prev_i]
             vec_order[prev], vec_order[pivot] = pivot_i, prev_i
 
-            contr_val = contractor(prev_vec, pivot_vec)
+            contr_val = contractor(prev_vec, pivot_vec, term)
             if contr_val != 0:
                 contrs[prev_i][pivot_i] = contr_val
             pivot -= 1
@@ -166,14 +168,14 @@ def _preproc_term(term, symms):
         i.sort(key=sympy_key)
 
     canon_term = (
-        term.canon(symms=symms, vec_colour=lambda idx, vec: 0)
+        term.canon(symms=symms, vec_colour=lambda idx, vec, term: 0)
             .reset_dumms(dumms)[0]
     )
 
     return canon_term
 
 
-def _get_all_contrs(vecs, contractor):
+def _get_all_contrs(vecs, contractor, term):
     """Generate all possible contractions.
 
     This function is going to be called when we do not actually need to normal
@@ -188,7 +190,7 @@ def _get_all_contrs(vecs, contractor):
         for j in range(i, n_vecs):
             vec_prev = vecs[i]
             vec_lat = vecs[j]
-            contr_val = contractor(vec_prev, vec_lat)
+            contr_val = contractor(vec_prev, vec_lat, term)
             if contr_val != 0:
                 curr_contrs[j] = contr_val
             continue
