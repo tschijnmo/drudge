@@ -391,7 +391,7 @@ class GenMBDrudge(FockDrudge):
     """
 
     def __init__(self, ctx, exch=FERMI, op_label='c',
-                 orb=((Range('L'), 'abcdefg'),), spin=(),
+                 orb=((Range('L'), 'abcdefghijklmnopq'),), spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
                  dbbar=False):
         """Initialize the drudge object.
