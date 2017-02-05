@@ -8,7 +8,7 @@ from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
     sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
-    Add, Mul, Indexed, IndexedBase, Expr, Basic)
+    Add, Mul, Indexed, IndexedBase, Expr, Basic, Pow)
 
 from .canon import canon_factors
 from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key, is_higher
@@ -718,6 +718,185 @@ class Term:
             continue
 
         return Term(res_sums, res_amp, res_vecs)
+
+
+#
+# Substitution by tensor definition
+# ---------------------------------
+#
+
+def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
+                      dumms, dummbegs, excl):
+    """Substitute a given vector in the given term.
+    """
+
+    sums = term.sums
+    vecs = term.vecs
+    amp = term.amp
+
+    for i, v in enumerate(vecs):
+        if v.label == lhs.label and len(v.indices) == len(lhs.indices):
+            substed_vec_idx = i
+            substed_vec = v
+            break
+        else:
+            continue
+    else:
+        return None  # Based on nest bind protocol.
+
+    substs = list(zip(lhs.indices, substed_vec.indices))
+    subst_states = _prepare_subst_states(
+        rhs_terms, substs, dumms, dummbegs, excl
+    )
+
+    res = []
+    for i, j in subst_states:
+        new_vecs = list(vecs)
+        new_vecs[substed_vec_idx:substed_vec_idx + 1] = i.vecs
+        res.append((
+            Term(sums + i.sums, amp * i.amp, new_vecs), j
+        ))
+        continue
+
+    return res
+
+
+def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
+                         dumms, dummbegs, excl):
+    """Substitute a scalar factor in the term.
+
+    Vectors is a flattened list of vectors.  The amplitude part can be a lot
+    more complex.  Here we strive to replace only one instance of the lhs by two
+    placeholders, the substitution is possible only if the result expands to two
+    terms, each containing only one of the placeholders.
+    """
+
+    amp = term.amp
+
+    placeholder1 = Symbol('internalSubstPlaceholder1')
+    placeholder2 = Symbol('internalSubstPlaceholder2')
+    found = [False]
+    substs = []
+
+    if isinstance(lhs, Symbol):
+        label = lhs
+
+        def query_func(expr):
+            """Filter for the given symbol."""
+            return not found[0] and expr == lhs
+
+        def replace_func(_):
+            """Replace the symbol."""
+            found[0] = True
+            return placeholder1 + placeholder2
+
+    elif isinstance(lhs, Indexed):
+        label = lhs.base.label
+
+        exts = lhs.indices
+        n_exts = len(exts)
+
+        def query_func(expr):
+            """Query for a reference to a given indexed base."""
+            return (
+                not found[0] and isinstance(expr, Indexed)
+                and expr.base.label == label
+                and len(expr.indices) == n_exts
+            )
+
+        def replace_func(expr):
+            """Replace the reference to the indexed base."""
+            found[0] = True
+            assert len(substs) == 0
+            substs.extend(zip(exts, expr.indices))
+            return placeholder1 + placeholder2
+
+    else:
+        raise TypeError(
+            'Invalid LHS for substitution', lhs,
+            'expecting symbol or indexed quantity'
+        )
+
+    # Some special treatment is needed for powers.
+    pow_placeholder = Symbol('internalSubstPowPlaceholder')
+    pow_val = [None]
+
+    def decouple_pow(base, e):
+        """Decouple a power."""
+        if pow_val[0] is None and base.has(label):
+            pow_val[0] = base
+            return base * Pow(pow_placeholder, e - 1)
+        else:
+            return Pow(base, e)
+
+    amp = amp.replace(Pow, decouple_pow)
+    amp = amp.replace(query_func, replace_func)
+    if pow_val[0] is not None:
+        amp = amp.subs(pow_placeholder, pow_val[0])
+    amp = amp.simplify().expand()
+
+    # It is called nonlinear error, but some nonlinear forms, like conjugation,
+    # can be handled.
+    nonlinear_err = ValueError(
+        'Invalid amplitude', term.amp, 'not expandable in', lhs
+    )
+
+    if not isinstance(amp, Add) or len(amp.args) != 2:
+        raise nonlinear_err
+
+    amp_term1, amp_term2 = amp.args
+    diff = amp_term1.atoms(Symbol) ^ amp_term2.atoms(Symbol)
+    if diff != {placeholder1, placeholder2}:
+        raise nonlinear_err
+
+    if amp_term1.has(placeholder1):
+        amp = amp_term1
+    else:
+        amp = amp_term2
+
+    subst_states = _prepare_subst_states(
+        rhs_terms, substs, dumms, dummbegs, excl
+    )
+
+    sums = term.sums
+    vecs = term.vecs
+    res = []
+    for i, j in subst_states:
+        res.append((
+            Term(sums + i.sums, amp.subs(placeholder1, i.amp), vecs), j
+        ))
+        continue
+
+    return res
+
+
+def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):
+    """Prepare the substitution states.
+
+    Here we only have partially-finished substitution state for the next loop,
+    where for each substituting term on the RHS, the given external symbols in
+    it will be substituted, then its dummies are going to be resolved.  Pairs of
+    the prepared RHS terms and the corresponding dummbegs will be returned.  It
+    is the responsibility of the caller to assemble the terms into the actual
+    substitution state, by information in the term to be substituted.
+    """
+
+    subst_states = []
+    for i, v in enumerate(rhs_terms):
+
+        # Reuse existing dummy begins only for the first term.
+        if i == 0:
+            curr_dummbegs = dummbegs
+        else:
+            curr_dummbegs = dict(dummbegs)
+
+        curr_term = v.subst(substs)
+        subst_states.append(
+            curr_term.reset_dumms(dumms, curr_dummbegs, excl)
+        )
+        continue
+
+    return subst_states
 
 
 #
