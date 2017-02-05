@@ -36,11 +36,11 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
 
     dr = genmb
     p = genmb.names
-    c = p.c
+    c_ = p.c
     r = p.L
-    a, b = p.L_dumms[:2]
+    a, b, c, d = p.L_dumms[:4]
 
-    rot = c[CR, a] * c[AN, b]
+    rot = c_[CR, a] * c_[AN, b]
     comm = (dr.ham | rot).simplify()
     assert comm.n_terms == 4
 
@@ -53,4 +53,15 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
         else 0
     )).simplify()
     assert res.n_terms == 2
-    # TODO: Add test of the actual values.
+
+    # The correct result: [\rho, f]^b_a
+
+    f = IndexedBase('f')
+    expected = dr.sum((c, r), rho[b, c] * f[c, a] - f[b, c] * rho[c, a])
+    expected = expected.subst(f[a, b], p.t[a, b] + dr.sum(
+        (c, r), (d, r),
+        p.u[a, c, b, d] * rho[d, c] - p.u[a, c, d, b] * rho[d, c]
+    ))
+    expected = expected.simplify()
+
+    assert res == expected
