@@ -494,7 +494,7 @@ class Tensor:
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
             ))
 
-        res_terms = res.map(operator.itemgetter(1))
+        res_terms = res.map(operator.itemgetter(0))
         res_terms.cache()
         return Tensor(self._drudge, res_terms)
 

@@ -894,10 +894,10 @@ def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):
         else:
             curr_dummbegs = dict(dummbegs)
 
-        curr_term = v.subst(substs)
-        subst_states.append(
-            curr_term.reset_dumms(dumms, curr_dummbegs, excl)
-        )
+        curr_term, curr_dummbegs = v.reset_dumms(dumms, curr_dummbegs, excl)
+        subst_states.append((
+            curr_term.subst(substs), curr_dummbegs
+        ))
         continue
 
     return subst_states
