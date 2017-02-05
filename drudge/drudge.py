@@ -460,10 +460,14 @@ class Tensor:
         else:
             raise invalid_args_err
 
-        return self._subst(lhs, rhs)
+        expanded = self.expand()
+        return expanded._subst(lhs, rhs.expand())
 
     def _subst(self, lhs: typing.Union[Vec, Indexed, Symbol], rhs):
-        """Core substitution function."""
+        """Core substitution function.
+
+        This function assumes the self is already fully expanded.
+        """
 
         free_vars = self._drudge.ctx.broadcast(
             self.free_vars | rhs.free_vars
