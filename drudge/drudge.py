@@ -95,9 +95,7 @@ class Tensor:
     def is_scalar(self):
         """Query if the tensor is a scalar."""
 
-        return self._terms.map(
-            lambda x: len(x.vecs) == 0
-        ).reduce(operator.and_)
+        return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
     #
     # Small manipulations

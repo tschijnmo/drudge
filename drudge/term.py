@@ -356,6 +356,11 @@ class Term:
         return self._vecs
 
     @property
+    def is_scalar(self):
+        """Query if the term is a scalar."""
+        return len(self._vecs) == 0
+
+    @property
     def args(self):
         """The triple of summations, amplitude, and vectors."""
         return self._sums, self._amp, self._vecs
