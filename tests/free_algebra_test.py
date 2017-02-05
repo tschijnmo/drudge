@@ -243,3 +243,28 @@ def test_tensor_math_ops(free_alg):
         dr.sum((i, r), (j, r), x[j] * x[i] * w[i] * v[j])
     )
     assert comm_v1w1.simplify() == expected.simplify()
+
+
+def test_tensors_can_be_substituted_scalars(free_alg):
+    """Test vector substitution facility for tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+    z = IndexedBase('z')
+    r = p.R
+    i, j, k, l, m = p.R_dumms[:5]
+
+    x_def = dr.sum((j, r), y[j] * z[i])
+    orig = dr.sum((i, r), x[i] ** 2 * x[k])
+    res = orig.subst(x[i], x_def)
+
+    # k is free.
+    expected = dr.sum(
+        (i, r), (j, r), (l, r), (m, r),
+        z[i] ** 2 * y[j] * y[l] * y[m] * z[k]
+    )
+
+    assert res.simplify() == expected.simplify()
