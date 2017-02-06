@@ -1,7 +1,7 @@
 """Tests on the particle-hole model."""
 
 import pytest
-from sympy import Rational
+from sympy import Rational, IndexedBase
 
 from drudge import PartHoleDrudge, CR, AN
 from drudge.wick import wick_expand
@@ -71,3 +71,33 @@ def test_parthole_drudge_has_good_ham(parthole):
 
     assert dr.eval_fermi_vev(dr.orig_ham).simplify() == expected
     assert dr.ham_energy == expected
+
+
+def test_tce_parse(parthole):
+    """Test the parsing of TCE output.
+
+    This test just tests one line in the CCD amplitude equation that contains
+    most of the features in the TCE output files.
+    """
+
+    dr = parthole
+
+    tce_out = """
+    [ - 1.0 + 1.0 * P( p3 p4 h1 h2 => p3 p4 h2 h1 ) ] \
+    * Sum ( h5 ) * f ( h5 h1 ) * t ( p3 p4 h5 h2 )
+    """
+
+    t = IndexedBase('t')
+
+    res = dr.parse_tce(tce_out, {2: t})
+
+    p = dr.names
+    a, b = p.V_dumms[2:4]
+    i, j = p.O_dumms[:2]
+    k = p.O_dumms[4]  # Just named as k here.
+    f = dr.fock
+    expected = dr.sum(
+        (k, p.O), -f[k, i] * t[a, b, k, j] + f[k, j] * t[a, b, k, i]
+    )
+
+    assert res.simplify() == expected.simplify()
