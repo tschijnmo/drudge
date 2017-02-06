@@ -644,3 +644,11 @@ class PartHoleDrudge(GenMBDrudge):
             return label, char, indices
 
         return parse_parthole_ops
+
+    def eval_fermi_vev(self, tensor: Tensor):
+        """Evaluate expectation value with respect to Fermi vacuum.
+
+        This is just an alias to the actual `eval_phys_vev` method to avoid
+        confusion about the terminology in particle-hole problems.
+        """
+        return self.eval_phys_vev(tensor)
