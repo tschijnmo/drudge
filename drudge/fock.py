@@ -533,7 +533,34 @@ class GenMBDrudge(FockDrudge):
 class PartHoleDrudge(GenMBDrudge):
     """Drudge for the particle-hole problems.
 
-    TODO: Add documentation here.
+    This model contains different forms of the Hamiltonian.
+
+    orig_ham
+
+        The original form of the Hamiltonian, written in terms of bare one-body
+        and two-body interaction tensors without normal-ordering with respect to
+        the Fermion vacuum.
+
+    full_ham
+
+        The full form of the Hamiltonian in terms of the bare interaction
+        tensors, normal-ordered with respect to the Fermi vacuum.
+
+    ham_energy
+
+        The zero energy inside the full Hamiltonian.
+
+    one_body_ham
+
+        The one-body part of the full Hamiltonian, written in terms of the bare
+        interaction tensors.
+
+    ham
+
+        The most frequently used form of the Hamiltonian, written in terms of
+        Fock matrix and the two-body interaction tensor.
+
+
     """
 
     def __init__(self, ctx, op_label='c',
@@ -541,6 +568,7 @@ class PartHoleDrudge(GenMBDrudge):
                  hole_orb=(Range('O'), 'ijklmnpq'),
                  spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
+                 fock=IndexedBase('f'),
                  dbbar=True):
         """Initialize the particle-hole drudge."""
 
@@ -556,10 +584,26 @@ class PartHoleDrudge(GenMBDrudge):
         self.full_ham = full_ham
 
         self.ham_energy = full_ham.filter(lambda term: term.is_scalar)
-        self.ham_energy.cache()
 
-        self.ham = full_ham.filter(lambda term: not term.is_scalar)
-        self.ham.cache()
+        self.one_body_ham = full_ham.filter(
+            lambda term: len(term.vecs) == 2
+        )
+        two_body_ham = full_ham.filter(lambda term: len(term.vecs) == 4)
+
+        # We need to rewrite the one-body part in terms of Fock matrices.
+        self.fock = fock
+        one_body_terms = []
+        for i in self.one_body_ham.local_terms:
+            if i.amp.has(one_body):
+                one_body_terms.append(i.subst(
+                    [(one_body, fock)], simultaneous=False
+                ))
+            continue
+        rewritten_one_body_ham = self.add(one_body_terms)
+
+        ham = rewritten_one_body_ham + two_body_ham
+        ham.cache()
+        self.ham = ham
 
     @property
     def op_parser(self):
