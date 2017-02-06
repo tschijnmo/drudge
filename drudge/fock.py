@@ -11,6 +11,7 @@ import warnings
 
 from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational
 
+from ._tceparser import parse_tce_out
 from .canon import NEG, IDENT
 from .canonpy import Perm
 from .drudge import Tensor
@@ -659,3 +660,31 @@ class PartHoleDrudge(GenMBDrudge):
         confusion about the terminology in particle-hole problems.
         """
         return self.eval_phys_vev(tensor)
+
+    def parse_tce(self, tce_out: str,
+                  cc_bases: typing.Mapping[int, IndexedBase]):
+        """Parse TCE output into a tensor.
+
+        The CC amplitude bases should be given as a dictionary mapping from the
+        excitation order to the actual base.
+        """
+
+        def symb_cb(name):
+            """Get symbol for a name in TCE output."""
+            range_ = self.part_range if name[0] == 'p' else self.hole_range
+            return self.dumms.value[range_][int(name[1:]) - 1], range_
+
+        def base_cb(name, indices):
+            """Get the indexed base for a name in TCE output."""
+            if name == 'f':
+                return self.fock
+            elif name == 'v':
+                return self.two_body
+            elif name == 't':
+                return cc_bases[len(indices) // 2]
+            else:
+                raise ValueError('Invalid base', name, 'in TCE output.')
+
+        terms = parse_tce_out(tce_out, symb_cb, base_cb)
+
+        return self.add(terms)
