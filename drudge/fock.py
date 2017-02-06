@@ -165,6 +165,19 @@ class FockDrudge(WickDrudge):
 
         return tensor.apply(lambda terms: terms.flatMap(term_op))
 
+    def eval_phys_vev(self, tensor: Tensor):
+        """Evaluate expectation value with respect to the physical vacuum.
+
+        Here the contractor from normal-ordering will be used.
+        """
+
+        term_op = functools.partial(
+            wick_expand, comparator=None,
+            contractor=self.contractor, phase=self.phase
+        )
+
+        return tensor.apply(lambda terms: terms.flatMap(term_op))
+
     def set_n_body_base(self, base: IndexedBase, n_body: int):
         """Set an indexed base as an n-body interaction.
 
