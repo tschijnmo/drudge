@@ -828,6 +828,8 @@ class Drudge:
         if there is any, should be dummy/range pairs giving the symbolic
         summations to be carried out.
         """
-        return Tensor(
-            self, self._ctx.parallelize(sum_term(*args, predicate=predicate))
-        )
+        return self.add(sum_term(*args, predicate=predicate))
+
+    def add(self, terms):
+        """Create a tensor with the terms given in the argument."""
+        return Tensor(self, self._ctx.parallelize(terms))
