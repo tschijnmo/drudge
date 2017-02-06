@@ -576,9 +576,16 @@ class PartHoleDrudge(GenMBDrudge):
 
     """
 
+    DEFAULT_PART_DUMMS = tuple(Symbol(i) for i in 'abcdefgh') + tuple(
+        Symbol('a{}'.format(i)) for i in range(50)
+    )
+    DEFAULT_HOLE_DUMMS = tuple(Symbol(i) for i in 'ijklmnpq') + tuple(
+        Symbol('i{}'.format(i)) for i in range(50)
+    )
+
     def __init__(self, ctx, op_label='c',
-                 part_orb=(Range('V'), 'abcdefgh'),
-                 hole_orb=(Range('O'), 'ijklmnpq'),
+                 part_orb=(Range('V'), DEFAULT_PART_DUMMS),
+                 hole_orb=(Range('O'), DEFAULT_HOLE_DUMMS),
                  spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
                  fock=IndexedBase('f'),
