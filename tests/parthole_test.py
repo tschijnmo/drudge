@@ -1,6 +1,7 @@
 """Tests on the particle-hole model."""
 
 import pytest
+from sympy import Rational
 
 from drudge import PartHoleDrudge, CR, AN
 from drudge.wick import wick_expand
@@ -44,6 +45,7 @@ def test_parthole_drudge_has_good_ham(parthole):
     """Test the Hamiltonian of the particle-hole model."""
 
     dr = parthole
+    p = dr.names
 
     # Minimum inspection.
     #
@@ -55,3 +57,17 @@ def test_parthole_drudge_has_good_ham(parthole):
     assert dr.ham_energy.n_terms == 2
     assert dr.one_body_ham.n_terms == 8
     assert dr.ham.n_terms == 4 + 9
+
+    # Here we test the simplest vacuum energy.  In spite of its simplicity, it
+    # should cover a large part of the code.
+
+    h_range = p.O
+    i, j = p.O_dumms[:2]
+    expected = (dr.sum(
+        (i, h_range), dr.one_body[i, i]
+    ) + dr.sum(
+        (i, h_range), (j, h_range), dr.two_body[i, j, i, j] * Rational(1, 2)
+    )).simplify()
+
+    assert dr.eval_fermi_vev(dr.orig_ham).simplify() == expected
+    assert dr.ham_energy == expected
