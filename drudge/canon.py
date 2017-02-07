@@ -236,12 +236,14 @@ def _proc_indices(indices, dumms, eldag):
         curr_edges = None
         curr_symms = []
 
+        if len(sum_nodes) > 1:
+            import pytest; pytest.set_trace()
         for edges in itertools.permutations(sum_nodes):
-            substs = [
-                (involved[v], _placeholders[i])
+            substs = {
+                involved[v]: _placeholders[i]
                 for i, v in enumerate(edges)
-                ]
-            form = expr.subs(substs, simultaneous=True)
+                }
+            form = expr.xreplace(substs)
 
             order = sympy_key(form)
             if curr_form is None or order < curr_order:
