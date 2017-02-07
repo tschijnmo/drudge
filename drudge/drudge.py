@@ -277,6 +277,8 @@ class Tensor:
     def _simplify(self, terms):
         """Get the terms in the simplified form."""
 
+        terms = self._expand(self._terms)
+
         # First we make the vector part normal-ordered.
         terms = self._drudge.normal_order(terms)
 
