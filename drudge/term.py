@@ -595,7 +595,7 @@ class Term:
             for i in itertools.count(beg):
 
                 try:
-                    tentative = ensure_symb(dumms[range_i][i])
+                    tentative = dumms[range_i][i]
                 except KeyError:
                     raise ValueError('Dummies for range', range_i,
                                      'is not given')
