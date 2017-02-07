@@ -7,6 +7,7 @@ by delegating the actual work to the core canonpy module.
 
 import itertools
 import typing
+import warnings
 
 from sympy import conjugate, Symbol
 
@@ -236,8 +237,12 @@ def _proc_indices(indices, dumms, eldag):
         curr_edges = None
         curr_symms = []
 
-        if len(sum_nodes) > 1:
-            import pytest; pytest.set_trace()
+        if len(sum_nodes) > 2:
+            warnings.warn(
+                "Index expression", expr,
+                "contains too many summed dummies, something might be wrong"
+            )
+
         for edges in itertools.permutations(sum_nodes):
             substs = {
                 involved[v]: _placeholders[i]
