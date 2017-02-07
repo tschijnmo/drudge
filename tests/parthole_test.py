@@ -101,3 +101,31 @@ def test_tce_parse(parthole):
     )
 
     assert res.simplify() == expected.simplify()
+
+
+def test_parthole_with_ph_excitations(parthole):
+    """Test the capability of particle-hole drudge by excitations.
+
+    The drudge should be able to find that the particle-hole excitations
+    commutes with each other.
+    """
+
+    dr = parthole
+    p = dr.names
+    a, b = p.V_dumms[:2]
+    i, j = p.O_dumms[:2]
+    c_ = dr.op[AN]
+    c_dag = dr.op[CR]
+
+    # Without summation.
+    excit_1 = dr.sum(c_dag[a] * c_[i])
+    excit_2 = dr.sum(c_dag[b] * c_[j])
+    assert (excit_1 | excit_2).simplify() == 0
+
+    # With summation.
+    excit_1 = dr.sum((a, p.V), (i, p.O), c_dag[a] * c_[i])
+    excit_2 = dr.sum((a, p.V), (i, p.O), c_dag[a] * c_[i])
+    comm = excit_1 | excit_2
+    for i in comm.local_terms:
+        assert len(i.sums) == 4
+    assert comm.simplify() == 0
