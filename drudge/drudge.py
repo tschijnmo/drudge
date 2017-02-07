@@ -127,11 +127,6 @@ class Tensor:
     def _free_vars(terms):
         """Get the free variables in terms."""
 
-        def _union(orig, new):
-            """Union the two sets and return the first."""
-            orig |= new
-            return orig
-
         return terms.map(lambda term: term.symbs[0]).aggregate(
             set(), _union, _union
         )
@@ -833,3 +828,14 @@ class Drudge:
     def add(self, terms):
         """Create a tensor with the terms given in the argument."""
         return Tensor(self, self._ctx.parallelize(terms))
+
+
+#
+# Small static utilities
+#
+
+
+def _union(orig, new):
+    """Union the two sets and return the first."""
+    orig |= new
+    return orig
