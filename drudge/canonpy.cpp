@@ -619,7 +619,8 @@ Transv_ptr build_sims_scratch(PyObject* front, PyObject* iter)
         return nullptr;
     }
 
-    Transv_ptr res = build_sims_sys(gens.front().size(), std::move(gens));
+    auto size = gens.front().size();
+    Transv_ptr res = build_sims_sys(size, std::move(gens));
     if (!res) {
         PyErr_SetString(PyExc_ValueError, "Identity group found.");
         return nullptr;
