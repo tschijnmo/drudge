@@ -28,14 +28,16 @@ class Tensor:
     __slots__ = [
         '_drudge',
         '_terms',
-        '_local_terms'
+        '_local_terms',
+        '_free_vars'
     ]
 
     #
     # Term creation
     #
 
-    def __init__(self, drudge, terms: RDD):
+    def __init__(self, drudge, terms: RDD,
+                 free_vars: typing.Set[Symbol] = None):
         """Initialize the tensor.
 
         This function is not designed to be called by users directly.  Tensor
@@ -45,7 +47,9 @@ class Tensor:
 
         self._drudge = drudge
         self._terms = terms
+
         self._local_terms = None
+        self._free_vars = free_vars
 
     #
     # Basic information
@@ -101,14 +105,14 @@ class Tensor:
     # Small manipulations
     #
 
-    def apply(self, func):
+    def apply(self, func, free_vars=None):
         """Apply the given function to the RDD of terms.
 
         Since this method is mostly a developer function, sanity check is not
         performed.  But note that the given function will be called with the RDD
         of the terms in the current tensor, and another RDD should be returned.
         """
-        return Tensor(self._drudge, func(self._terms))
+        return Tensor(self._drudge, func(self._terms), free_vars=free_vars)
 
     #
     # Here for a lot of methods, we have two versions, with one being public,
@@ -121,15 +125,11 @@ class Tensor:
     @property
     def free_vars(self):
         """The free variables in the tensor."""
-        return self._free_vars(self._terms)
-
-    @staticmethod
-    def _free_vars(terms):
-        """Get the free variables in terms."""
-
-        return terms.map(lambda term: term.free_vars).aggregate(
-            set(), _union, _union
-        )
+        if self._free_vars is None:
+            self._free_vars = self.terms.map(
+                lambda term: term.free_vars
+            ).aggregate(set(), _union, _union)
+        return self._free_vars
 
     def reset_dumms(self):
         """Reset the dummies.
@@ -137,15 +137,24 @@ class Tensor:
         The dummies will be set to the canonical dummies according to the order
         in the summation list.  This method is especially useful on
         canonicalized tensors.
+
+        Note that direct calling this method will recompute the free variables
+        in the tensor.
         """
-        return self.apply(self._reset_dumms)
+
+        self._free_vars = None
+        return self.apply(self._reset_dumms, free_vars=self.free_vars)
 
     def _reset_dumms(self, terms, excl=None):
-        """Get terms with dummies reset."""
+        """Get terms with dummies reset.
 
-        free_vars = self._free_vars(terms)
+        Note that the given terms are assumed to have the same free variables as
+        the terms in self.
+        """
+
+        free_vars = self.free_vars
         if excl is None:
-            excl = set()
+            excl = set()  # So that we do not taint the free_vars.
         excl |= free_vars
 
         dumms = self._drudge.dumms
@@ -160,8 +169,12 @@ class Tensor:
         This method simplifies the amplitude in the tensor of the tensor, by
         using the facility from SymPy and tensor specific facilities for deltas.
         The zero terms will be filtered out as well.
+
+        The result is assumed to have the same free variables as the input, even
+        when some of them may have been canceled in the simplification.
         """
-        return self.apply(self._simplify_amps)
+
+        return self.apply(self._simplify_amps, free_vars=self._free_vars)
 
     def _simplify_amps(self, terms):
         """Get the terms with amplitude simplified."""
@@ -177,7 +190,7 @@ class Tensor:
         By calling this method, terms in the tensor whose amplitude is the
         addition of multiple parts will be expanded into multiple terms.
         """
-        return self.apply(self._expand)
+        return self.apply(self._expand, free_vars=self._free_vars)
 
     def sort(self):
         """Sort the terms in the tensor.
@@ -185,7 +198,7 @@ class Tensor:
         The terms will generally be sorted according to increasing complexity.
 
         """
-        self.apply(self._sort)
+        self.apply(self._sort, free_vars=self._free_vars)
 
     @staticmethod
     def _sort(terms: RDD):
@@ -204,7 +217,7 @@ class Tensor:
         part are *syntactically* the same.  So it is more useful when the
         canonicalization has been performed and the dummies reset.
         """
-        return self.apply(self._merge)
+        return self.apply(self._merge, free_vars=self._free_vars)
 
     @staticmethod
     def _merge(terms):
@@ -226,7 +239,7 @@ class Tensor:
         canonicalization algorithm is going to be applied to each of the terms.
         Note that this method does not rename the dummies.
         """
-        return self.apply(self._canon)
+        return self.apply(self._canon, free_vars=self._free_vars)
 
     def _canon(self, terms):
         """Compute the canonicalized terms."""
@@ -248,7 +261,7 @@ class Tensor:
         The actual work is dispatched to the drudge, who has domain specific
         knowledge about the noncommutativity of the vectors.
         """
-        return self.apply(self._drudge.normal_order)
+        return self.apply(self._drudge.normal_order, free_vars=self._free_vars)
 
     #
     # The driver simplification.
@@ -259,7 +272,7 @@ class Tensor:
 
         This is the master driver function for tensor simplification.
         """
-        return self.apply(self._simplify)
+        return self.apply(self._simplify, free_vars=self._free_vars)
 
     def _simplify(self, terms):
         """Get the terms in the simplified form."""
@@ -335,6 +348,7 @@ class Tensor:
         """Add tensor with another thing."""
         if not isinstance(other, Tensor):
             other = self._drudge.sum(other)
+
         return Tensor(self._drudge, self._terms.union(other.terms))
 
     def __sub__(self, other):
@@ -370,7 +384,7 @@ class Tensor:
         dumms = self._drudge.dumms
         return Tensor(self._drudge, prod.map(
             lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
-        ))
+        ), free_vars=free_vars)
 
     def __or__(self, other):
         """Compute the commutator with another tensor."""
@@ -387,7 +401,7 @@ class Tensor:
         dumms = self._drudge.dumms
         return Tensor(self._drudge, prod.flatMap(
             lambda x: x[0].comm_term(x[1], dumms=dumms.value, excl=free_vars)
-        ))
+        ), free_vars=free_vars)
 
     def _cartesian_terms(self, other, right):
         """Cartesian the terms with the terms in another tensor.
