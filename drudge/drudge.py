@@ -127,7 +127,7 @@ class Tensor:
     def _free_vars(terms):
         """Get the free variables in terms."""
 
-        return terms.map(lambda term: term.symbs[0]).aggregate(
+        return terms.map(lambda term: term.free_vars).aggregate(
             set(), _union, _union
         )
 

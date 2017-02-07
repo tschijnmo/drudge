@@ -95,8 +95,9 @@ def test_terms_sympy_operations(mprod):
     """Test SymPy related operations in terms."""
     prod, p = mprod
 
-    frees, dumms = prod.symbs
-    assert dumms == {p.i, p.j, p.k}
+    frees = prod.free_vars
+    dumms = prod.dumms
+    assert dumms == {p.i: p.l, p.j: p.l, p.k: p.l}
     assert frees == {p.a.args[0], p.b.args[0], p.n}
 
 

@@ -304,12 +304,16 @@ class Term:
     __slots__ = [
         '_sums',
         '_amp',
-        '_vecs'
+        '_vecs',
+        '_free_vars',
+        '_dumms'
     ]
 
     def __init__(
             self, sums: typing.Tuple[typing.Tuple[Symbol, Range], ...],
-            amp: Expr, vecs: typing.Tuple[Vec, ...]
+            amp: Expr, vecs: typing.Tuple[Vec, ...],
+            free_vars: typing.FrozenSet[Symbol] = None,
+            dumms: typing.Mapping[Symbol, Range] = None,
     ):
         """Initialize the tensor term.
 
@@ -319,6 +323,9 @@ class Term:
         constructor does **not** copy either the summations or the vectors and
         directly expect them to be tuples (for hashability).  And the amplitude
         is **not** simpyfied.
+
+        Also, it is important that the free variables and dummies dictionary be
+        given only when they really satisfy what we got for them.
         """
 
         # For performance reason, no checking is done.
@@ -334,6 +341,9 @@ class Term:
         self._sums = sums
         self._amp = amp
         self._vecs = vecs
+
+        self._free_vars = free_vars
+        self._dumms = dumms
 
     @property
     def sums(self):
@@ -482,18 +492,26 @@ class Term:
             yield from vec.indices
 
     @property
-    def symbs(self):
-        """Get the symbols used in the term.
-
-        The free and dummy symbols used in the term are going to be returned as
-        two sets.
+    def free_vars(self):
+        """Get the free symbols used in the term.
         """
 
-        # TODO: optimize dummy set creation.
-        dumms = set(i[0] for i in self._sums)
-        frees = set(i for expr in self.exprs for i in expr.atoms(Symbol)
-                    if i not in dumms)
-        return frees, dumms
+        if self._free_vars is None:
+            dumms = self.dumms
+            self._free_vars = set(
+                i for expr in self.exprs for i in expr.atoms(Symbol)
+                if i not in dumms
+            )
+        return self._free_vars
+
+    @property
+    def dumms(self):
+        """Get the mapping from dummies to their range.
+        """
+
+        if self._dumms is None:
+            self._dumms = dict(self._sums)
+        return self._dumms
 
     @property
     def amp_factors(self):
