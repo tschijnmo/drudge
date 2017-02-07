@@ -64,7 +64,7 @@ def test_tensor_can_be_created(free_alg):
     terms = tensor.local_terms
     assert len(terms) == 1
     term = terms[0]
-    assert term == Term([(i, r)], x[i], [v[i]])
+    assert term == Term(((i, r), ), x[i], (v[i], ))
 
 
 def test_tensor_has_basic_operations(free_alg):
@@ -112,7 +112,7 @@ def test_tensor_has_basic_operations(free_alg):
     merged = reset.merge()
     assert merged.n_terms == 1
     term = merged.local_terms[0]
-    assert term == Term([(k, r)], x[i, k] + x[j, k], [v[k]])
+    assert term == Term(((k, r), ), x[i, k] + x[j, k], (v[k], ))
 
     # Slightly separate test for expansion.
     c, d = symbols('c d')

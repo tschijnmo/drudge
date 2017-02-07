@@ -5,7 +5,7 @@ import pickle
 import types
 
 import pytest
-from sympy import sympify, IndexedBase, KroneckerDelta, conjugate
+from sympy import sympify, IndexedBase, KroneckerDelta, conjugate, Integer
 
 from drudge import Range, Vec, Term, Perm, Group, IDENT, NEG, CONJ
 from drudge.term import sum_term
@@ -53,16 +53,16 @@ def test_terms_has_basic_operations(mprod):
 
     # Here we create the same term with the basic Term constructor.
     ref_prod = Term(
-        [(i, p.l) for i in [p.i, p.j, p.k]],
+        tuple((i, p.l) for i in [p.i, p.j, p.k]),
         p.a[p.i, p.j] * p.b[p.j, p.k],
-        [p.v[p.i], p.v[p.k]]
+        (p.v[p.i], p.v[p.k])
     )
     assert prod == ref_prod
     assert hash(prod) == hash(ref_prod)
 
     # Some different terms, for inequality testing.
     diff_sums = Term(prod.sums[:-1], prod.amp, prod.vecs)
-    diff_amp = Term(prod.sums, 2, prod.vecs)
+    diff_amp = Term(prod.sums, Integer(2), prod.vecs)
     diff_vecs = Term(prod.sums, prod.amp, prod.vecs[:-1])
     for i in [diff_sums, diff_amp, diff_vecs]:
         assert prod != i
@@ -215,6 +215,6 @@ def test_canonicalization_of_matrix_product(mprod):
 
     # The indices used in the vectors should come earlier.
     sums = prod.sums
-    new_sums = [sums[0], sums[2], sums[1]]
+    new_sums = (sums[0], sums[2], sums[1])
     expected = prod.map(lambda x: x, sums=new_sums)
     assert res == expected
