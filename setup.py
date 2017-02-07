@@ -1,5 +1,7 @@
 """Setup script for drudge."""
 
+import os.path
+
 from setuptools import setup, find_packages, Extension
 
 with open('README.rst', 'r') as readme:
@@ -15,10 +17,16 @@ CLASSIFIERS = [
     'Topic :: Scientific/Engineering :: Mathematics'
 ]
 
+PROJ_ROOT = os.path.dirname(os.path.abspath(__file__))
+INCLUDE_DIRS = [
+    '/'.join([PROJ_ROOT, i])
+    for i in ['deps/libcanon/include', 'drudge']
+    ]
+
 canonpy = Extension(
     'drudge.canonpy',
     ['drudge/canonpy.cpp'],
-    include_dirs=['deps/libcanon/include', 'drudge/'],
+    include_dirs=INCLUDE_DIRS,
     extra_compile_args=['-std=c++14']
 )
 
