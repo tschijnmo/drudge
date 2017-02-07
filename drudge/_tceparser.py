@@ -88,7 +88,7 @@ def _parse_term(term_str, symb_cb, base_cb):
     # First break the string into indexed values.
     summed_vars, idxed_vals = _break_into_idxed(term_str)
 
-    sums = [symb_cb(i) for i in summed_vars]
+    sums = tuple(symb_cb(i) for i in summed_vars)
     amp = sympify('1')
 
     for base, indices in idxed_vals:

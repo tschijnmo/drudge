@@ -11,7 +11,7 @@ from sympy import (
     Add, Mul, Indexed, IndexedBase, Expr, Basic, Pow)
 
 from .canon import canon_factors
-from .utils import ensure_pair, ensure_symb, ensure_expr, sympy_key, is_higher
+from .utils import ensure_symb, ensure_expr, sympy_key, is_higher
 
 #
 # Utility constants
@@ -262,9 +262,9 @@ class Vec:
             return NotImplemented
 
         if isinstance(other, Vec):
-            return Term([], _UNITY, [self, other])
+            return Term((), _UNITY, (self, other))
         else:
-            return Term([], other, [self])
+            return Term((), other, (self,))
 
     def __rmul__(self, other):
         """Multiply something on the left."""
@@ -272,7 +272,7 @@ class Vec:
         if is_higher(other, self._op_priority):
             return NotImplemented
         # Now, other cannot not be either a term or a vector.
-        return Term([], other, [self])
+        return Term((), other, (self,))
 
     #
     # Misc facilities
@@ -307,38 +307,33 @@ class Term:
         '_vecs'
     ]
 
-    def __init__(self, sums, amp, vecs):
+    def __init__(
+            self, sums: typing.Tuple[typing.Tuple[Symbol, Range], ...],
+            amp: Expr, vecs: typing.Tuple[Vec, ...]
+    ):
         """Initialize the tensor term.
 
-        This entry point should be the final place to check user inputs.
+        Users seldom have the need to create terms directly by thi function.  So
+        this constructor is mostly a developer function, no sanity checking is
+        performed on the input for performance.  Most importantly, this
+        constructor does **not** copy either the summations or the vectors and
+        directly expect them to be tuples (for hashability).  And the amplitude
+        is **not** simpyfied.
         """
 
-        if not isinstance(sums, Iterable):
-            raise TypeError('Invalid summations, iterable expected: ', sums)
-        checked_sums = []
-        dumms = set()
-        for i in sums:
-            i = ensure_pair(i, 'summation')
-            dumm = ensure_symb(i[0], 'dummy')
-            if dumm in dumms:
-                raise ValueError('Invalid dummy: ', dumm, 'duplicated')
-            if not isinstance(i[1], Range):
-                raise TypeError('Invalid range: ', i[1], 'not Range instance')
-            checked_sums.append((dumm, i[1]))
-            continue
-        self._sums = tuple(checked_sums)
+        # For performance reason, no checking is done.
+        #
+        # Uncomment for debugging.
+        # valid = (
+        #     isinstance(sums, tuple) and isinstance(amp, Expr)
+        #     and isinstance(vecs, tuple)
+        # )
+        # if not valid:
+        #     raise TypeError('Invalid argument to term creation')
 
-        self._amp = sympify(amp)
-
-        checked_vecs = []
-        if not isinstance(vecs, Iterable):
-            raise TypeError('Invalid vectors: ', vecs, 'expecting iterable')
-        for i in vecs:
-            if not isinstance(i, Vec):
-                raise ValueError('Invalid vector: ', i, 'expecting Vec')
-            checked_vecs.append(i)
-            continue
-        self._vecs = tuple(checked_vecs)
+        self._sums = sums
+        self._amp = amp
+        self._vecs = vecs
 
     @property
     def sums(self):
@@ -546,7 +541,7 @@ class Term:
         return Term(
             self._sums if sums is None else sums,
             func(self._amp if amp is None else amp),
-            (i.map(func) for i in self._vecs)
+            tuple(i.map(func) for i in self._vecs)
         )
 
     def subst(self, substs, sums=None, amp=None, simultaneous=True):
@@ -620,7 +615,7 @@ class Term:
 
             continue
 
-        return new_sums, substs, dummbegs
+        return tuple(new_sums), substs, dummbegs
 
     #
     # Amplitude simplification
@@ -649,7 +644,7 @@ class Term:
         # Note that here the substitutions needs to be performed in order.
         return self.subst(
             list(substs.items()),
-            sums=(i for i in self._sums if i[0] not in substs),
+            sums=tuple(i for i in self._sums if i[0] not in substs),
             amp=curr_amp, simultaneous=False
         )
 
@@ -724,7 +719,7 @@ class Term:
                 res_amp *= i
             continue
 
-        return Term(res_sums, res_amp, res_vecs)
+        return Term(tuple(res_sums), res_amp, tuple(res_vecs))
 
 
 #
@@ -761,7 +756,7 @@ def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
         new_vecs = list(vecs)
         new_vecs[substed_vec_idx:substed_vec_idx + 1] = i.vecs
         res.append((
-            Term(sums + i.sums, amp * i.amp, new_vecs), j
+            Term(sums + i.sums, amp * i.amp, tuple(new_vecs)), j
         ))
         continue
 
@@ -971,7 +966,7 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 
             if inp_term is not None:
                 curr_term = inp_term.subst(
-                    subst_i, sums=itertools.chain(inp_term.sums, sum_i)
+                    subst_i, sums=inp_term.sums + sum_i
                 )
             else:
                 curr_term = parse_term(inp_func(call_seq))
@@ -1049,9 +1044,9 @@ def parse_term(term):
     if isinstance(term, Term):
         return term
     elif isinstance(term, Vec):
-        return Term([], _UNITY, [term])
+        return Term((), _UNITY, (term,))
     else:
-        return Term([], term, [])
+        return Term((), sympify(term), ())
 
 
 #

@@ -247,7 +247,7 @@ class _WickExpander:
                 rem_idxes = [i for i in vec_order if avail[i]]
                 final_phase = _get_perm_phase(rem_idxes, phase)
                 expanded.append((
-                    final_phase * amp, [vecs[i] for i in rem_idxes]
+                    final_phase * amp, tuple(vecs[i] for i in rem_idxes)
                 ))
             return
 
