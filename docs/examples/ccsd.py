@@ -2,12 +2,18 @@
 
 """
 
+import os
 import urllib.request
 
 from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational
 
 from drudge import PartHoleDrudge, CR, AN
+
+n_cpus = os.cpu_count()
+if 'SLURM_JOB_NUM_NODES' in os.environ:
+    n_cpus *= int(os.environ['SLURM_JOB_NUM_NODES'])
+n_parts = n_cpus
 
 conf = SparkConf().setAppName('CCSD-derivation')
 ctx = SparkContext(conf=conf)
@@ -38,6 +44,7 @@ curr = dr.ham
 h_bar = dr.ham
 for order in range(0, 4):
     curr = (curr | clusters).simplify() * Rational(1, order + 1)
+    curr.repartition(n_parts, cache=True)
     h_bar += curr
 
 en_eqn = dr.eval_fermi_vev(h_bar).simplify()
