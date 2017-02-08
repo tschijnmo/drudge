@@ -9,7 +9,7 @@ from sympy import IndexedBase, Rational
 
 from drudge import PartHoleDrudge, CR, AN
 
-conf = SparkConf().setAppName('CCSD-derivation')
+conf = SparkConf().setAppName('CCD-derivation')
 ctx = SparkContext(conf=conf)
 dr = PartHoleDrudge(ctx)
 p = dr.names
