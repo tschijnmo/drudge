@@ -14,6 +14,10 @@
 # SPARK_LOG_LEVEL can be used to tune the logging level for Spark, by default,
 # only errors are logged due to performance reasons.
 #
+# MEM_AMOUNT can be used to tune the memory amount for both the driver and
+# worker during spark-submit.  Normally this does not need to be set.  A
+# symbolic value of ALL can be used to use up all available memory.
+#
 
 if [ -z "${SPARK_HOME}" ]; then
     echo "SPARK_HOME is not set!"
@@ -128,11 +132,21 @@ fi
 # Try to have a sensible setting of memory
 #
 
-if [ -z "$SLURM_MEM_PER_NODE" ]; then
-    # For lower versions of SLURM where this is not set.
-    mem=$(free -g | grep ^Mem: | awk '{print $2}')g
+MEM_AMOUNT=${MEM_AMOUNT:-DEFAULT}
+
+if [ "$MEM_AMOUNT" = "ALL" ]; then
+    if [ -z "$SLURM_MEM_PER_NODE" ]; then
+        # For lower versions of SLURM where this is not set.
+        MEM_AMOUNT=$(free -g | grep ^Mem: | awk '{print $2}')g
+    else
+        MEM_AMOUNT="$SLURM_MEM_PER_NODE"
+    fi
+fi
+
+if [ "$MEM_AMOUNT" != "DEFAULT" ]; then
+    mem_args="--executor-memory ${MEM_AMOUNT} --driver-memory ${MEM_AMOUNT}"
 else
-    mem="$SLURM_MEM_PER_NODE"
+    mem_args=""
 fi
 
 
@@ -153,7 +167,7 @@ $(date)
 #
 
 ${SPARK_HOME}/bin/spark-submit --master "${spark_master_link}" \
---executor-memory "${mem}" --driver-memory "${mem}" \
+${mem_args} \
 "$@"
 
 
