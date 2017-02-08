@@ -517,8 +517,8 @@ class Term:
     def amp_factors(self):
         """Get the factors in the amplitude expression.
 
-        The factors involving dummies will be returned as a list, with the rest
-        returned as a single SymPy expression.
+        The indexed factors and factors involving dummies will be returned as a
+        list, with the rest returned as a single SymPy expression.
 
         Error will be raised if the amplitude is not a monomial.
         """
@@ -537,7 +537,10 @@ class Term:
         factors = []
         coeff = _UNITY
         for factor in all_factors:
-            if any(i in dumms for i in factor.atoms(Symbol)):
+            need_treatment = any(
+                i in dumms for i in factor.atoms(Symbol)
+            ) or isinstance(factor, Indexed)
+            if need_treatment:
                 factors.append(factor)
             else:
                 coeff *= factor
