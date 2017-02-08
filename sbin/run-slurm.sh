@@ -150,6 +150,10 @@ else
 fi
 
 
+#
+# Run the given script.
+#
+
 echo "
 
 
@@ -161,15 +165,9 @@ $(date)
 
 "
 
-
-#
-# Run the given script.
-#
-
 ${SPARK_HOME}/bin/spark-submit --master "${spark_master_link}" \
 ${mem_args} \
 "$@"
-
 
 echo "
 
