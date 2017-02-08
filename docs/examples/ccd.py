@@ -1,10 +1,11 @@
 """Automatic derivation of CCD equations.
 
+This script is an example of running drudge serially.
 """
 
 import urllib.request
 
-from pyspark import SparkConf, SparkContext
+from dummy_spark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational
 
 from drudge import PartHoleDrudge, CR, AN
