@@ -94,16 +94,29 @@ EOF
 # Start the Spark cluster
 #
 
-spark_master_link="spark://${spark_master_host}:${spark_master_port}"
+export_env="PATH,LD_LIBRARY_PATH,\
+JAVA_HOME,SPARK_CONF_DIR,SPARK_NO_DAEMONIZE,\
+PYTHONPATH,PYTHONHASHSEED"
 
-${SPARK_HOME}/sbin/start-master.sh
+if [ "$SLURM_JOB_NUM_NODES" -gt 1 ]; then
 
-export SPARK_NO_DAEMONIZE=1
+    export PYTHONHASHSEED=323
+    spark_master_link="spark://${spark_master_host}:${spark_master_port}"
 
-srun --export=JAVA_HOME,PATH,SPARK_CONF_DIR,PYTHONPATH,SPARK_NO_DAEMONIZE \
-${SPARK_HOME}/sbin/start-slave.sh ${spark_master_link} &
+    ${SPARK_HOME}/sbin/start-master.sh
 
-unset SPARK_NO_DAEMONIZE
+    export SPARK_NO_DAEMONIZE=1
+
+    srun --export="$export_env" \
+    ${SPARK_HOME}/sbin/start-slave.sh ${spark_master_link} &
+
+    unset SPARK_NO_DAEMONIZE
+
+    sleep 30
+
+else
+    spark_master_link="local[*]"
+fi
 
 
 echo "
