@@ -93,7 +93,16 @@ class Tensor:
         that is used multiple times.
         """
         self._terms.cache()
-        return
+        return self
+
+    def repartition(self, num, cache=False):
+        """Repartition the terms across the Spark cluster.
+        """
+
+        self._terms = self._terms.repartition(num)
+        if cache:
+            self.cache()
+        return self
 
     @property
     def is_scalar(self):
