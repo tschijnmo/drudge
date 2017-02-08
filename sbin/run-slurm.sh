@@ -11,6 +11,9 @@
 # `python3` in PATH need to point to the Python interpreter intended to be
 # used.
 #
+# SPARK_LOG_LEVEL can be used to tune the logging level for Spark, by default,
+# only errors are logged due to performance reasons.
+#
 
 if [ -z "${SPARK_HOME}" ]; then
     echo "SPARK_HOME is not set!"
@@ -64,8 +67,10 @@ export PYSPARK_PYTHON=$(which python3)
 export PYSPARK_DRIVER_PYTHON=$(which python3)
 EOF
 
+SPARK_LOG_LEVEL=${SPARK_LOG_LEVEL:-ERROR}
+
 cat > ${spark_conf_dir}/log4j.properties << EOF
-log4j.rootCategory=ERROR, console
+log4j.rootCategory=${SPARK_LOG_LEVEL}, console
 log4j.appender.console=org.apache.log4j.ConsoleAppender
 log4j.appender.console.target=System.err
 log4j.appender.console.layout=org.apache.log4j.PatternLayout
