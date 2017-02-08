@@ -23,6 +23,9 @@ class Tensor:
     A tensor is an aggregate of terms distributed and managed by Spark.  Here
     most operations needed for tensors are defined.
 
+    Normally, tensor instances are created from drudge methods or tensor
+    operations.  Direct invocation of its constructor is seldom in user scripts.
+
     """
 
     __slots__ = [
@@ -36,7 +39,7 @@ class Tensor:
     # Term creation
     #
 
-    def __init__(self, drudge, terms: RDD,
+    def __init__(self, drudge: 'Drudge', terms: RDD,
                  free_vars: typing.Set[Symbol] = None):
         """Initialize the tensor.
 
@@ -48,7 +51,7 @@ class Tensor:
         self._drudge = drudge
         self._terms = terms
 
-        self._local_terms = None
+        self._local_terms = None  # type: typing.List[Term]
         self._free_vars = free_vars
 
     #
@@ -70,13 +73,21 @@ class Tensor:
 
         The list returned by this is for read-only and should **never** be
         mutated.
+
+        .. warning::
+
+            This method will gather all terms into the memory of the driver.
+
         """
         if self._local_terms is None:
             self._local_terms = self._terms.collect()
+        else:
+            pass
+
         return self._local_terms
 
     @property
-    def n_terms(self):
+    def n_terms(self) -> int:
         """Get the number of terms.
 
         A zero number of terms signatures a zero tensor.
@@ -90,13 +101,21 @@ class Tensor:
         """Cache the terms in the tensor.
 
         This method should be called when this tensor is an intermediate result
-        that is used multiple times.
+        that is used multiple times.  The tensor itself will be returned for the
+        ease of chaining.
         """
+
         self._terms.cache()
         return self
 
     def repartition(self, num, cache=False):
         """Repartition the terms across the Spark cluster.
+
+        This function should be called when the terms need to be rebalanced
+        among the workers.  Note that this incurs an Spark RDD shuffle operation
+        and might be very expensive.  Its invocation and the number of
+        partitions used need to be fine-tuned for different problems to achieve
+        good performance.
         """
 
         self._terms = self._terms.repartition(num)
@@ -106,7 +125,11 @@ class Tensor:
 
     @property
     def is_scalar(self):
-        """Query if the tensor is a scalar."""
+        """Query if the tensor is a scalar.
+
+        A tensor is considered a scalar when none of its terms has a vector
+        part.
+        """
 
         return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
@@ -138,6 +161,8 @@ class Tensor:
             self._free_vars = self.terms.map(
                 lambda term: term.free_vars
             ).aggregate(set(), _union, _union)
+            # TODO: investigate performance characteristic with treeAggregate.
+
         return self._free_vars
 
     def reset_dumms(self):
@@ -152,9 +177,9 @@ class Tensor:
         """
 
         self._free_vars = None
-        return self.apply(self._reset_dumms, free_vars=self.free_vars)
+        return self.apply(self._reset_dumms)
 
-    def _reset_dumms(self, terms, excl=None):
+    def _reset_dumms(self, terms: RDD, excl=None) -> RDD:
         """Get terms with dummies reset.
 
         Note that the given terms are assumed to have the same free variables as
@@ -180,13 +205,16 @@ class Tensor:
         The zero terms will be filtered out as well.
 
         The result is assumed to have the same free variables as the input, even
-        when some of them may have been canceled in the simplification.
+        when some of them may have been canceled in the simplification.  When
+        that happens, the dummy resetting method can be explicitly called to
+        recompute the free variables.
         """
 
         return self.apply(self._simplify_amps, free_vars=self._free_vars)
 
     def _simplify_amps(self, terms):
         """Get the terms with amplitude simplified."""
+
         resolvers = self._drudge.resolvers
         simplified_terms = terms.map(
             lambda term: term.simplify_amp(resolvers=resolvers.value)
@@ -201,23 +229,22 @@ class Tensor:
         """
         return self.apply(self._expand, free_vars=self._free_vars)
 
+    @staticmethod
+    def _expand(terms):
+        """Get terms after they are fully expanded."""
+        return terms.flatMap(lambda term: term.expand())
+
     def sort(self):
         """Sort the terms in the tensor.
 
         The terms will generally be sorted according to increasing complexity.
-
         """
         self.apply(self._sort, free_vars=self._free_vars)
 
     @staticmethod
     def _sort(terms: RDD):
-        """Compute the terms in the tensor."""
+        """Sort the terms in the tensor."""
         return terms.sortBy(lambda term: term.sort_key)
-
-    @staticmethod
-    def _expand(terms):
-        """Get terms after they are fully expanded."""
-        return terms.flatMap(lambda term: term.expand())
 
     def merge(self):
         """Merge terms with the same vector and summation part.
@@ -269,6 +296,9 @@ class Tensor:
 
         The actual work is dispatched to the drudge, who has domain specific
         knowledge about the noncommutativity of the vectors.
+
+        Note that it is assumed that the normal ordering operation does not add
+        new free variables to the terms.
         """
         return self.apply(self._drudge.normal_order, free_vars=self._free_vars)
 
@@ -286,7 +316,7 @@ class Tensor:
     def _simplify(self, terms):
         """Get the terms in the simplified form."""
 
-        terms = self._expand(self._terms)
+        terms = self._expand(terms)
 
         # First we make the vector part normal-ordered.
         terms = self._drudge.normal_order(terms)
@@ -371,7 +401,7 @@ class Tensor:
         """Subtract the tensor from another quantity."""
         return (self * -1)._add(other)
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> 'Tensor':
         """Multiply the tensor.
 
         This multiplication operation is done completely within the framework of
