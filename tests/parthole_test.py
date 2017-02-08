@@ -92,9 +92,8 @@ def test_tce_parse(parthole):
     res = dr.parse_tce(tce_out, {2: t})
 
     p = dr.names
-    a, b = p.V_dumms[2:4]
-    i, j = p.O_dumms[:2]
-    k = p.O_dumms[4]  # Just named as k here.
+    a, b = p.V_dumms[:2]
+    i, j, k = p.O_dumms[:3]
     f = dr.fock
     expected = dr.sum(
         (k, p.O), -f[k, i] * t[a, b, k, j] + f[k, j] * t[a, b, k, i]

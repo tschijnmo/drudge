@@ -7,10 +7,11 @@ So Hirata into Tensor objects in drudge.
 
 """
 
+import collections
 import itertools
 import re
 
-from sympy import nsimplify, sympify
+from sympy import nsimplify, sympify, Symbol
 
 from drudge import Term
 
@@ -21,8 +22,10 @@ from drudge import Term
 #
 
 
-def parse_tce_out(tce_out, symb_cb, base_cb):
+def parse_tce_out(tce_out, range_cb, base_cb):
     """Parse a TCE output into a list of terms.
+
+    A list of terms, and a dictionary of free symbols will be returned.
     """
 
     lines = []
@@ -32,10 +35,11 @@ def parse_tce_out(tce_out, symb_cb, base_cb):
             lines.append(stripped)
         continue
 
+    free_vars = collections.defaultdict(set)
     return list(itertools.chain.from_iterable(
-        _parse_tce_line(line, symb_cb, base_cb)
+        _parse_tce_line(line, range_cb, base_cb, free_vars)
         for line in lines
-    ))
+    )), free_vars
 
 
 #
@@ -44,7 +48,7 @@ def parse_tce_out(tce_out, symb_cb, base_cb):
 #
 
 
-def _parse_tce_line(line, symb_cb, base_cb):
+def _parse_tce_line(line, range_cb, base_cb, free_vars):
     """Parse a TCE output line into a list of terms.
     """
 
@@ -61,11 +65,11 @@ def _parse_tce_line(line, symb_cb, base_cb):
     term_str = match_res.group('term').strip()
 
     # Get the actual term in its raw form.
-    raw_term = _parse_term(term_str, symb_cb, base_cb)
+    raw_term = _parse_term(term_str, range_cb, base_cb, free_vars)
 
     # Generates the actual list of terms based on the factors, possibly with
     # permutations.
-    return _gen_terms(factors_str, raw_term, symb_cb)
+    return _gen_terms(factors_str, raw_term)
 
 
 #
@@ -81,18 +85,24 @@ _SUM_BASE = 'Sum'
 #
 
 
-def _parse_term(term_str, symb_cb, base_cb):
+def _parse_term(term_str, range_cb, base_cb, free_vars):
     """Parse the term string after the square bracket into a Term.
     """
 
     # First break the string into indexed values.
     summed_vars, idxed_vals = _break_into_idxed(term_str)
 
-    sums = tuple(symb_cb(i) for i in summed_vars)
+    sums = tuple((Symbol(i), range_cb(i)) for i in summed_vars)
+    dumms = {i[0] for i in sums}
     amp = sympify('1')
 
     for base, indices in idxed_vals:
-        indices_symbs = tuple(symb_cb(i)[0] for i in indices)
+        indices_symbs = tuple(Symbol(i) for i in indices)
+        for i, j in zip(indices_symbs, indices):
+            if i not in dumms:
+                free_vars[range_cb(j)].add(i)
+            continue
+
         base_symb = base_cb(base, indices_symbs)
         amp *= base_symb[indices_symbs]
         continue
@@ -142,7 +152,7 @@ def _break_into_idxed(term_str):
 #
 
 
-def _gen_terms(factors_str, raw_term, symb_cb):
+def _gen_terms(factors_str, raw_term):
     """Generate the actual terms based on the initial factor string.
 
     The raw term should be a term directly parsed from the term specification
@@ -180,7 +190,7 @@ def _gen_terms(factors_str, raw_term, symb_cb):
             from_vars = match_res.group('perm_from').split()
             to_vars = match_res.group('perm_to').split()
             subs = [
-                (symb_cb(from_var)[0], symb_cb(to_var)[0])
+                (Symbol(from_var), Symbol(to_var))
                 for from_var, to_var in zip(from_vars, to_vars)
                 ]
         else:

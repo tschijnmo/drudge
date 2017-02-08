@@ -669,10 +669,9 @@ class PartHoleDrudge(GenMBDrudge):
         excitation order to the actual base.
         """
 
-        def symb_cb(name):
-            """Get symbol for a name in TCE output."""
-            range_ = self.part_range if name[0] == 'p' else self.hole_range
-            return self.dumms.value[range_][int(name[1:]) - 1], range_
+        def range_cb(label):
+            """The range call-back."""
+            return self.part_range if label[0] == 'p' else self.hole_range
 
         def base_cb(name, indices):
             """Get the indexed base for a name in TCE output."""
@@ -685,6 +684,18 @@ class PartHoleDrudge(GenMBDrudge):
             else:
                 raise ValueError('Invalid base', name, 'in TCE output.')
 
-        terms = parse_tce_out(tce_out, symb_cb, base_cb)
+        terms, free_vars = parse_tce_out(tce_out, range_cb, base_cb)
 
-        return self.add(terms)
+        # Here we assume that the symbols from directly conversion from TCE
+        # output will not conflict with the canonical dummies.
+        substs = {}
+        for range_, symbs in free_vars.items():
+            for i, j in zip(
+                    sorted(symbs, key=lambda x: int(x.name[1:])),
+                    self.dumms.value[range_]
+            ):
+                substs[i] = j
+                continue
+            continue
+
+        return self.add([i.subst(substs) for i in terms])
