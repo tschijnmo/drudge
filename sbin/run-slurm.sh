@@ -3,15 +3,25 @@
 #
 # Run the given drudge script in a SLURM job.
 #
-# Before calling this script, the environmental variables SPARK_HOME, JAVA_HOME,
-# and PYTHONPATH need to be set correctly.  And the program `python3` in PATH
-# need to point to the Python interpreter intended to be used.
+# The actual script and its command line arguments should be given to this
+# auxiliary script.
+#
+# Before calling this script, the environmental variables SPARK_HOME,
+# JAVA_HOME, and PYTHONPATH need to be set correctly.  And the program
+# `python3` in PATH need to point to the Python interpreter intended to be
+# used.
 #
 
 if [ -z "${SPARK_HOME}" ]; then
     echo "SPARK_HOME is not set!"
     exit 1
 fi
+
+if [ "$#" -lt 1 ]; then
+    echo "No script is given!"
+    exit 1
+fi
+
 
 #
 # Create the directories needed by Spark for the job.
@@ -95,13 +105,13 @@ ${SPARK_HOME}/sbin/start-slave.sh ${spark_master_link} &
 
 unset SPARK_NO_DAEMONIZE
 
-sleep 30
 
 echo "
 
 
 ********************************************************************************
-Running Script $1 at $(date)
+Running Script $1 at ${spark_master_link}
+$(date)
 ********************************************************************************
 
 
@@ -112,14 +122,17 @@ Running Script $1 at $(date)
 # Run the given script.
 #
 
-${SPARK_HOME}/bin/spark-submit --master ${spark_master_link} "$1"
+${SPARK_HOME}/bin/spark-submit --master "${spark_master_link}" \
+--executor-memory "${mem}" --driver-memory "${mem}" \
+"$@"
 
 
 echo "
 
 
 ********************************************************************************
-Script finished at $(date)
+Script $1 finished
+$(date)
 ********************************************************************************
 
 
