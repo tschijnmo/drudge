@@ -119,6 +119,18 @@ else
 fi
 
 
+#
+# Try to have a sensible setting of memory
+#
+
+if [ -z "$SLURM_MEM_PER_NODE" ]; then
+    # For lower versions of SLURM where this is not set.
+    mem=$(free -g | grep ^Mem: | awk '{print $2}')g
+else
+    mem="$SLURM_MEM_PER_NODE"
+fi
+
+
 echo "
 
 
