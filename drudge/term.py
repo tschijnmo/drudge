@@ -1,5 +1,6 @@
 """Tensor term definition and utility."""
 
+import abc
 import collections
 import functools
 import itertools
@@ -19,6 +20,7 @@ from .utils import ensure_symb, ensure_expr, sympy_key, is_higher
 #
 
 _UNITY = Integer(1)
+_NEG_UNITY = Integer(-1)
 _NAUGHT = Integer(0)
 
 
@@ -138,7 +140,147 @@ class Range:
         return key
 
 
-class Vec:
+class ATerms(abc.ABC):
+    """Abstract base class for terms.
+
+    This abstract class is meant for things that can be interpreted as a local
+    collection of some tensor terms, mostly used for user input of tensor terms.
+
+    """
+
+    @abc.abstractproperty
+    def terms(self) -> typing.Iterable['Term']:
+        """Get an iterable for the terms.
+        """
+        pass
+
+    #
+    # Mathematical operations.
+    #
+
+    _op_priority = 19.0  # Just less than the full tensor.
+
+    def __mul__(self, other):
+        """Multiply something on the right."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return self._mul(self.terms, parse_terms(other))
+
+    def __rmul__(self, other):
+        """Multiply something on the left."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return self._mul(parse_terms(other), self.terms)
+
+    @staticmethod
+    def _mul(left_terms, right_terms):
+        """Multiplies the left terms with the right terms.
+
+        Note that the terms should not have any conflict in dummies.  Actually,
+        by the common scheme in user input by drudge, the terms should normally
+        have no summations at all.  So this function has different semantics
+        than the term multiplication function from the Terms class.
+        """
+
+        prod_terms = []
+        for i, j in itertools.product(left_terms, right_terms):
+            # A shallow checking on sums, normally we have no sums by design.
+            sums = _cat_sums(i.sums, j.sums)
+            amp = i.amp * j.amp
+            vecs = i.vecs + j.vecs
+
+            prod_terms.append(Term(sums, amp, vecs))
+            continue
+
+        return Terms(prod_terms)
+
+    def __add__(self, other):
+        """Add something on the right."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return self._add(self.terms, parse_terms(other))
+
+    def __radd__(self, other):
+        """Add something on the left."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return self._add(parse_terms(other), self.terms)
+
+    def __sub__(self, other):
+        """Subtract something on the right."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        other_terms = self._neg_terms(parse_terms(other))
+        return self._add(self.terms, other_terms)
+
+    def __rsub__(self, other):
+        """Be subtracted from something on the left."""
+
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        self_terms = self._neg_terms(parse_terms(self))
+        return self._add(parse_terms(other), self_terms)
+
+    def __neg__(self):
+        """Negate the terms."""
+        return Terms(self._neg_terms(parse_terms(self)))
+
+    @staticmethod
+    def _add(left_terms, right_terms):
+        """Add the terms together.
+        """
+        return Terms(itertools.chain(left_terms, right_terms))
+
+    @staticmethod
+    def _neg_terms(terms: typing.Iterable['Term']):
+        """Negate the given terms.
+
+        The resulted terms are lazily evaluated.
+        """
+        return (
+            Term(i.sums, i.amp * _NEG_UNITY, i.vecs)
+            for i in terms
+        )
+
+
+class Terms(ATerms):
+    """A local collection of terms.
+
+    This class is a concrete collection of terms.  Any mathematical operation on
+    the abstract terms objects will be elevated to instances of this class.
+    """
+
+    __slots__ = ['_terms']
+
+    def __init__(self, terms: typing.Iterable['Term']):
+        """Initialize the terms object.
+
+        The possibly lazy iterable of terms will be instantiated here.
+        """
+        self._terms = list(terms)
+
+    @property
+    def terms(self):
+        """Get the terms in the collection."""
+        return self._terms
+
+
+def parse_terms(obj) -> typing.Iterable['Term']:
+    """Parse the object into a iterable of terms."""
+
+    if isinstance(obj, ATerms):
+        return obj.terms
+    else:
+        expr = ensure_expr(obj)
+        return [Term((), expr, ())]
+
+
+class Vec(ATerms):
     """Vectors.
 
     Vectors are the basic non-commutative quantities.  Its objects consist of an
@@ -250,31 +392,6 @@ class Vec:
         return key
 
     #
-    # Multiplication
-    #
-
-    _op_priority = 19.0
-
-    def __mul__(self, other):
-        """Multiply something on the right."""
-
-        if is_higher(other, self._op_priority):
-            return NotImplemented
-
-        if isinstance(other, Vec):
-            return Term((), _UNITY, (self, other))
-        else:
-            return Term((), other, (self,))
-
-    def __rmul__(self, other):
-        """Multiply something on the left."""
-
-        if is_higher(other, self._op_priority):
-            return NotImplemented
-        # Now, other cannot not be either a term or a vector.
-        return Term((), other, (self,))
-
-    #
     # Misc facilities
     #
 
@@ -289,6 +406,15 @@ class Vec:
         attempted to be manipulated as SymPy quantities.
         """
         raise TypeError('Vectors cannot be sympified', self)
+
+    @property
+    def terms(self):
+        """Get the terms from the vector.
+
+        This is for the user input.
+        """
+
+        return [Term((), _UNITY, (self,))]
 
 
 class Term:
@@ -943,10 +1069,10 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     summation, which can be a symbolic range, SymPy expression, or iterable over
     them.
 
-    The last argument should give the actual term to be summed, which can be
-    something that can be interpreted as a term, or a callable that is going to
-    return a term when given a dictionary giving the action on each of the
-    dummies.
+    The last argument should give the actual things to be summed, which can be
+    something that can be interpreted as a collection of terms, or a callable
+    that is going to return the summand when given a dictionary giving the
+    action on each of the dummies.
 
     The predicate can be a callable going to return a boolean when called with
     same dictionary.  False values can be used the skip some terms.
@@ -959,16 +1085,16 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     if len(args) == 0:
         return []
 
-    term_arg = args[-1]
+    summand = args[-1]
     # Too many SymPy stuff are callable.
-    if isinstance(term_arg, Callable) and not isinstance(term_arg, Basic):
-        inp_term = None
-        inp_func = term_arg
+    if isinstance(summand, Callable) and not isinstance(summand, Basic):
+        inp_terms = None
+        inp_func = summand
     else:
-        inp_term = parse_term(term_arg)
+        inp_terms = parse_terms(summand)
         inp_func = None
         if len(args) == 1:
-            return [inp_term]
+            return list(inp_terms)
 
     sums, substs = _parse_sums(args[:-1])
 
@@ -976,23 +1102,22 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     for sum_i in itertools.product(*sums):
         for subst_i in itertools.product(*substs):
 
-            if predicate is not None or inp_func is not None:
-                call_seq = dict(sum_i)
-                call_seq.update(subst_i)
-            else:
-                call_seq = None
+            # We alway assemble the call sequence here, since this part should
+            # never be performance critical.
+            call_seq = dict(sum_i)
+            call_seq.update(subst_i)
 
             if not (predicate is None or predicate(call_seq)):
                 continue
 
-            if inp_term is not None:
-                curr_term = inp_term.subst(
-                    subst_i, sums=inp_term.sums + sum_i
-                )
+            if inp_terms is not None:
+                curr_terms = [i.subst(
+                    subst_i, sums=_cat_sums(i.sums, sum_i)
+                ) for i in inp_terms]
             else:
-                curr_term = parse_term(inp_func(call_seq))
+                curr_terms = parse_terms(inp_func(call_seq))
 
-            res.append(curr_term)
+            res.extend(curr_terms)
 
             continue
         continue
@@ -1054,6 +1179,29 @@ def _parse_sums(args):
             substs.append(contents)
 
     return sums, substs
+
+
+def _cat_sums(sums1, sums2):
+    """Concatenate two summation lists.
+
+    This function forms the tuple and ensures that there is no conflicting
+    dummies in the two summations.  This function is mostly for sanitizing user
+    inputs.
+    """
+
+    sums = tuple(itertools.chain(sums1, sums2))
+
+    # Construction of the counter is separate from the addition of
+    # content due to a PyCharm bug.
+    dumm_counts = collections.Counter()
+    dumm_counts.update(i[0] for i in sums)
+    if any(i > 1 for i in dumm_counts.values()):
+        raise ValueError(
+            'Invalid summations to be concatenated', (sums1, sums2),
+            'expecting no conflict in dummies'
+        )
+
+    return sums
 
 
 def parse_term(term):
