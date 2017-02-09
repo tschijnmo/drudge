@@ -20,6 +20,8 @@ def free_alg(spark_ctx):
     s_dumms = symbols('alpha beta')
     dr.set_dumms(s, s_dumms)
 
+    dr.add_resolver_for_dumms()
+
     v = Vec('v')
     dr.set_name(v)
 
@@ -57,14 +59,18 @@ def test_tensor_can_be_created(free_alg):
     p = dr.names
     i, v, r = p.i, p.v, p.R
     x = IndexedBase('x')
-    tensor = dr.sum((i, r), x[i] * v[i])
 
-    assert tensor.n_terms == 1
+    # Create the tensor by two user creation functions.
+    for tensor in [
+        dr.sum((i, r), x[i] * v[i]),
+        dr.einst(x[i] * v[i])
+    ]:
+        assert tensor.n_terms == 1
 
-    terms = tensor.local_terms
-    assert len(terms) == 1
-    term = terms[0]
-    assert term == Term(((i, r), ), x[i], (v[i], ))
+        terms = tensor.local_terms
+        assert len(terms) == 1
+        term = terms[0]
+        assert term == Term(((i, r),), x[i], (v[i],))
 
 
 def test_tensor_has_basic_operations(free_alg):
@@ -112,7 +118,7 @@ def test_tensor_has_basic_operations(free_alg):
     merged = reset.merge()
     assert merged.n_terms == 1
     term = merged.local_terms[0]
-    assert term == Term(((k, r), ), x[i, k] + x[j, k], (v[k], ))
+    assert term == Term(((k, r),), x[i, k] + x[j, k], (v[k],))
 
     # Slightly separate test for expansion.
     c, d = symbols('c d')
