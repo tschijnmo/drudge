@@ -113,8 +113,8 @@ def test_parthole_with_ph_excitations(parthole):
     p = dr.names
     a, b = p.V_dumms[:2]
     i, j = p.O_dumms[:2]
-    c_ = dr.op[AN]
-    c_dag = dr.op[CR]
+    c_ = p.c_
+    c_dag = p.c_dag
 
     # Without summation.
     excit_1 = dr.sum(c_dag[a] * c_[i])

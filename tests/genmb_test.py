@@ -36,11 +36,12 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
 
     dr = genmb
     p = genmb.names
-    c_ = p.c
+    c_ = p.c_
+    c_dag = p.c_dag
     r = p.L
     a, b, c, d = p.L_dumms[:4]
 
-    rot = c_[CR, a] * c_[AN, b]
+    rot = c_dag[a] * c_[b]
     comm = (dr.ham | rot).simplify()
     assert comm.n_terms == 4
 
