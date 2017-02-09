@@ -150,8 +150,8 @@ class ATerms(abc.ABC):
     """
 
     @abc.abstractproperty
-    def terms(self) -> typing.Iterable['Term']:
-        """Get an iterable for the terms.
+    def terms(self) -> typing.List['Term']:
+        """Get an list for the terms.
         """
         pass
 
@@ -271,7 +271,7 @@ class Terms(ATerms):
         return self._terms
 
 
-def parse_terms(obj) -> typing.Iterable['Term']:
+def parse_terms(obj) -> typing.List['Term']:
     """Parse the object into a iterable of terms."""
 
     if isinstance(obj, ATerms):
