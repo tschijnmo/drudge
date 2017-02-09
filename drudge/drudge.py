@@ -878,7 +878,7 @@ class Drudge:
         if there is any, should be dummy/range pairs giving the symbolic
         summations to be carried out.
         """
-        return self.add(sum_term(*args, predicate=predicate))
+        return self.create_tensor(sum_term(*args, predicate=predicate))
 
     def einst(self, summand) -> Tensor:
         """Create a tensor from Einstein summation convention.
@@ -897,12 +897,16 @@ class Drudge:
         for i in parse_terms(summand):
             summand_terms.extend(i.expand())
 
-        return self.add(
+        return self.create_tensor(
             [einst_term(i, self.resolvers.value) for i in summand_terms]
         )
 
-    def add(self, terms):
-        """Create a tensor with the terms given in the argument."""
+    def create_tensor(self, terms):
+        """Create a tensor with the terms given in the argument.
+
+        The terms should be given as an iterable of Term objects.  This function
+        should not be necessary in user code.
+        """
         return Tensor(self, self._ctx.parallelize(terms))
 
 

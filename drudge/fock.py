@@ -620,7 +620,7 @@ class PartHoleDrudge(GenMBDrudge):
                     [(one_body, fock)], simultaneous=False
                 ))
             continue
-        rewritten_one_body_ham = self.add(one_body_terms)
+        rewritten_one_body_ham = self.create_tensor(one_body_terms)
 
         ham = rewritten_one_body_ham + two_body_ham
         ham.cache()
@@ -698,4 +698,4 @@ class PartHoleDrudge(GenMBDrudge):
                 continue
             continue
 
-        return self.add([i.subst(substs) for i in terms])
+        return self.create_tensor([i.subst(substs) for i in terms])
