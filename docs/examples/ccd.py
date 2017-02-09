@@ -23,8 +23,7 @@ i, j = p.O_dumms[:2]
 t = IndexedBase('t')
 dr.set_dbbar_base(t, 2)
 
-doubles = dr.sum(
-    (a, p.V), (b, p.V), (i, p.O), (j, p.O),
+doubles = dr.einst(
     Rational(1, 4) * t[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i]
 )
 

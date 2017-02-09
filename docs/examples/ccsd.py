@@ -5,7 +5,7 @@
 import os
 import urllib.request
 
-from pyspark import SparkConf, SparkContext
+from dummy_spark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational
 
 from drudge import PartHoleDrudge, CR, AN
@@ -29,16 +29,10 @@ t1 = IndexedBase('t1')
 t2 = IndexedBase('t2')
 dr.set_dbbar_base(t2, 2)
 
-singles = dr.sum(
-    (a, p.V), (i, p.O), t1[a, i] * c_dag[a] * c_[i]
-)
-
-doubles = dr.sum(
-    (a, p.V), (b, p.V), (i, p.O), (j, p.O),
+clusters = dr.einst(
+    t1[a, i] * c_dag[a] * c_[i] +
     Rational(1, 4) * t2[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i]
 )
-
-clusters = singles + doubles
 
 curr = dr.ham
 h_bar = dr.ham
