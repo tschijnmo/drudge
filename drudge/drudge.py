@@ -1,5 +1,6 @@
 """The main drudge and tensor class definition."""
 
+import functools
 import inspect
 import operator
 import types
@@ -554,6 +555,19 @@ class Tensor:
         """Filter out terms satisfying the given criterion."""
         return Tensor(self._drudge, self._terms.filter(crit))
 
+    #
+    # Operations from the drudge
+    #
+
+    def __getattr__(self, item):
+        """Try to see if the item is a tensor method from the drudge."""
+        try:
+            meth = self._drudge.get_tensor_method(item)
+        except KeyError:
+            raise AttributeError('Invalid operation name on tensor', item)
+
+        return functools.partial(meth, self)
+
 
 class TensorDef:
     """Definition of a tensor.
@@ -674,6 +688,8 @@ class Drudge:
         self._resolvers = BCastVar(self._ctx, [])
 
         self._names = types.SimpleNamespace()
+
+        self._tensor_methods = {}
 
     @property
     def ctx(self):
@@ -832,6 +848,28 @@ class Drudge:
     def resolvers(self):
         """Get the broadcast form of the resolvers."""
         return self._resolvers.bcast
+
+    def set_tensor_method(self, name, func):
+        """Set a new tensor method under the given name.
+
+        A tensor method is a method that can be called from tensors created from
+        the current drudge as if it is a method of the given tensor.  This could
+        given cleaner code.  Drudge objects can be restricted to be used for
+        initial tensor creation.
+
+        The given function, or bounded method, should be able to accept the
+        tensor as the first argument.
+        """
+
+        self._tensor_methods[name] = func
+
+    def get_tensor_method(self, name):
+        """Get a tensor method with given name.
+
+        When the name cannot be resolved, KeyError will be raised.
+        """
+
+        return self._tensor_methods[name]
 
     #
     # Vector-related properties
