@@ -5,7 +5,7 @@
 import os
 import urllib.request
 
-from dummy_spark import SparkConf, SparkContext
+from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational
 
 from drudge import PartHoleDrudge
