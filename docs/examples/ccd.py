@@ -8,15 +8,15 @@ import urllib.request
 from dummy_spark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational
 
-from drudge import PartHoleDrudge, CR, AN
+from drudge import PartHoleDrudge
 
 conf = SparkConf().setAppName('CCD-derivation')
 ctx = SparkContext(conf=conf)
 dr = PartHoleDrudge(ctx)
 p = dr.names
 
-c_ = dr.op[AN]
-c_dag = dr.op[CR]
+c_ = p.c_
+c_dag = p.c_dag
 a, b = p.V_dumms[:2]
 i, j = p.O_dumms[:2]
 
@@ -33,10 +33,10 @@ for order in range(0, 4):
     curr = (curr | doubles).simplify() * Rational(1, order + 1)
     h_bar += curr
 
-en_eqn = dr.eval_fermi_vev(h_bar).simplify()
+en_eqn = h_bar.eval_fermi_vev().simplify()
 
 proj = c_dag[i] * c_dag[j] * c_[b] * c_[a]
-t2_eqn = dr.eval_fermi_vev(proj * h_bar).simplify()
+t2_eqn = (proj * h_bar).eval_fermi_vev().simplify()
 
 # Check with the result from TCE.
 TCE_BASE_URL = 'http://www.scs.illinois.edu/~sohirata/'
