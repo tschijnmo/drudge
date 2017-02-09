@@ -201,7 +201,7 @@ class Tensor:
     def simplify_amps(self):
         """Simplify the amplitudes in the tensor.
 
-        This method simplifies the amplitude in the tensor of the tensor, by
+        This method simplifies the amplitude in the terms of the tensor, by
         using the facility from SymPy and tensor specific facilities for deltas.
         The zero terms will be filtered out as well.
 
@@ -377,8 +377,7 @@ class Tensor:
         The terms in the two tensors will be concatenated together, without any
         further processing.
 
-        In addition to full tensors, tensors can also be directly added to
-        scalar objects.
+        In addition to full tensors, tensor inputs can also be directly added.
         """
         return self._add(other)
 
@@ -410,13 +409,14 @@ class Tensor:
         processing.  The actual handling of the commutativity should be carried
         out at the normal ordering operation for different problems.
 
-        In addition to full tensors, tensors can also be multiplied to vectors
-        or scalars directly.
+        In addition to full tensors, tensors can also be multiplied to user
+        tensor input directly.
         """
         return self._mul(other)
 
     def __rmul__(self, other):
-        """Multiply the tensor"""
+        """Multiply the tensor on the right.
+        """
         return self._mul(other, right=True)
 
     def _mul(self, other, right=False):
@@ -429,11 +429,15 @@ class Tensor:
         ), free_vars=free_vars)
 
     def __or__(self, other):
-        """Compute the commutator with another tensor."""
+        """Compute the commutator with another tensor.
+
+        In the same way as multiplication, this can be used for both full
+        tensors and local tensor input.
+        """
         return self._comm(other)
 
     def __ror__(self, other):
-        """Compute the commutator with another tensor."""
+        """Compute the commutator with another tensor on the right."""
         return self._comm(other, right=True)
 
     def _comm(self, other, right=False):
