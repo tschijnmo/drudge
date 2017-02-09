@@ -28,6 +28,8 @@ def free_alg(spark_ctx):
     m = IndexedBase('m')
     dr.set_symm(m, Perm([1, 0], NEG))
 
+    dr.set_tensor_method('get_one', lambda x: 1)
+
     return dr
 
 
@@ -274,3 +276,13 @@ def test_tensors_can_be_substituted_scalars(free_alg):
     )
 
     assert res.simplify() == expected.simplify()
+
+
+def test_tensor_method(free_alg):
+    """Test tensor method can be injected."""
+
+    tensor = free_alg.sum(10)
+    assert tensor.get_one() == 1
+
+    with pytest.raises(AttributeError):
+        tensor.get_two()
