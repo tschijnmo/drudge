@@ -197,7 +197,7 @@ def _gen_terms(factors_str, raw_term):
             subs = []
 
         # Add the result.
-        terms.append(raw_term.subst(subs) * factor_value)
+        terms.append(raw_term.subst(subs).scale(factor_value))
 
         # Continue to the next factor.
         continue
