@@ -47,7 +47,7 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
     rho = IndexedBase('rho')
     # Following Ring and Schuck, here all creation comes before the
     # annihilation.
-    res = dr.eval_vev(comm, lambda op1, op2, _: (
+    res = comm.eval_vev(lambda op1, op2, _: (
         rho[op2.indices[1], op1.indices[1]]
         if op1.indices[0] == CR and op2.indices[0] == AN
         else 0
