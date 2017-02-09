@@ -467,7 +467,8 @@ class GenMBDrudge(FockDrudge):
         self.add_resolver_for_dumms()
 
         # Register core field operator name.
-        self.set_name(op)
+        self.set_name(an, str(op) + '_')
+        self.set_name(cr, str(op) + '_dag')
 
         spin_vals = []
         for i in spin:
