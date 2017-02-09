@@ -457,15 +457,37 @@ class Tensor:
         also be returned since it is going to be used frequently.
         """
 
-        if not isinstance(other, Tensor):
-            other = self._drudge.sum(other)
+        if isinstance(other, Tensor):
 
-        if right:
-            prod = other.terms.cartesian(self._terms)
+            if right:
+                prod = other.terms.cartesian(self._terms)
+            else:
+                prod = self._terms.cartesian(other.terms)
+
+            free_vars = self.free_vars | other.free_vars
+
         else:
-            prod = self._terms.cartesian(other.terms)
+            # Special optimized version when the other terms are local.
 
-        free_vars = self.free_vars | other.free_vars
+            other_terms = parse_terms(other)
+            if len(other_terms) > 1:
+                prod = self._terms.flatMap(lambda term: [
+                    (i, term) if right else (term, i)
+                    for i in other_terms
+                    ])
+            else:
+                # Special optimization when we just have one term.
+                other_term = other_terms[0]
+                prod = self._terms.map(
+                    lambda term:
+                    (other_term, term) if right else (term, other_term)
+                )
+
+            free_vars = set.union(*[
+                i.free_vars for i in other_terms
+                ])
+            free_vars |= self.free_vars
+
         return prod, free_vars
 
     #
