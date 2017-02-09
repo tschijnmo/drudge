@@ -8,7 +8,7 @@ import typing
 from collections.abc import Iterable, Sequence
 
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed
+from sympy import IndexedBase, Symbol, Indexed, Integer
 
 from .canonpy import Perm, Group
 from .term import (
@@ -396,11 +396,11 @@ class Tensor:
     def __sub__(self, other):
         """Subtract another tensor from this tensor.
         """
-        return self._add(other * -1)
+        return self._add(other * Integer(-1))
 
     def __rsub__(self, other):
         """Subtract the tensor from another quantity."""
-        return (self * -1)._add(other)
+        return (self * Integer(-1))._add(other)
 
     def __mul__(self, other) -> 'Tensor':
         """Multiply the tensor.
