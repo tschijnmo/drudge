@@ -12,7 +12,7 @@ from sympy import IndexedBase, Symbol, Indexed
 from .canonpy import Perm, Group
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
-    subst_vec_in_term
+    subst_vec_in_term, parse_terms, einst_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind
 
@@ -879,6 +879,27 @@ class Drudge:
         summations to be carried out.
         """
         return self.add(sum_term(*args, predicate=predicate))
+
+    def einst(self, summand) -> Tensor:
+        """Create a tensor from Einstein summation convention.
+
+        By calling this function, summations according to the Einstein summation
+        convention will be added to the terms.  Note that for a symbol to be
+        recognized as a summation, it must appear exactly twice in its
+        **original form** in indices, and its range needs to be able to be
+        resolved.  When a symbol is suspiciously an Einstein summation dummy but
+        does not satisfy the requirement precisely, it will **not** be added as
+        a summation, but a warning will also be given for reference.
+        """
+
+        # We need to expand the possibly parenthesized user input.
+        summand_terms = []
+        for i in parse_terms(summand):
+            summand_terms.extend(i.expand())
+
+        return self.add(
+            [einst_term(i, self.resolvers.value) for i in summand_terms]
+        )
 
     def add(self, terms):
         """Create a tensor with the terms given in the argument."""

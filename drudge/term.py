@@ -5,6 +5,7 @@ import collections
 import functools
 import itertools
 import typing
+import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
@@ -1181,6 +1182,80 @@ def _cat_sums(sums1, sums2):
         )
 
     return sums
+
+
+def einst_term(term: Term, resolvers):
+    """Add summations according to the Einstein convention to a term.
+
+    In order for problems easy to be detected for users, here we just add the
+    most certain Einstein summations, while give warnings when there is anything
+    looking like a summation but is not added because of something suspicious.
+    """
+
+    # Strategy, find all indices to indexed bases, and replace them with
+    # placeholder symbols so that we can detect other free symbols in the
+    # amplitude as well.
+
+    next_idx = [0]
+    indices = []
+
+    def replace_cb(_, *curr_indices):
+        """Replace indexed quantities."""
+        indices.extend(curr_indices)
+        placeholder = Symbol('internalEinstPlaceholder{}'.format(next_idx[0]))
+        next_idx[0] += 1
+        return placeholder
+
+    res_amp = term.amp.replace(Indexed, replace_cb)
+    for i in term.vecs:
+        indices.extend(i.indices)
+
+    # Usage tally of the symbols, in bare form and in complex expressions.
+    use_tally = collections.defaultdict(lambda: [0, 0])
+    for index in indices:
+        if isinstance(index, Symbol):
+            use_tally[index][0] += 1
+        else:
+            for i in index.atoms(Symbol):
+                use_tally[i][1] += 1
+                continue
+        continue
+
+    existing_dumms = term.dumms
+    new_sums = []
+    for symb, use in use_tally.items():
+
+        if use[0] != 2 and use[0] + use[1] != 2:
+            # No chance to be an Einstein summation.
+            continue
+
+        if use[1] != 0:
+            warnings.warn(
+                'Symbol {} is not summed due to its usage in complex indices'
+                    .format(symb)
+            )
+            continue
+        if res_amp.has(symb):
+            warnings.warn(
+                'Symbol {} is not summed due to its usage in the amplitude'
+                    .format(symb)
+            )
+            continue
+
+        range_ = try_resolve_range(symb, {}, resolvers)
+        if range_ is None:
+            warnings.warn(
+                'Symbol {} is not summed for the incapability to resolve range'
+                    .format(symb)
+            )
+            continue
+
+        # Now we have an Einstein summation.
+        if symb not in existing_dumms:
+            new_sums.append((symb, range_))
+        continue
+
+    return Term(_cat_sums(term.sums, new_sums), term.amp, term.vecs)
 
 
 def parse_term(term):
