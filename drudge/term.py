@@ -417,7 +417,7 @@ class Vec(ATerms):
         return [Term((), _UNITY, (self,))]
 
 
-class Term:
+class Term(ATerms):
     """Terms in tensor expression.
 
     This is the core class for storing symbolic tensor expressions.  The
@@ -544,6 +544,15 @@ class Term:
             len(sum_keys), sum_keys,
             sympy_key(self._amp)
         )
+
+    @property
+    def terms(self):
+        """Get the singleton list of the current term.
+
+        This property is for the rare cases where direct construction of tensor
+        inputs from SymPy expressions and vectors are not sufficient.
+        """
+        return [self]
 
     def scale(self, factor):
         """Scale the term by a factor."""
