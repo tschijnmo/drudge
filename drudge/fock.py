@@ -79,6 +79,9 @@ class FockDrudge(WickDrudge):
         else:
             raise ValueError('Invalid exchange', exch, 'expecting plus/minus 1')
 
+        self.set_tensor_method('eval_vev', self.eval_vev)
+        self.set_tensor_method('eval_phys_vec', self.eval_phys_vev)
+
     @property
     def contractor(self):
         """Get the contractor for the algebra.
@@ -625,6 +628,8 @@ class PartHoleDrudge(GenMBDrudge):
         ham = rewritten_one_body_ham + two_body_ham
         ham.cache()
         self.ham = ham
+
+        self.set_tensor_method('eval_fermi_vev', self.eval_fermi_vev)
 
     @property
     def op_parser(self):
