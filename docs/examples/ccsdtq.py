@@ -60,8 +60,8 @@ time_begin = time.time()
 curr = dr.ham
 h_bar = dr.ham
 for i in range(4):
-    curr = (curr | corr).simplify() * Rational(1, i + 1)
-    curr.repartition(n_parts, cache=True)
+    curr = (curr | corr).simplify(n_parts) * Rational(1, i + 1)
+    curr.cache()
     h_bar += curr
 h_bar.repartition(n_parts, cache=True)
 
@@ -71,7 +71,7 @@ print('Similarity-transformed hamiltonian done.  wall time: {}'.format(
 ))
 time_begin = now
 
-en_eqn = h_bar.eval_fermi_vev().simplify()
+en_eqn = h_bar.eval_fermi_vev().simplify(n_parts)
 
 amp_eqns = []
 for i in range(ORDER):
@@ -83,7 +83,7 @@ for i in range(ORDER):
     for j in reversed(v_dumms[:order]):
         proj = proj * c_[j]
 
-    eqn = (proj * h_bar).eval_fermi_vev().simplify()
+    eqn = (proj * h_bar).eval_fermi_vev().simplify(n_parts)
     amp_eqns.append(eqn)
 
 now = time.time()
