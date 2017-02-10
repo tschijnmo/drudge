@@ -1082,17 +1082,19 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     for sum_i in itertools.product(*sums):
         for subst_i in itertools.product(*substs):
 
+            subst_dict = dict(subst_i)
+
             # We alway assemble the call sequence here, since this part should
             # never be performance critical.
             call_seq = dict(sum_i)
-            call_seq.update(subst_i)
+            call_seq.update(subst_dict)
 
             if not (predicate is None or predicate(call_seq)):
                 continue
 
             if inp_terms is not None:
                 curr_terms = [i.subst(
-                    subst_i, sums=_cat_sums(i.sums, sum_i)
+                    subst_dict, sums=_cat_sums(i.sums, sum_i)
                 ) for i in inp_terms]
             else:
                 curr_terms = parse_terms(inp_func(call_seq))
