@@ -40,6 +40,7 @@ for order in range(0, 4):
     curr = (curr | clusters).simplify() * Rational(1, order + 1)
     curr.repartition(n_parts, cache=True)
     h_bar += curr
+h_bar.repartition(n_parts, cache=True)
 
 en_eqn = h_bar.eval_fermi_vev().simplify()
 
