@@ -9,7 +9,7 @@ import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
-    sympify, Symbol, KroneckerDelta, DiracDelta, Eq, solve, S, Integer,
+    sympify, Symbol, KroneckerDelta, Eq, solve, S, Integer,
     Add, Mul, Indexed, IndexedBase, Expr, Basic, Pow)
 
 from .canon import canon_factors
@@ -763,20 +763,15 @@ class Term(ATerms):
     def simplify_deltas(self, resolvers):
         """Simplify deltas in the amplitude of the expression."""
 
-        sums_dict = dict(self._sums)
-        # Here we need both fast query and remember the order.
-        substs = collections.OrderedDict()
-        curr_amp = self._amp
-
-        for i in [KroneckerDelta, DiracDelta]:
-            curr_amp = curr_amp.replace(i, functools.partial(
-                _resolve_delta, i, sums_dict, resolvers, substs))
+        new_amp, substs = simplify_deltas_in_expr(
+            self.dumms, self._amp, resolvers
+        )
 
         # Note that here the substitutions needs to be performed in order.
         return self.subst(
-            list(substs.items()),
+            substs,
             sums=tuple(i for i in self._sums if i[0] not in substs),
-            amp=curr_amp
+            amp=new_amp
         )
 
     def simplify_amp(self, resolvers):
@@ -1335,28 +1330,85 @@ def try_resolve_range(i, sums_dict, resolvers):
 
 
 #
-# Internal functions
-# ------------------
+# Delta simplification utilities.
 #
-# Amplitude simplification
+# The core idea of delta simplification is that a delta can be replaced by a
+# new, possibly simpler, expression, with a possible substitution on a dummy.
+# The functions here aim to find and compose them.
 #
 
 
-def _resolve_delta(form, sums_dict, resolvers, substs, *args):
-    """Resolve the deltas in the given expression.
+def simplify_deltas_in_expr(sums_dict, amp, resolvers):
+    """Simplify the deltas in the given expression.
 
-    The partial application of this function is going to be used as the
-    call-back to SymPy replace function.
+    A new amplitude will be returned with all the deltas simplified, along with
+    a dictionary giving the substitutions from the deltas.
     """
 
-    # We first perform the substitutions found thus far, in order.
-    args = [i.subs(list(substs.items())) for i in args]
-    orig = form(*args)
-    dumms = [i for i in orig.atoms(Symbol) if i in sums_dict]
-    if len(dumms) == 0:
-        return orig
+    substs = {}
 
-    eqn = Eq(args[0], args[1])
+    new_amp = amp.replace(KroneckerDelta, functools.partial(
+        _proc_delta_in_amp, sums_dict, resolvers, substs
+    ))
+
+    return new_amp, substs
+
+
+def compose_simplified_delta(amp, subst, substs, sums_dict, resolvers):
+    """Compose delta simplification result with existing substitutions.
+
+    The new amplitude and substitution from delta simplification can be composed
+    with existing substitution dictionary.  New amplitude will be returned as
+    the first return value. The given substitution dictionary will be mutated
+    and returned as the second return value.  When the new substitution is
+    incompatible with existing ones, the first return value will be a plain
+    zero.
+    """
+
+    if subst is None:
+        # No composition needed.
+        return amp, substs
+
+    old, new = subst
+    substed_new = new.xreplace(substs)
+
+    if old in substs:
+        comp_amp, subst = proc_delta(
+            substs[old], substed_new, sums_dict, resolvers
+        )
+        amp = amp * comp_amp
+        if subst is not None:
+            # The new substitution cannot involve substituted symbols.
+            substs[subst[0]] = subst[1]
+            # amp could now be zero.
+    else:
+        # Easier case, a new symbol is tried to be added.
+        replace_old = {old: substed_new}
+        for i in substs.keys():
+            substs[i] = substs[i].xreplace(replace_old)
+        substs[old] = substed_new
+
+    return amp, substs
+
+
+def proc_delta(arg1, arg2, sums_dict, resolvers):
+    """Processs a delta.
+
+    An amplitude and a substitution pair is going to be returned.  The given
+    delta will be equivalent to the returned amplitude factor with the
+    substitution performed.  None will be returned for the substitution when no
+    substitution is needed.
+    """
+
+    dumms = [
+        i for i in set.union(arg1.atoms(Symbol), arg2.atoms(Symbol))
+        if i in sums_dict
+        ]
+
+    if len(dumms) == 0:
+        return KroneckerDelta(arg1, arg2)
+
+    eqn = Eq(arg1, arg2)
 
     # We try to solve for each of the dummies.  Most likely this will only be
     # executed for one loop.
@@ -1367,7 +1419,7 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
 
         if sol is S.true:
             # Now we can be sure that we got an identity.
-            return _UNITY
+            return _UNITY, None
         elif len(sol) > 0:
             for i in sol:
                 # Try to get the range of the substituting expression.
@@ -1375,21 +1427,42 @@ def _resolve_delta(form, sums_dict, resolvers, substs, *args):
                 if range_of_i is None:
                     continue
                 if range_of_i == range_:
-                    substs[dumm] = i
-                    return _UNITY
+                    return _UNITY, (dumm, i)
                 else:
                     # We assume atomic and disjoint ranges!
-                    return _NAUGHT
+                    return _NAUGHT, None
             # We cannot resolve the range of any of the solutions.  Try next
             # dummy.
             continue
         else:
             # No solution.
-            return _NAUGHT
+            return _NAUGHT, None
 
     # When we got here, all the solutions we found have undetermined range, we
-    # have to return the original form.
-    return orig
+    # have to return the unprocessed form.
+    return KroneckerDelta(arg1, arg2), None
+
+
+def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
+    """Process a delta in the amplitude expression.
+
+    The partial application of this function is going to be used as the
+    call-back to SymPy replace function.  This function only returns SymPy
+    expressions to satisfy SymPy replace interface.  All actions on the
+    substitution are handled by an input/output argument.
+    """
+
+    # We first perform the substitutions found thus far.
+    args = [i.xreplace(substs) for i in args]
+
+    # Process the new delta.
+    amp, subst = proc_delta(*args, sums_dict=sums_dict, resolvers=resolvers)
+
+    new_amp, _ = compose_simplified_delta(
+        amp, subst, substs, sums_dict=sums_dict, resolvers=resolvers
+    )
+
+    return new_amp
 
 
 #
