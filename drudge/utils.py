@@ -1,5 +1,7 @@
 """Small utilities."""
 
+import functools
+import operator
 from collections.abc import Sequence
 
 from pyspark import RDD, SparkContext
@@ -314,3 +316,42 @@ def ensure_pair(obj, role):
     if not (isinstance(obj, Sequence) and len(obj) == 2):
         raise TypeError('Invalid {}: '.format(role), obj, 'expecting pair')
     return obj
+
+
+#
+# Small user utilities
+# --------------------
+#
+
+def sum_(obj):
+    """Sum the values in the given iterable.
+
+    Different from the built-in summation function, here a value zero is created
+    only when the iterator is empty.  Or the summation is based on the first
+    item in the iterable.
+    """
+
+    i = iter(obj)
+    try:
+        init = next(i)
+    except StopIteration:
+        return 0
+    else:
+        return functools.reduce(operator.add, i, init)
+
+
+def prod_(obj):
+    """Product the values in the given iterable.
+
+    Similar to the summation utility function, here the initial value for the
+    reduction is the first element.  Different from the summation, here
+    a integer unity will be returned for empty iterator.
+    """
+
+    i = iter(obj)
+    try:
+        init = next(i)
+    except StopIteration:
+        return 1
+    else:
+        return functools.reduce(operator.mul, i, init)
