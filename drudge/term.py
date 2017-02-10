@@ -868,7 +868,7 @@ class Term(ATerms):
 
 def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
                       dumms, dummbegs, excl):
-    """Substitute a given vector in the given term.
+    """Substitute a matching vector in the given term.
     """
 
     sums = term.sums
@@ -876,16 +876,15 @@ def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
     amp = term.amp
 
     for i, v in enumerate(vecs):
-        if v.label == lhs.label and len(v.indices) == len(lhs.indices):
-            substed_vec_idx = i
-            substed_vec = v
-            break
-        else:
+        substs = _match_indices(v, lhs)
+        if substs is None:
             continue
+        else:
+            substed_vec_idx = i
+            break
     else:
         return None  # Based on nest bind protocol.
 
-    substs = dict(zip(lhs.indices, substed_vec.indices))
     subst_states = _prepare_subst_states(
         rhs_terms, substs, dumms, dummbegs, excl
     )
@@ -906,10 +905,10 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
                          dumms, dummbegs, excl):
     """Substitute a scalar factor in the term.
 
-    Vectors is a flattened list of vectors.  The amplitude part can be a lot
-    more complex.  Here we strive to replace only one instance of the lhs by two
-    placeholders, the substitution is possible only if the result expands to two
-    terms, each containing only one of the placeholders.
+    While vectors are always flattened lists of vectors.  The amplitude part can
+    be a lot more complex.  Here we strive to replace only one instance of the
+    LHS by two placeholders, the substitution is possible only if the result
+    expands to two terms, each containing only one of the placeholders.
     """
 
     amp = term.amp
@@ -934,22 +933,21 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
     elif isinstance(lhs, Indexed):
         label = lhs.base.label
 
-        exts = lhs.indices
-        n_exts = len(exts)
+        # Here, in order to avoid the matching being called twice, we separate
+        # the actual checking into both the query and the replace call-back.
 
         def query_func(expr):
             """Query for a reference to a given indexed base."""
-            return (
-                not found[0] and isinstance(expr, Indexed)
-                and expr.base.label == label
-                and len(expr.indices) == n_exts
-            )
+            return not found[0] and isinstance(expr, Indexed)
 
         def replace_func(expr):
             """Replace the reference to the indexed base."""
+            res = _match_indices(expr, lhs)
+            if res is None:
+                return expr
             found[0] = True
             assert len(substs) == 0
-            substs.update(zip(exts, expr.indices))
+            substs.update(res)
             return placeholder1 + placeholder2
 
     else:
@@ -1015,11 +1013,33 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
     return res
 
 
+def _match_indices(target, expr):
+    """Match the target against the give expression for the indices.
+
+    Both arguments must be scalar or vector indexed quantities.  The second
+    argument should contain Wilds.
+    """
+
+    if target.base != expr.base or len(target.indices) != len(expr.indices):
+        return None
+
+    substs = {}
+    for i, j in zip(target.indices, expr.indices):
+        res = i.match(j)
+        if res is None:
+            return None
+        else:
+            substs.update(res)
+            continue
+
+    return substs
+
+
 def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):
     """Prepare the substitution states.
 
     Here we only have partially-finished substitution state for the next loop,
-    where for each substituting term on the RHS, the given external symbols in
+    where for each substituting term on the RHS, the given wild symbols in
     it will be substituted, then its dummies are going to be resolved.  Pairs of
     the prepared RHS terms and the corresponding dummbegs will be returned.  It
     is the responsibility of the caller to assemble the terms into the actual

@@ -8,7 +8,7 @@ import typing
 from collections.abc import Iterable, Sequence
 
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Integer
+from sympy import IndexedBase, Symbol, Indexed, Integer, Wild
 
 from .canonpy import Perm, Group
 from .term import (
@@ -503,58 +503,71 @@ class Tensor:
     # Substitution
     #
 
-    def subst(self, *args):
+    def subst(self, lhs, rhs, wilds=None):
         """Substitute the all appearance of the defined tensor.
 
-        The given tensor definition can define either a scalar tensor or a
-        tensor containing the vector part.
+        When the given LHS is a plain SymPy symbol, all its appearances in the
+        amplitude of the tensor will be replaced.  Or the LHS can also be
+        indexed SymPy expression or indexed Vector, for which all of the
+        appearances of the indexed base or vector base will be attempted to be
+        matched against the indices on the LHS.  When a matching succeeds for
+        all the indices, the RHS, with the substitution found in the matching
+        performed, will be replace the indexed base in the amplitude, or the
+        vector.  Note that for scalar LHS, the RHS must contain no vector.
+
+        Since we do not commonly define tensors with wild symbols, an option
+        ``wilds`` can be used to give a mapping translating plain symbols on the
+        LHS and the RHS to the wild symbols that would like to be used.  The
+        default value of None could make all **plain** symbols in the indices of
+        the LHS to be translated into a wild symbol with the same name and no
+        exclusion. And empty dictionary can be used to disable all such
+        automatic translation.  The default value of None should satisfy most
+        needs.
 
         """
 
-        invalid_args_err = TypeError(
-            'Invalid substitution', args,
-            'expecting a tensor definition or separate LHS and RHS'
-        )
+        if not isinstance(lhs, (Vec, Symbol, Indexed)):
+            raise TypeError(
+                'Invalid LHS for substitution', lhs,
+                'expecting vector, indexed, or symbol'
+            )
 
-        if len(args) == 1:
-            if isinstance(args[0], TensorDef):
-                lhs = args[0].lhs
-                rhs = args[0].rhs
-            else:
-                raise invalid_args_err
-        elif len(args) == 2:
-            if isinstance(args[0], (Vec, Symbol, Indexed)):
-                lhs = args[0]
-            else:
-                raise TypeError(
-                    'Invalid LHS for substitution', args[0],
-                    'expecting vector, indexed, or symbol'
-                )
-
-            if isinstance(args[1], Tensor):
-                rhs = args[1]
-            else:
-                rhs = self._drudge.sum(args[1])
-
-            if isinstance(lhs, (Indexed, Vec)):
-                for i in lhs.indices:
-                    if not isinstance(i, Symbol):
-                        raise TypeError('Invalid index', i, 'expecting symbol')
-                    continue
+        # We need to gather, and later broadcast all the terms.
+        if isinstance(rhs, Tensor):
+            rhs_terms = rhs.local_terms
         else:
-            raise invalid_args_err
+            rhs_terms = parse_terms(rhs)
+
+        if isinstance(lhs, (Symbol, Indexed)) and not all(
+                i.is_scalar for i in rhs_terms
+        ):
+            raise ValueError('Invalid RHS for substituting a scalar', rhs)
+
+        if wilds is None and isinstance(lhs, (Indexed, Vec)):
+            wilds = {
+                i: Wild(i.name) for i in lhs.indices if isinstance(i, Symbol)
+                }
+
+        if isinstance(lhs, Indexed):
+            lhs = lhs.xreplace(wilds)
+        elif isinstance(lhs, Vec):
+            lhs = lhs.map(lambda x: x.xreplace(wilds))
+
+        rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
 
         expanded = self.expand()
-        return expanded._subst(lhs, rhs.expand())
+        return expanded._subst(lhs, rhs_terms)
 
-    def _subst(self, lhs: typing.Union[Vec, Indexed, Symbol], rhs):
+    def _subst(self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms):
         """Core substitution function.
 
-        This function assumes the self is already fully expanded.
+        This function assumes the self and the substituting terms are already
+        fully expanded.  And the LHS and the RHS of the substitution have been
+        replaced with the wilds if it is needed.
         """
 
         free_vars = self._drudge.ctx.broadcast(
-            self.free_vars | rhs.free_vars
+            self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
         )
         dumms = self._drudge.dumms
 
@@ -565,7 +578,7 @@ class Tensor:
             dumms=dumms.value, excl=free_vars.value
         ))
 
-        rhs_terms = self._drudge.ctx.broadcast(rhs.local_terms)
+        rhs_terms = self._drudge.ctx.broadcast(rhs_terms)
 
         if isinstance(lhs, (Indexed, Symbol)):
             res = nest_bind(subs_states, lambda x: subst_factor_in_term(
@@ -579,7 +592,6 @@ class Tensor:
             ))
 
         res_terms = res.map(operator.itemgetter(0))
-        res_terms.cache()
         return Tensor(self._drudge, res_terms)
 
     #
