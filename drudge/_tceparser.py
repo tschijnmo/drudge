@@ -189,12 +189,12 @@ def _gen_terms(factors_str, raw_term):
         if match_res.group('perm_from') is not None:
             from_vars = match_res.group('perm_from').split()
             to_vars = match_res.group('perm_to').split()
-            subs = [
-                (Symbol(from_var), Symbol(to_var))
+            subs = {
+                Symbol(from_var): Symbol(to_var)
                 for from_var, to_var in zip(from_vars, to_vars)
-                ]
+                }
         else:
-            subs = []
+            subs = {}
 
         # Add the result.
         terms.append(raw_term.subst(subs).scale(factor_value))
