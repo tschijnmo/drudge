@@ -620,9 +620,7 @@ class PartHoleDrudge(GenMBDrudge):
         one_body_terms = []
         for i in self.one_body_ham.local_terms:
             if i.amp.has(one_body):
-                one_body_terms.append(i.subst(
-                    [(one_body, fock)], simultaneous=False
-                ))
+                one_body_terms.append(i.subst([(one_body, fock)]))
             continue
         rewritten_one_body_ham = self.create_tensor(one_body_terms)
 

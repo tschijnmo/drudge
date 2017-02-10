@@ -671,23 +671,23 @@ class Term(ATerms):
             tuple(i.map(func) for i in self._vecs)
         )
 
-    def subst(self, substs, sums=None, amp=None, simultaneous=True):
+    def subst(self, substs, sums=None, amp=None):
         """Perform substitution on the SymPy expressions.
 
-        Note that this function only performs substitution of atomic symbols.
         When the given substitutions is a mapping, the substitutions is going to
-        be performed simultaneously.  When it is not, it will be conducted
-        sequentially.
+        be performed simultaneously, by using SymPy ``xreplace`` method.  When
+        it is not, it will be conducted sequentially, by using SymPy ``subs``
+        method with simultaneous set to false.
 
         """
 
         if isinstance(substs, Mapping):
-            assert simultaneous  # To be removed when the migration is finished.
+
             def subst_func(expr):
                 """Perform substitution simultaneously by xreplace."""
                 return expr.xreplace(substs)
         else:
-            assert not simultaneous  # To be removed.
+
             def subst_func(expr):
                 """Perform substitution sequentially."""
                 return expr.subs(substs, simultaneous=False)
@@ -783,7 +783,7 @@ class Term(ATerms):
         return self.subst(
             list(substs.items()),
             sums=tuple(i for i in self._sums if i[0] not in substs),
-            amp=curr_amp, simultaneous=False
+            amp=curr_amp
         )
 
     def simplify_amp(self, resolvers):
