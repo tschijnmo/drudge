@@ -37,18 +37,18 @@ clusters = dr.einst(
 curr = dr.ham
 h_bar = dr.ham
 for order in range(0, 4):
-    curr = (curr | clusters).simplify() * Rational(1, order + 1)
-    curr.repartition(n_parts, cache=True)
+    curr = (curr | clusters).simplify(n_parts) * Rational(1, order + 1)
+    curr.cache()
     h_bar += curr
 h_bar.repartition(n_parts, cache=True)
 
-en_eqn = h_bar.eval_fermi_vev().simplify()
+en_eqn = h_bar.eval_fermi_vev().simplify(n_parts)
 
 proj = c_dag[i] * c_[a]
-t1_eqn = (proj * h_bar).eval_fermi_vev().simplify()
+t1_eqn = (proj * h_bar).eval_fermi_vev().simplify(n_parts)
 
 proj = c_dag[i] * c_dag[j] * c_[b] * c_[a]
-t2_eqn = (proj * h_bar).eval_fermi_vev().simplify()
+t2_eqn = (proj * h_bar).eval_fermi_vev().simplify(n_parts)
 
 # Check with the result from TCE.
 TCE_BASE_URL = 'http://www.scs.illinois.edu/~sohirata/'
