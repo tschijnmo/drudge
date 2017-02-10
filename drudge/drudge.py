@@ -307,20 +307,29 @@ class Tensor:
     # The driver simplification.
     #
 
-    def simplify(self):
+    def simplify(self, num_partitions=None):
         """Simplify the tensor.
 
-        This is the master driver function for tensor simplification.
+        This is the master driver function for tensor simplification.  When a
+        number of partitions is given, it will be used for advanced
+        load-balancing.
         """
-        return self.apply(self._simplify, free_vars=self._free_vars)
+        return self.apply(
+            functools.partial(self._simplify, num_partitions=num_partitions),
+            free_vars=self._free_vars
+        )
 
-    def _simplify(self, terms):
+    def _simplify(self, terms, num_partitions=None):
         """Get the terms in the simplified form."""
 
         terms = self._expand(terms)
+        if num_partitions is not None:
+            terms = terms.repartition(num_partitions)
 
         # First we make the vector part normal-ordered.
         terms = self._drudge.normal_order(terms)
+        if num_partitions is not None:
+            terms = terms.repartition(num_partitions)
 
         # Simplify things like zero or deltas.
         terms = self._simplify_amps(terms)
