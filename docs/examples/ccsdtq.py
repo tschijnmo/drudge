@@ -64,14 +64,18 @@ for i in range(4):
     curr.cache()
     h_bar += curr
 h_bar.repartition(n_parts, cache=True)
+n_terms = h_bar.n_terms
 
 now = time.time()
-print('Similarity-transformed hamiltonian done.  wall time: {}'.format(
-    now - time_begin
+print('Similarity-transformed hamiltonian done.  {} terms, {}s'.format(
+    n_terms, now - time_begin
 ))
 time_begin = now
 
+n_terms = 0
 en_eqn = h_bar.eval_fermi_vev().simplify(n_parts)
+en_eqn.cache()
+n_terms += en_eqn.n_terms
 
 amp_eqns = []
 for i in range(ORDER):
@@ -84,11 +88,13 @@ for i in range(ORDER):
         proj = proj * c_[j]
 
     eqn = (proj * h_bar).eval_fermi_vev().simplify(n_parts)
+    eqn.cache()
+    n_terms += eqn.n_terms
     amp_eqns.append(eqn)
 
 now = time.time()
-print('CC equation derivation done.  wall time: {}'.format(
-    now - time_begin
+print('CC equation derivation done.  Total {} terms, {}s'.format(
+    n_terms, now - time_begin
 ))
 
 # Check with the result from TCE.
