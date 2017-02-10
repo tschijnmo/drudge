@@ -763,14 +763,6 @@ class Term(ATerms):
     def simplify_deltas(self, resolvers):
         """Simplify deltas in the amplitude of the expression."""
 
-        # It is probably easy to mistakenly pass just one resolver here.
-        # Special checking is done here since most mappings are also iterable.
-        if isinstance(resolvers, Mapping):
-            raise TypeError('Invalid range resolvers list: ', resolvers,
-                            'expecting iterable')
-        # Put in list to be iterated multiple times.
-        resolvers = list(resolvers)
-
         sums_dict = dict(self._sums)
         # Here we need both fast query and remember the order.
         substs = collections.OrderedDict()
