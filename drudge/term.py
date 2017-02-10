@@ -261,9 +261,10 @@ class Terms(ATerms):
     def __init__(self, terms: typing.Iterable['Term']):
         """Initialize the terms object.
 
-        The possibly lazy iterable of terms will be instantiated here.
+        The possibly lazy iterable of terms will be instantiated here.  And zero
+        terms will be filtered out.
         """
-        self._terms = list(terms)
+        self._terms = list(i for i in terms if i.amp != 0)
 
     @property
     def terms(self):
