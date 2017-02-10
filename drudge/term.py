@@ -674,14 +674,25 @@ class Term(ATerms):
     def subst(self, substs, sums=None, amp=None, simultaneous=True):
         """Perform substitution on the SymPy expressions.
 
-        This is a specialized map function, where the SymPy ``subs`` function
-        will be called on each of the SymPy expression.
+        Note that this function only performs substitution of atomic symbols.
+        When the given substitutions is a mapping, the substitutions is going to
+        be performed simultaneously.  When it is not, it will be conducted
+        sequentially.
+
         """
 
-        return self.map(
-            lambda x: x.subs(substs, simultaneous=simultaneous),
-            sums=sums, amp=amp
-        )
+        if isinstance(substs, Mapping):
+            assert simultaneous  # To be removed when the migration is finished.
+            def subst_func(expr):
+                """Perform substitution simultaneously by xreplace."""
+                return expr.xreplace(substs)
+        else:
+            assert not simultaneous  # To be removed.
+            def subst_func(expr):
+                """Perform substitution sequentially."""
+                return expr.subs(substs, simultaneous=False)
+
+        return self.map(subst_func, sums=sums, amp=amp)
 
     def reset_dumms(self, dumms, dummbegs=None, excl=None):
         """Reset the dummies in the term.
