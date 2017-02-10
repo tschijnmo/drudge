@@ -10,6 +10,7 @@ from .canon import IDENT, NEG, CONJ
 from .drudge import Tensor, Drudge
 from .wick import WickDrudge
 from .fock import (CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge)
+from .utils import sum_, prod_
 
 __all__ = [
     # Canonpy.
@@ -40,5 +41,9 @@ __all__ = [
     # Many-body theories.
     'CR', 'AN', 'FERMI', 'BOSE',
     'FockDrudge',
-    'GenMBDrudge', 'PartHoleDrudge'
+    'GenMBDrudge', 'PartHoleDrudge',
+
+    # Small user utilities.
+    'sum_',
+    'prod_'
 ]
