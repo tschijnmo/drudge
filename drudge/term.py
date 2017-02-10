@@ -873,7 +873,7 @@ def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
     else:
         return None  # Based on nest bind protocol.
 
-    substs = list(zip(lhs.indices, substed_vec.indices))
+    substs = dict(zip(lhs.indices, substed_vec.indices))
     subst_states = _prepare_subst_states(
         rhs_terms, substs, dumms, dummbegs, excl
     )
@@ -905,7 +905,7 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
     placeholder1 = Symbol('internalSubstPlaceholder1')
     placeholder2 = Symbol('internalSubstPlaceholder2')
     found = [False]
-    substs = []
+    substs = {}
 
     if isinstance(lhs, Symbol):
         label = lhs
@@ -937,7 +937,7 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
             """Replace the reference to the indexed base."""
             found[0] = True
             assert len(substs) == 0
-            substs.extend(zip(exts, expr.indices))
+            substs.update(zip(exts, expr.indices))
             return placeholder1 + placeholder2
 
     else:
