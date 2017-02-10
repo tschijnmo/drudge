@@ -703,7 +703,7 @@ class Term(ATerms):
     def reset_sums(sums, dumms, dummbegs=None, excl=None):
         """Reset the given summations.
 
-        The new summation list, substitution list, and the new dummy begin
+        The new summation list, substitution dictionary, and the new dummy begin
         dictionary will be returned.
         """
 
@@ -711,7 +711,7 @@ class Term(ATerms):
             dummbegs = {}
 
         new_sums = []
-        substs = []
+        substs = {}
         for dumm_i, range_i in sums:
 
             # For linter.
@@ -737,7 +737,7 @@ class Term(ATerms):
                     continue
 
             new_sums.append((new_dumm, range_i))
-            substs.append((dumm_i, new_dumm))
+            substs[dumm_i] = new_dumm
             dummbegs[range_i] = new_beg
 
             continue
