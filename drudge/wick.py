@@ -12,7 +12,7 @@ from pyspark import RDD
 from sympy import Expr
 
 from .drudge import Drudge
-from .term import Term, Vec
+from .term import Term, Vec, simplify_deltas_in_expr, compose_simplified_delta
 from .utils import sympy_key
 
 
@@ -69,9 +69,11 @@ class WickDrudge(Drudge, abc.ABC):
         contractor = self.contractor
         phase = self.phase
         symms = self.symms
+        resolvers = self.resolvers
+
         return terms.flatMap(lambda term: wick_expand(
             term, comparator=comparator, contractor=contractor, phase=phase,
-            symms=symms.value
+            symms=symms.value, resolvers=resolvers.value
         ))
 
 
@@ -79,7 +81,9 @@ class WickDrudge(Drudge, abc.ABC):
 # Utility functions.
 #
 
-def wick_expand(term: Term, comparator, contractor, phase, symms=None):
+def wick_expand(
+        term: Term, comparator, contractor, phase, symms=None, resolvers=()
+):
     """Expand a Term by wick theorem.
 
     When the comparator is None, it is assumed that only terms with all the
@@ -90,6 +94,7 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
 
     symms = {} if symms is None else symms
     contr_all = comparator is None
+    sums_dict = term.dumms
     vecs = term.vecs
     n_vecs = len(vecs)
 
@@ -102,20 +107,27 @@ def wick_expand(term: Term, comparator, contractor, phase, symms=None):
     # Wick expander.
 
     if contr_all:
-        contrs = _get_all_contrs(vecs, contractor, term)
+        contrs = _get_all_contrs(vecs, contractor, term, resolvers=resolvers)
         vec_order = list(range(n_vecs))
     else:
         term = _preproc_term(term, symms)
         vecs = term.vecs
-        vec_order, contrs = _sort_vecs(vecs, comparator, contractor, term)
+        vec_order, contrs = _sort_vecs(
+            vecs, comparator, contractor, term, resolvers=resolvers
+        )
 
-    expander = _WickExpander(vecs, vec_order, contrs, phase, contr_all)
+    expander = _WickExpander(
+        sums_dict, vecs, vec_order, contrs, phase, contr_all, resolvers
+    )
     expanded = expander.expand(term.amp)
 
-    return [Term(term.sums, i[0], i[1]) for i in expanded]
+    return [
+        term.subst(substs, amp=amp, vecs=vecs, purge_sums=True)
+        for amp, substs, vecs in expanded
+        ]
 
 
-def _sort_vecs(vecs, comparator, contractor, term):
+def _sort_vecs(vecs, comparator, contractor, term, resolvers):
     """Sort the vectors and get the contraction values.
 
     Here insertion sort is used to sort the vectors into the normal order
@@ -124,6 +136,7 @@ def _sort_vecs(vecs, comparator, contractor, term):
 
     n_vecs = len(vecs)
     contrs = [{} for _ in range(n_vecs)]
+    sums_dict = term.dumms
 
     vec_order = list(range(0, n_vecs))
 
@@ -143,9 +156,11 @@ def _sort_vecs(vecs, comparator, contractor, term):
             prev_vec = vecs[prev_i]
             vec_order[prev], vec_order[pivot] = pivot_i, prev_i
 
-            contr_val = contractor(prev_vec, pivot_vec, term)
-            if contr_val != 0:
-                contrs[prev_i][pivot_i] = contr_val
+            contr_res = simplify_deltas_in_expr(
+                sums_dict, contractor(prev_vec, pivot_vec, term), resolvers
+            )
+            if contr_res[0] != 0:
+                contrs[prev_i][pivot_i] = contr_res
             pivot -= 1
 
         continue
@@ -175,7 +190,7 @@ def _preproc_term(term, symms):
     return canon_term
 
 
-def _get_all_contrs(vecs, contractor, term):
+def _get_all_contrs(vecs, contractor, term, resolvers):
     """Generate all possible contractions.
 
     This function is going to be called when we do not actually need to normal
@@ -184,15 +199,18 @@ def _get_all_contrs(vecs, contractor, term):
     """
     n_vecs = len(vecs)
     contrs = []
+    sums_dict = term.dumms
 
     for i in range(n_vecs):
         curr_contrs = {}
         for j in range(i, n_vecs):
             vec_prev = vecs[i]
             vec_lat = vecs[j]
-            contr_val = contractor(vec_prev, vec_lat, term)
-            if contr_val != 0:
-                curr_contrs[j] = contr_val
+            contr_res = simplify_deltas_in_expr(
+                sums_dict, contractor(vec_prev, vec_lat, term), resolvers
+            )
+            if contr_res[0] != 0:
+                curr_contrs[j] = contr_res
             continue
         contrs.append(curr_contrs)
         continue
@@ -210,14 +228,19 @@ class _WickExpander:
     contractions with vectors **later** in the sequence.
     """
 
-    def __init__(self, vecs, vec_order, contrs, phase, contr_all):
+    def __init__(
+            self, sums_dict, vecs, vec_order, contrs, phase, contr_all,
+            resolvers
+    ):
         """Initialize the expander."""
 
+        self.sums_dict = sums_dict
         self.vecs = vecs
         self.vec_order = vec_order
         self.contrs = contrs
         self.phase = phase
         self.contr_all = contr_all
+        self.resolvers = resolvers
         self.n_vecs = len(self.vecs)
 
     def expand(self, base_amp):
@@ -225,18 +248,20 @@ class _WickExpander:
 
         expanded = []
         avail = [True for _ in range(self.n_vecs)]
-        self._add_terms(expanded, base_amp, avail, 0)
+        self._add_terms(expanded, base_amp, {}, avail, 0)
         return expanded
 
-    def _add_terms(self, expanded, amp, avail, pivot):
+    def _add_terms(self, expanded, amp, substs, avail, pivot):
         """Add terms recursively."""
 
+        sums_dict = self.sums_dict
         vecs = self.vecs
         n_vecs = len(vecs)
         vec_order = self.vec_order
         contrs = self.contrs
         contr_all = self.contr_all
         phase = self.phase
+        resolvers = self.resolvers
 
         # Find the actual pivot, which has to be available.
         try:
@@ -247,7 +272,8 @@ class _WickExpander:
                 rem_idxes = [i for i in vec_order if avail[i]]
                 final_phase = _get_perm_phase(rem_idxes, phase)
                 expanded.append((
-                    final_phase * amp, tuple(vecs[i] for i in rem_idxes)
+                    final_phase * amp, substs,
+                    tuple(vecs[i] for i in rem_idxes)
                 ))
             return
 
@@ -256,7 +282,7 @@ class _WickExpander:
             return
 
         if not contr_all:
-            self._add_terms(expanded, amp, avail, pivot + 1)
+            self._add_terms(expanded, amp, substs, avail, pivot + 1)
 
         avail[pivot] = False
         n_vecs_between = 0
@@ -264,11 +290,17 @@ class _WickExpander:
             if avail[vec_idx]:
                 if vec_idx in pivot_contrs:
                     avail[vec_idx] = False
-                    contr_val = pivot_contrs[vec_idx]
+                    contr_amp, contr_substs = pivot_contrs[vec_idx]
                     contr_phase = phase ** n_vecs_between
+                    comp_amp, comp_substs = compose_simplified_delta(
+                        amp * contr_amp * contr_phase, contr_substs.items(),
+                        dict(substs), sums_dict=sums_dict, resolvers=resolvers
+                    )
+                    if comp_amp == 0:
+                        continue
+
                     self._add_terms(
-                        expanded, amp * contr_val * contr_phase,
-                        avail, pivot + 1
+                        expanded, comp_amp, comp_substs, avail, pivot + 1
                     )
                     avail[vec_idx] = True
                 n_vecs_between += 1
