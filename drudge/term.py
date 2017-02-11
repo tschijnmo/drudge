@@ -777,11 +777,7 @@ class Term(ATerms):
         )
 
         # Note that here the substitutions needs to be performed in order.
-        return self.subst(
-            substs,
-            sums=tuple(i for i in self._sums if i[0] not in substs),
-            amp=new_amp
-        )
+        return self.subst(substs, purge_sums=True, amp=new_amp)
 
     def simplify_amp(self, resolvers):
         """Simplify the amplitude of the term."""
@@ -938,12 +934,12 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
 
         def replace_func(expr):
             """Replace the reference to the indexed base."""
-            res = _match_indices(expr, lhs)
-            if res is None:
+            match_res = _match_indices(expr, lhs)
+            if match_res is None:
                 return expr
             found[0] = True
             assert len(substs) == 0
-            substs.update(res)
+            substs.update(match_res)
             return placeholder1 + placeholder2
 
     else:
