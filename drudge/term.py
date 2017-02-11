@@ -1352,6 +1352,9 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
 
     substs = {}
 
+    if amp == 0:
+        return amp, substs
+
     new_amp = amp.replace(KroneckerDelta, functools.partial(
         _proc_delta_in_amp, sums_dict, resolvers, substs
     ))
