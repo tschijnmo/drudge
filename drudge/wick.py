@@ -155,11 +155,13 @@ def _sort_vecs(term, comparator, contractor, resolvers):
             prev_vec = vecs[prev_i]
             vec_order[prev], vec_order[pivot] = pivot_i, prev_i
 
-            contr_res = simplify_deltas_in_expr(
+            contr_amp, contr_substs = simplify_deltas_in_expr(
                 sums_dict, contractor(prev_vec, pivot_vec, term), resolvers
             )
-            if contr_res[0] != 0:
-                contrs[prev_i][pivot_i] = contr_res
+            if contr_amp != 0:
+                contrs[prev_i][pivot_i] = (
+                    contr_amp, tuple(contr_substs.items())
+                )
             pivot -= 1
 
         continue
@@ -207,11 +209,11 @@ def _get_all_contrs(term, contractor, resolvers):
         for j in range(i, n_vecs):
             vec_prev = vecs[i]
             vec_lat = vecs[j]
-            contr_res = simplify_deltas_in_expr(
+            contr_amp, contr_substs = simplify_deltas_in_expr(
                 sums_dict, contractor(vec_prev, vec_lat, term), resolvers
             )
-            if contr_res[0] != 0:
-                curr_contrs[j] = contr_res
+            if contr_amp != 0:
+                curr_contrs[j] = (contr_amp, tuple(contr_substs.items()))
             continue
         contrs.append(curr_contrs)
         continue
@@ -293,7 +295,7 @@ class _WickExpander:
                     contr_amp, contr_substs = pivot_contrs[vec_idx]
                     contr_phase = phase ** n_vecs_between
                     comp_amp, comp_substs = compose_simplified_delta(
-                        amp * contr_amp * contr_phase, contr_substs.items(),
+                        amp * contr_amp * contr_phase, contr_substs,
                         dict(substs), sums_dict=sums_dict, resolvers=resolvers
                     )
                     if comp_amp == 0:
