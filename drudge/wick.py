@@ -94,7 +94,6 @@ def wick_expand(
 
     symms = {} if symms is None else symms
     contr_all = comparator is None
-    sums_dict = term.dumms
     vecs = term.vecs
     n_vecs = len(vecs)
 
@@ -107,17 +106,16 @@ def wick_expand(
     # Wick expander.
 
     if contr_all:
-        contrs = _get_all_contrs(vecs, contractor, term, resolvers=resolvers)
+        contrs = _get_all_contrs(term, contractor, resolvers=resolvers)
         vec_order = list(range(n_vecs))
     else:
         term = _preproc_term(term, symms)
-        vecs = term.vecs
         vec_order, contrs = _sort_vecs(
-            vecs, comparator, contractor, term, resolvers=resolvers
+            term, comparator, contractor, resolvers=resolvers
         )
 
     expander = _WickExpander(
-        sums_dict, vecs, vec_order, contrs, phase, contr_all, resolvers
+        term, vec_order, contrs, phase, contr_all, resolvers
     )
     expanded = expander.expand(term.amp)
 
@@ -127,13 +125,14 @@ def wick_expand(
         ]
 
 
-def _sort_vecs(vecs, comparator, contractor, term, resolvers):
+def _sort_vecs(term, comparator, contractor, resolvers):
     """Sort the vectors and get the contraction values.
 
     Here insertion sort is used to sort the vectors into the normal order
     required by the comparator.
     """
 
+    vecs = term.vecs
     n_vecs = len(vecs)
     contrs = [{} for _ in range(n_vecs)]
     sums_dict = term.dumms
@@ -190,13 +189,15 @@ def _preproc_term(term, symms):
     return canon_term
 
 
-def _get_all_contrs(vecs, contractor, term, resolvers):
+def _get_all_contrs(term, contractor, resolvers):
     """Generate all possible contractions.
 
     This function is going to be called when we do not actually need to normal
     order the vectors and only need the results where all the vectors are
     contracted.
     """
+
+    vecs = term.vecs
     n_vecs = len(vecs)
     contrs = []
     sums_dict = term.dumms
@@ -229,13 +230,12 @@ class _WickExpander:
     """
 
     def __init__(
-            self, sums_dict, vecs, vec_order, contrs, phase, contr_all,
-            resolvers
+            self, term, vec_order, contrs, phase, contr_all, resolvers
     ):
         """Initialize the expander."""
 
-        self.sums_dict = sums_dict
-        self.vecs = vecs
+        self.sums_dict = term.dumms
+        self.vecs = term.vecs
         self.vec_order = vec_order
         self.contrs = contrs
         self.phase = phase
