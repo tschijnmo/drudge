@@ -673,7 +673,7 @@ class Term(ATerms):
             tuple(i.map(func) for i in (self._vecs if vecs is None else vecs))
         )
 
-    def subst(self, substs, sums=None, amp=None):
+    def subst(self, substs, sums=None, amp=None, vecs=None, purge_sums=False):
         """Perform substitution on the SymPy expressions.
 
         When the given substitutions is a mapping, the substitutions is going to
@@ -681,7 +681,15 @@ class Term(ATerms):
         it is not, it will be conducted sequentially, by using SymPy ``subs``
         method with simultaneous set to false.
 
+        If purge sums is set, the summations whose dummy is substituted is going
+        to be removed.
+
         """
+
+        if sums is None:
+            sums = self._sums
+        if purge_sums:
+            sums = tuple(i for i in sums if i[0] not in substs)
 
         if isinstance(substs, Mapping):
 
@@ -694,7 +702,7 @@ class Term(ATerms):
                 """Perform substitution sequentially."""
                 return expr.subs(substs, simultaneous=False)
 
-        return self.map(subst_func, sums=sums, amp=amp)
+        return self.map(subst_func, sums=sums, amp=amp, vecs=vecs)
 
     def reset_dumms(self, dumms, dummbegs=None, excl=None):
         """Reset the dummies in the term.
