@@ -655,21 +655,22 @@ class Term(ATerms):
 
         return factors, coeff
 
-    def map(self, func, sums=None, amp=None):
+    def map(self, func, sums=None, amp=None, vecs=None):
         """Map the given function to the SymPy expressions in the term.
 
         The given function will **not** be mapped to the dummies in the
-        summations.  When operations on summations are needed, an iterable
+        summations.  When operations on summations are needed, a **tuple**
         for the new summations can be given.
 
         By passing the identity function, this function can also be used to
-        replace the summation list or the amplitude expression.
+        replace the summation list, the amplitude expression, or the vector
+        part.
         """
 
         return Term(
             self._sums if sums is None else sums,
             func(self._amp if amp is None else amp),
-            tuple(i.map(func) for i in self._vecs)
+            tuple(i.map(func) for i in (self._vecs if vecs is None else vecs))
         )
 
     def subst(self, substs, sums=None, amp=None):
