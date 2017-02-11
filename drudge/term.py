@@ -1362,39 +1362,51 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
     return new_amp, substs
 
 
-def compose_simplified_delta(amp, subst, substs, sums_dict, resolvers):
+def compose_simplified_delta(amp, new_substs, substs, sums_dict, resolvers):
     """Compose delta simplification result with existing substitutions.
 
-    The new amplitude and substitution from delta simplification can be composed
+    This function can be interpreted as follows.  First we have a delta that has
+    been resolved to be equivalent to an amplitude expression and some
+    substitutions.  Then by this function, we get what it is equivalent to when
+    we already have an existing bunch of earlier substitutions.
+
+    The new substitutions should be given as an iterable of old/new pairs. Then
+    the new amplitude and substitution from delta simplification can be composed
     with existing substitution dictionary.  New amplitude will be returned as
     the first return value. The given substitution dictionary will be mutated
     and returned as the second return value.  When the new substitution is
     incompatible with existing ones, the first return value will be a plain
     zero.
+
+    The amplitude is a local thing in the expression tree, while the
+    substitutions is always global among the entire term.  This function
+    aggregate and expands it.
+
     """
 
-    if subst is None:
-        # No composition needed.
-        return amp, substs
+    for subst in new_substs:
+        if subst is None:
+            continue
+        old = subst[0]
+        new = subst[1].xreplace(substs)
 
-    old, new = subst
-    substed_new = new.xreplace(substs)
+        if old in substs:
+            comp_amp, new_substs = proc_delta(
+                substs[old], new, sums_dict, resolvers
+            )
+            amp = amp * comp_amp
+            if new_substs is not None:
+                # The new substitution cannot involve substituted symbols.
+                substs[new_substs[0]] = new_substs[1]
+                # amp could now be zero.
+        else:
+            # Easier case, a new symbol is tried to be added.
+            replace_old = {old: new}
+            for i in substs.keys():
+                substs[i] = substs[i].xreplace(replace_old)
+            substs[old] = new
 
-    if old in substs:
-        comp_amp, subst = proc_delta(
-            substs[old], substed_new, sums_dict, resolvers
-        )
-        amp = amp * comp_amp
-        if subst is not None:
-            # The new substitution cannot involve substituted symbols.
-            substs[subst[0]] = subst[1]
-            # amp could now be zero.
-    else:
-        # Easier case, a new symbol is tried to be added.
-        replace_old = {old: substed_new}
-        for i in substs.keys():
-            substs[i] = substs[i].xreplace(replace_old)
-        substs[old] = substed_new
+        continue
 
     return amp, substs
 
@@ -1467,7 +1479,7 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
     amp, subst = proc_delta(*args, sums_dict=sums_dict, resolvers=resolvers)
 
     new_amp, _ = compose_simplified_delta(
-        amp, subst, substs, sums_dict=sums_dict, resolvers=resolvers
+        amp, [subst], substs, sums_dict=sums_dict, resolvers=resolvers
     )
 
     return new_amp
