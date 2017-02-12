@@ -100,11 +100,25 @@ def wick_expand_term(
 
     """
 
+    term, contrs, schemes = _prepare_wick(
+        term, comparator, contractor, symms, resolvers
+    )
+
+    return [
+        _form_term_from_wick(term, contrs, phase, resolvers, i)
+        for i in schemes
+        ]
+
+
+def _prepare_wick(term, comparator, contractor, symms, resolvers):
+    """Prepare a term for Wick expansion.
+
+    The possibly pro-processed term, all the contractions, and all contraction
+    schemes will be returned for the term.
+    """
+
     symms = {} if symms is None else symms
     contr_all = comparator is None
-
-    # First the vectors and contractions need to be formed as required by the
-    # Wick expander.
 
     if contr_all:
         contrs = _get_all_contrs(term, contractor, resolvers=resolvers)
@@ -117,10 +131,7 @@ def wick_expand_term(
 
     schemes = _compute_wick_schemes(vec_order, contrs)
 
-    return [
-        _form_term_from_wick(term, contrs, phase, resolvers, i)
-        for i in schemes
-        ]
+    return term, contrs, schemes
 
 
 def _sort_vecs(term, comparator, contractor, resolvers):
