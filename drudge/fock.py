@@ -60,7 +60,7 @@ class FockDrudge(WickDrudge):
 
     """
 
-    def __init__(self, ctx, exch):
+    def __init__(self, *args, exch=FERMI, **kwargs):
         """Initialize the drudge.
 
         Parameters
@@ -73,7 +73,7 @@ class FockDrudge(WickDrudge):
 
         """
 
-        super().__init__(ctx)
+        super().__init__(*args, **kwargs)
         if exch == FERMI or exch == BOSE:
             self._exch = exch
         else:
@@ -422,16 +422,16 @@ class GenMBDrudge(FockDrudge):
 
     """
 
-    def __init__(self, ctx, exch=FERMI, op_label='c',
+    def __init__(self, *args, exch=FERMI, op_label='c',
                  orb=((Range('L'), 'abcdefghijklmnopq'),), spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
-                 dbbar=False):
+                 dbbar=False, **kwargs):
         """Initialize the drudge object.
 
         TODO: Add details documentation here.
         """
 
-        super().__init__(ctx, exch)
+        super().__init__(*args, exch=exch, **kwargs)
 
         #
         # Create the field operator
@@ -582,21 +582,22 @@ class PartHoleDrudge(GenMBDrudge):
         Symbol('i{}'.format(i)) for i in range(50)
     )
 
-    def __init__(self, ctx, op_label='c',
+    def __init__(self, *args, op_label='c',
                  part_orb=(Range('V'), DEFAULT_PART_DUMMS),
                  hole_orb=(Range('O'), DEFAULT_HOLE_DUMMS),
                  spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
                  fock=IndexedBase('f'),
-                 dbbar=True):
+                 dbbar=True, **kwargs):
         """Initialize the particle-hole drudge."""
 
         self.part_range = part_orb[0]
         self.hole_range = hole_orb[0]
 
-        super().__init__(ctx, exch=FERMI, op_label=op_label,
+        super().__init__(*args, exch=FERMI, op_label=op_label,
                          orb=(part_orb, hole_orb), spin=spin,
-                         one_body=one_body, two_body=two_body, dbbar=dbbar)
+                         one_body=one_body, two_body=two_body, dbbar=dbbar,
+                         **kwargs)
 
         full_ham = self.ham
         full_ham.cache()
