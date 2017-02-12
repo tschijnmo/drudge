@@ -744,11 +744,23 @@ class Drudge:
 
     # We do not need slots here.  There is generally only one drudge instance.
 
-    def __init__(self, ctx: SparkContext):
+    def __init__(self, ctx: SparkContext, num_partitions=None):
         """Initialize the drudge.
+
+        Parameters
+        ----------
+
+        ctx
+            The Spark context to be used.
+
+        num_partitions
+            The preferred number of partitions.  By default, it is None,
+            disabling explicit load-balancing by shuffling.
+
         """
 
         self._ctx = ctx
+        self._num_partitions = num_partitions
 
         self._dumms = BCastVar(self._ctx, {})
         self._symms = BCastVar(self._ctx, {})
@@ -762,6 +774,11 @@ class Drudge:
     def ctx(self):
         """Access the Spark context of the drudge."""
         return self._ctx
+
+    @property
+    def num_partitions(self):
+        """The preferred number of partitions for data."""
+        return self._num_partitions
 
     #
     # Name archive utilities.
