@@ -31,7 +31,8 @@ def test_genmb_has_basic_properties(genmb):
 
 
 @pytest.mark.parametrize('par_level', [0, 1, 2])
-def test_genmb_simplify_simple_expressions(genmb, par_level):
+@pytest.mark.parametrize('full_simplify', [True, False])
+def test_genmb_simplify_simple_expressions(genmb, par_level, full_simplify):
     """Test the basic Wick expansion facility on a single Fermion expression."""
 
     dr = genmb  # type: GenMBDrudge
@@ -51,9 +52,15 @@ def test_genmb_simplify_simple_expressions(genmb, par_level):
 
     dr.set_wick_parallel(par_level)
     assert dr.wick_parallel == par_level
+    dr.full_simplify = full_simplify
+    assert dr.full_simplify == full_simplify
+
     res = inp.simplify()
+
     dr.set_wick_parallel(0)
     assert dr.wick_parallel == 0
+    dr.full_simplify = True
+    assert dr.full_simplify
 
     assert res.n_terms == 2
 
