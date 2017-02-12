@@ -109,7 +109,7 @@ class Tensor:
         self._terms.cache()
         return self
 
-    def repartition(self, num, cache=False):
+    def repartition(self, num_partitions=None, cache=False):
         """Repartition the terms across the Spark cluster.
 
         This function should be called when the terms need to be rebalanced
@@ -119,7 +119,10 @@ class Tensor:
         good performance.
         """
 
-        self._terms = self._terms.repartition(num)
+        if num_partitions is None:
+            num_partitions = self._drudge.num_partitions
+
+        self._terms = self._terms.repartition(num_partitions)
         if cache:
             self.cache()
         return self
