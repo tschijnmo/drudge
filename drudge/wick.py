@@ -77,37 +77,22 @@ class WickDrudge(Drudge, abc.ABC):
         keep_top = 0 if comparator is None else 1
         terms_to_keep = terms.filter(lambda x: len(x.vecs) <= keep_top)
 
-        normal_ordered = terms_to_proc.flatMap(lambda term: wick_expand_term(
-            term, comparator=comparator, contractor=contractor, phase=phase,
-            symms=symms.value, resolvers=resolvers.value
+        # Triples: term, contractions, schemes.
+        wick_terms = terms_to_proc.map(lambda term: _prepare_wick(
+            term, comparator, contractor, symms.value, resolvers.value
         ))
+
+        normal_ordered = wick_terms.flatMap(lambda x: [
+            _form_term_from_wick(x[0], x[1], phase, resolvers.value, i)
+            for i in x[2]
+            ])
 
         return terms_to_keep.union(normal_ordered)
 
 
 #
-# Utility functions.
+# Internal functions.
 #
-
-def wick_expand_term(
-        term: Term, comparator, contractor, phase, symms=None, resolvers=()
-):
-    """Expand a Term by wick theorem.
-
-    When the comparator is None, it is assumed that only terms with all the
-    vectors contracted will be kept, as in the case in vacuum expectation value
-    evaluation in many-body physics.
-
-    """
-
-    term, contrs, schemes = _prepare_wick(
-        term, comparator, contractor, symms, resolvers
-    )
-
-    return [
-        _form_term_from_wick(term, contrs, phase, resolvers, i)
-        for i in schemes
-        ]
 
 
 def _prepare_wick(term, comparator, contractor, symms, resolvers):
