@@ -17,7 +17,7 @@ from .canonpy import Perm
 from .drudge import Tensor
 from .term import Vec, Range, try_resolve_range, Term
 from .utils import sympy_key, ensure_expr, EnumSymbs
-from .wick import WickDrudge, wick_expand_term
+from .wick import WickDrudge
 
 
 #
