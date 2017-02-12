@@ -162,12 +162,9 @@ class FockDrudge(WickDrudge):
         The contractor needs to be given as a callable accepting two operators.
         """
 
-        term_op = functools.partial(
-            wick_expand_term, comparator=None,
-            contractor=contractor, phase=self.phase
-        )
-
-        return tensor.apply(lambda terms: terms.flatMap(term_op))
+        return Tensor(self, self.normal_order(
+            tensor.terms, comparator=None, contractor=contractor
+        ))
 
     def eval_phys_vev(self, tensor: Tensor):
         """Evaluate expectation value with respect to the physical vacuum.
@@ -175,12 +172,9 @@ class FockDrudge(WickDrudge):
         Here the contractor from normal-ordering will be used.
         """
 
-        term_op = functools.partial(
-            wick_expand_term, comparator=None,
-            contractor=self.contractor, phase=self.phase
+        return Tensor(
+            self, self.normal_order(tensor.terms, comparator=None)
         )
-
-        return tensor.apply(lambda terms: terms.flatMap(term_op))
 
     def set_n_body_base(self, base: IndexedBase, n_body: int):
         """Set an indexed base as an n-body interaction.
