@@ -58,15 +58,16 @@ class WickDrudge(Drudge, abc.ABC):
         """
         pass
 
-    def normal_order(self, terms: RDD):
+    def normal_order(self, terms: RDD, **kwargs):
         """Normal order the terms according to generalized Wick theorem.
 
         The actual expansion is based on the information given in the subclasses
         by the abstract properties.
 
         """
-        comparator = self.comparator
-        contractor = self.contractor
+        comparator = kwargs.get('comparator', self.comparator)
+        contractor = kwargs.get('contractor', self.contractor)
+
         phase = self.phase
         symms = self.symms
         resolvers = self.resolvers
