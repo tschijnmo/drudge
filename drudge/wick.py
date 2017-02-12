@@ -109,7 +109,7 @@ class WickDrudge(Drudge, abc.ABC):
         terms_to_proc = terms.filter(lambda x: len(x.vecs) > 1)
         keep_top = 0 if comparator is None else 1
         terms_to_keep = terms.filter(lambda x: len(x.vecs) <= keep_top)
-        if terms_to_keep.count() == 0:
+        if terms_to_proc.count() == 0:
             return terms_to_keep
 
         # Triples: term, contractions, schemes.
