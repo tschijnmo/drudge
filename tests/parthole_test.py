@@ -15,7 +15,10 @@ def parthole(spark_ctx):
 
 @pytest.mark.parametrize('par_level', [0, 1, 2])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_simple_parthole_normal_order(parthole, par_level, full_simplify):
+@pytest.mark.parametrize('simple_merge', [True, False])
+def test_simple_parthole_normal_order(
+        parthole, par_level, full_simplify, simple_merge
+):
     """Test particle-hole normal ordering on a simple term.
 
     Here we just have a term normal-ordered in terms of bare electrons but it
@@ -37,9 +40,13 @@ def test_simple_parthole_normal_order(parthole, par_level, full_simplify):
 
     dr.wick_parallel = par_level
     dr.full_simplify = full_simplify
+    dr.simple_merge = simple_merge
+
     res = inp.simplify()
+
     dr.wick_parallel = 0
     dr.full_simplify = True
+    dr.simple_merge = False
 
     assert res.n_terms == 2
     assert res == dr.einst(
