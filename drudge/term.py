@@ -768,10 +768,13 @@ class Term(ATerms):
         # Note that here the substitutions needs to be performed in order.
         return self.subst(substs, purge_sums=True, amp=new_amp)
 
-    def simplify_amp(self, resolvers):
+    def simplify_amp(self, full_simplify, resolvers):
         """Simplify the amplitude of the term."""
         delta_proced = self.simplify_deltas(resolvers)
-        return delta_proced.map(lambda x: x.simplify())
+        if full_simplify:
+            return delta_proced.map(lambda x: x.simplify())
+        else:
+            return delta_proced
 
     def expand(self):
         """Expand the term into many terms."""

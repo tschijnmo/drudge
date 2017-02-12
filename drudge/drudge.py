@@ -220,9 +220,14 @@ class Tensor:
         """Get the terms with amplitude simplified."""
 
         resolvers = self._drudge.resolvers
+        full_simplify = self._drudge.full_simplify
+
         simplified_terms = terms.map(
-            lambda term: term.simplify_amp(resolvers=resolvers.value)
+            lambda term: term.simplify_amp(
+                full_simplify=full_simplify, resolvers=resolvers.value
+            )
         ).filter(lambda term: term.amp != 0)
+
         return simplified_terms
 
     def expand(self):
@@ -728,7 +733,8 @@ class Drudge:
 
     # We do not need slots here.  There is generally only one drudge instance.
 
-    def __init__(self, ctx: SparkContext, num_partitions=None):
+    def __init__(self, ctx: SparkContext, num_partitions=None,
+                 full_simplify=True):
         """Initialize the drudge.
 
         Parameters
@@ -741,10 +747,14 @@ class Drudge:
             The preferred number of partitions.  By default, it is None,
             disabling explicit load-balancing by shuffling.
 
+        full_simplify
+            Perform deep simplification for amplitude expressions.
+
         """
 
         self._ctx = ctx
         self._num_partitions = num_partitions
+        self._full_simplify = full_simplify
 
         self._dumms = BCastVar(self._ctx, {})
         self._symms = BCastVar(self._ctx, {})
@@ -763,6 +773,20 @@ class Drudge:
     def num_partitions(self):
         """The preferred number of partitions for data."""
         return self._num_partitions
+
+    @property
+    def full_simplify(self):
+        """If full simplification is to be performed on amplitudes."""
+        return self._full_simplify
+
+    @full_simplify.setter
+    def full_simplify(self, value):
+        if value is not True and value is not False:
+            raise TypeError(
+                'Invalid full simplification option', value,
+                'expecting boolean'
+            )
+        self._full_simplify = value
 
     #
     # Name archive utilities.
