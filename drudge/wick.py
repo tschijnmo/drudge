@@ -126,7 +126,19 @@ class WickDrudge(Drudge, abc.ABC):
             ))
 
         elif self._wick_parallel == 2:
-            raise NotImplementedError()
+
+            # This level of parallelism is reserved for really hard problems.
+            expanded = []
+            for term, contrs, schemes in wick_terms.collect():
+                curr = self._ctx.parallelize(schemes).map(
+                    lambda x: _form_term_from_wick(
+                        term, contrs, phase, resolvers.value, x
+                    )
+                )
+                expanded.append(curr)
+                continue
+            normal_ordered = self._ctx.union(expanded)
+
         else:
             raise ValueError(
                 'Invalid Wick expansion parallel level', self._wick_parallel
