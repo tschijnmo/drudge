@@ -27,20 +27,21 @@ class WickDrudge(Drudge, abc.ABC):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, wick_parallel=0, **kwargs):
         """Initialize the Wick drudge.
 
         This level just have one option to handle, the parallelism option.
         """
         super().__init__(*args, **kwargs)
-        self._wick_parallel = 0
+        self._wick_parallel = wick_parallel
 
     @property
     def wick_parallel(self):
         """Get the Wick parallelism level."""
         return self._wick_parallel
 
-    def set_wick_parallel(self, level):
+    @wick_parallel.setter
+    def wick_parallel(self, level):
         """Set the Wick parallelism level.
 
         Valid values are ``0``, for normal problems, ``1``, for harder problems,
@@ -53,7 +54,6 @@ class WickDrudge(Drudge, abc.ABC):
                 'Invalid parallel level for Wick expansion', level
             )
         self._wick_parallel = level
-        return self
 
     @abc.abstractproperty
     def contractor(self) -> typing.Callable[[Vec, Vec, Term], Expr]:
