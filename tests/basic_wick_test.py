@@ -11,7 +11,7 @@ from sympy import symbols, IndexedBase, latex, KroneckerDelta
 from drudge import Range, Vec, CR, AN, FERMI, FockDrudge
 from drudge.term import sum_term
 from drudge.utils import sympy_key
-from drudge.wick import wick_expand
+from drudge.wick import wick_expand_term
 
 
 def test_wick_expansion_of_term(spark_ctx):
@@ -33,7 +33,7 @@ def test_wick_expansion_of_term(spark_ctx):
         t[a, b] * u[c, d] * f_dag[a] * f[b] * f_dag[c] * f[d]
     )[0]
 
-    res = wick_expand(
+    res = wick_expand_term(
         term, comparator=dr.comparator, contractor=dr.contractor,
         phase=dr.phase
     )

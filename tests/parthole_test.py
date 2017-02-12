@@ -4,7 +4,7 @@ import pytest
 from sympy import Rational, IndexedBase
 
 from drudge import PartHoleDrudge, CR, AN
-from drudge.wick import wick_expand
+from drudge.wick import wick_expand_term
 
 
 @pytest.fixture(scope='module')
@@ -32,7 +32,7 @@ def test_parthole_normal_order_on_term(parthole):
         (i, p.O), (j, p.O), t[i, j] * c_[CR, i] * c_[AN, j]
     ).local_terms[0]
 
-    res = wick_expand(
+    res = wick_expand_term(
         term, comparator=dr.comparator, contractor=dr.contractor,
         phase=dr.phase, symms=dr.symms.value
     )

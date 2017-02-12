@@ -17,7 +17,7 @@ from .canonpy import Perm
 from .drudge import Tensor
 from .term import Vec, Range, try_resolve_range, Term
 from .utils import sympy_key, ensure_expr, EnumSymbs
-from .wick import WickDrudge, wick_expand
+from .wick import WickDrudge, wick_expand_term
 
 
 #
@@ -163,7 +163,7 @@ class FockDrudge(WickDrudge):
         """
 
         term_op = functools.partial(
-            wick_expand, comparator=None,
+            wick_expand_term, comparator=None,
             contractor=contractor, phase=self.phase
         )
 
@@ -176,7 +176,7 @@ class FockDrudge(WickDrudge):
         """
 
         term_op = functools.partial(
-            wick_expand, comparator=None,
+            wick_expand_term, comparator=None,
             contractor=self.contractor, phase=self.phase
         )
 

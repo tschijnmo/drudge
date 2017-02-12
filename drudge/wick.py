@@ -71,7 +71,7 @@ class WickDrudge(Drudge, abc.ABC):
         symms = self.symms
         resolvers = self.resolvers
 
-        return terms.flatMap(lambda term: wick_expand(
+        return terms.flatMap(lambda term: wick_expand_term(
             term, comparator=comparator, contractor=contractor, phase=phase,
             symms=symms.value, resolvers=resolvers.value
         ))
@@ -81,7 +81,7 @@ class WickDrudge(Drudge, abc.ABC):
 # Utility functions.
 #
 
-def wick_expand(
+def wick_expand_term(
         term: Term, comparator, contractor, phase, symms=None, resolvers=()
 ):
     """Expand a Term by wick theorem.
