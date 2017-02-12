@@ -934,8 +934,7 @@ class Drudge:
         """
         return None
 
-    @staticmethod
-    def normal_order(terms):
+    def normal_order(self, terms, **kwargs):
         """Normal order the terms in the given tensor.
 
         This method should be called with the RDD of some terms, and another RDD
@@ -947,6 +946,11 @@ class Drudge:
         be overridden to return an RDD for the normal-ordered terms from the
         given terms.
         """
+
+        if len(kwargs) != 0:
+            raise ValueError(
+                'Invalid arguments to free algebra normal order', kwargs
+            )
 
         return terms
 
