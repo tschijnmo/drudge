@@ -3,8 +3,7 @@
 import pytest
 from sympy import Rational, IndexedBase
 
-from drudge import PartHoleDrudge, CR, AN
-from drudge.wick import wick_expand_term
+from drudge import PartHoleDrudge
 
 
 @pytest.fixture(scope='module')
@@ -14,31 +13,31 @@ def parthole(spark_ctx):
     return dr
 
 
-def test_parthole_normal_order_on_term(parthole):
+def test_simple_parthole_normal_order(parthole):
     """Test particle-hole normal ordering on a simple term.
 
-    This test act on a tensor term directly without parallelization.  It is
-    supposed for the ease of debugging.
+    Here we just have a term normal-ordered in terms of bare electrons but it
+    not normal ordered in terms of quasi-partitions.  This makes sure that the
+    model correctly treats the problem.
     """
 
     dr = parthole
     p = dr.names
-    c_ = dr.op
+    c_dag = p.c_dag
+    c_ = p.c_
     i = p.i
     j = p.j
 
     t = dr.one_body
-    term = dr.sum(
-        (i, p.O), (j, p.O), t[i, j] * c_[CR, i] * c_[AN, j]
-    ).local_terms[0]
-
-    res = wick_expand_term(
-        term, comparator=dr.comparator, contractor=dr.contractor,
-        phase=dr.phase, symms=dr.symms.value
+    inp = dr.einst(
+        t[i, j] * c_dag[i] * c_[j]
     )
+    res = inp.simplify()
 
-    # Bare minimum inspection.
-    assert len(res) == 2
+    assert res.n_terms == 2
+    assert res == dr.einst(
+        -t[i, j] * c_[j] * c_dag[i] + t[i, i]
+    ).simplify()
 
 
 def test_parthole_drudge_has_good_ham(parthole):
