@@ -107,21 +107,18 @@ def wick_expand(
 
     if contr_all:
         contrs = _get_all_contrs(term, contractor, resolvers=resolvers)
-        vec_order = list(range(n_vecs))
+        vec_order = None
     else:
         term = _preproc_term(term, symms)
         vec_order, contrs = _sort_vecs(
             term, comparator, contractor, resolvers=resolvers
         )
 
-    expander = _WickExpander(
-        term, vec_order, contrs, phase, contr_all, resolvers
-    )
-    expanded = expander.expand(term.amp)
+    schemes = _compute_wick_schemes(vec_order, contrs)
 
     return [
-        term.subst(substs, amp=amp, vecs=vecs, purge_sums=True)
-        for amp, substs, vecs in expanded
+        _form_term_from_wick(term, contrs, phase, resolvers, i)
+        for i in schemes
         ]
 
 
@@ -221,95 +218,94 @@ def _get_all_contrs(term, contractor, resolvers):
     return contrs
 
 
-class _WickExpander:
-    """Expander of vectors based on Wick theorem.
+def _compute_wick_schemes(vec_order, contrs):
+    """Compute all the Wick expansion schemes.
 
-    Here, the problem should be specified by a sequence ``vecs``, where each
-    entry should be a pair of a unique integral identifier for the vector and
-    the actual vector.  The given contractions will be queried with the
-    identifier of the first vector for a dictionary of non-vanishing
-    contractions with vectors **later** in the sequence.
+    The vector order should be a sequence giving indices of vectors.  When it is
+    None, it means that all vectors needs to be contracted.  The contractions
+    should be a sequence of hash maps giving the amplitude and substitution of
+    each contraction.
+
+    The expansion result is a list of pairs, with the first field holding the
+    permutation of the given vectors for the contraction term, and the second
+    being the number of vectors contracted. Adjacent pairs in the first section
+    are are contracted, and the second section contains the remaining vectors
+    ordered as in the given vector order.
     """
 
-    def __init__(
-            self, term, vec_order, contrs, phase, contr_all, resolvers
-    ):
-        """Initialize the expander."""
+    schemes = []
+    avail = [True for _ in contrs]
+    _add_wick(schemes, avail, 0, [], vec_order, contrs)
+    return schemes
 
-        self.sums_dict = term.dumms
-        self.vecs = term.vecs
-        self.vec_order = vec_order
-        self.contrs = contrs
-        self.phase = phase
-        self.contr_all = contr_all
-        self.resolvers = resolvers
-        self.n_vecs = len(self.vecs)
 
-    def expand(self, base_amp):
-        """Make the Wick expansion."""
+def _add_wick(schemes, avail, pivot, contred, vec_order, contrs):
+    """Add Wick expansion schemes recursively."""
 
-        expanded = []
-        avail = [True for _ in range(self.n_vecs)]
-        self._add_terms(expanded, base_amp, {}, avail, 0)
-        return expanded
+    n_vecs = len(avail)
+    contr_all = vec_order is None
 
-    def _add_terms(self, expanded, amp, substs, avail, pivot):
-        """Add terms recursively."""
-
-        sums_dict = self.sums_dict
-        vecs = self.vecs
-        n_vecs = len(vecs)
-        vec_order = self.vec_order
-        contrs = self.contrs
-        contr_all = self.contr_all
-        phase = self.phase
-        resolvers = self.resolvers
-
-        # Find the actual pivot, which has to be available.
-        try:
-            pivot = next(i for i in range(pivot, n_vecs - 1) if avail[i])
-        except StopIteration:
-            # When everything is already decided, add the current term.
-            if not contr_all or all(not i for i in avail):
-                rem_idxes = [i for i in vec_order if avail[i]]
-                final_phase = _get_perm_phase(rem_idxes, phase)
-                expanded.append((
-                    final_phase * amp, substs,
-                    tuple(vecs[i] for i in rem_idxes)
-                ))
-            return
-
-        pivot_contrs = contrs[pivot]
-        if contr_all and len(pivot_contrs) == 0:
-            return
-
-        if not contr_all:
-            self._add_terms(expanded, amp, substs, avail, pivot + 1)
-
-        avail[pivot] = False
-        n_vecs_between = 0
-        for vec_idx in range(pivot + 1, self.n_vecs):
-            if avail[vec_idx]:
-                if vec_idx in pivot_contrs:
-                    avail[vec_idx] = False
-                    contr_amp, contr_substs = pivot_contrs[vec_idx]
-                    contr_phase = phase ** n_vecs_between
-                    comp_amp, comp_substs = compose_simplified_delta(
-                        amp * contr_amp * contr_phase, contr_substs,
-                        dict(substs), sums_dict=sums_dict, resolvers=resolvers
-                    )
-                    if comp_amp == 0:
-                        continue
-
-                    self._add_terms(
-                        expanded, comp_amp, comp_substs, avail, pivot + 1
-                    )
-                    avail[vec_idx] = True
-                n_vecs_between += 1
-            continue
-
-        avail[pivot] = True
+    # Find the actual pivot, which has to be available.
+    try:
+        # Last vector can never be pivot.
+        pivot = next(i for i in range(pivot, n_vecs - 1) if avail[i])
+    except StopIteration:
+        # When everything is already decided, add the current term.
+        if not contr_all or all(not i for i in avail):
+            vec_perm = (
+                contred if contr_all else
+                contred + [i for i in vec_order if avail[i]]
+            )
+            schemes.append((
+                vec_perm, len(contred)
+            ))
         return
+
+    pivot_contrs = contrs[pivot]
+    if contr_all and len(pivot_contrs) == 0:
+        return
+
+    if not contr_all:
+        _add_wick(schemes, avail, pivot + 1, contred, vec_order, contrs)
+
+    avail[pivot] = False
+    for vec_idx in range(pivot + 1, n_vecs):
+        if avail[vec_idx] and vec_idx in pivot_contrs:
+            avail[vec_idx] = False
+            _add_wick(
+                schemes, avail, pivot + 1, contred + [pivot, vec_idx],
+                vec_order, contrs
+            )
+            avail[vec_idx] = True
+        continue
+
+    avail[pivot] = True
+    return
+
+
+def _form_term_from_wick(term, contrs, phase, resolvers, wick_res):
+    """Generate a full Term from a Wick expansion scheme.
+    """
+
+    sums_dict = term.dumms
+
+    perm, n_contred = wick_res
+    phase = _get_perm_phase(perm, phase)
+
+    amp = phase
+    substs = {}
+    for contr_i in range(0, n_contred, 2):
+        contr_amp, contr_substs = contrs[perm[contr_i]][perm[contr_i + 1]]
+        amp, _ = compose_simplified_delta(
+            amp * contr_amp, contr_substs,
+            substs, sums_dict=sums_dict, resolvers=resolvers
+        )
+        continue
+
+    vecs = tuple(term.vecs[i] for i in perm[n_contred:])
+    return term.subst(
+        substs, amp=amp * term.amp, vecs=vecs, purge_sums=True
+    )
 
 
 def _get_perm_phase(order, phase):
