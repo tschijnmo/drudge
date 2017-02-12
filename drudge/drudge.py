@@ -307,47 +307,28 @@ class Tensor:
     # The driver simplification.
     #
 
-    def simplify(self, num_partitions=None, par_normal_order=False):
+    def simplify(self):
         """Simplify the tensor.
 
         This is the master driver function for tensor simplification.
 
-        Parameters
-        ----------
-
-        num_partitions
-            When a number of partitions is given, it will be used for advanced
-            load-balancing.
-
-        par_normal_order
-            If load-balancing is to be performed during the normal ordering.
-            When it is set to true, the drudge subclass must have a normal
-            ordering function accepting the argument ``num_partitions``.
-
         """
 
         return self.apply(
-            functools.partial(
-                self._simplify, num_partitions=num_partitions,
-                par_normal_order=par_normal_order
-            ),
-            free_vars=self._free_vars
+            self._simplify, free_vars=self._free_vars
         )
 
-    def _simplify(self, terms, num_partitions=None, par_normal_order=False):
+    def _simplify(self, terms):
         """Get the terms in the simplified form."""
+
+        num_partitions = self._drudge.num_partitions
 
         terms = self._expand(terms)
         if num_partitions is not None:
             terms = terms.repartition(num_partitions)
 
         # First we make the vector part normal-ordered.
-        if not par_normal_order:
-            terms = self._drudge.normal_order(terms)
-        else:
-            terms = self._drudge.normal_order(
-                terms, num_partitions=num_partitions
-            )
+        terms = self._drudge.normal_order(terms)
         if num_partitions is not None:
             terms = terms.repartition(num_partitions)
 
