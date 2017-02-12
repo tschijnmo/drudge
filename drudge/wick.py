@@ -6,6 +6,7 @@ as well as function helpful for its subclasses.
 
 import abc
 import collections
+import functools
 import typing
 
 from pyspark import RDD
@@ -141,13 +142,16 @@ class WickDrudge(Drudge, abc.ABC):
             # This level of parallelism is reserved for really hard problems.
             expanded = []
             for term, contrs, schemes in wick_terms.collect():
-                curr = self._ctx.parallelize(schemes).map(
-                    lambda x: _form_term_from_wick(
-                        term, contrs, phase, resolvers.value, x
-                    )
+                # To work around a probable Spark bug.  Problem occurs when we
+                # have closures inside a loop to be distributed out.
+                form_term = functools.partial(
+                    _form_term_from_wick_bcast, term, contrs, phase, resolvers
                 )
+
+                curr = self._ctx.parallelize(schemes).map(form_term)
                 expanded.append(curr)
                 continue
+
             normal_ordered = self._ctx.union(expanded)
 
         else:
@@ -371,6 +375,17 @@ def _form_term_from_wick(term, contrs, phase, resolvers, wick_scheme):
     vecs = tuple(term.vecs[i] for i in perm[n_contred:])
     return term.subst(
         substs, amp=amp * term.amp, vecs=vecs, purge_sums=True
+    )
+
+
+def _form_term_from_wick_bcast(term, contrs, phase, resolvers, wick_scheme):
+    """Form term from Wick scheme with broadcast resolvers.
+
+    This function is to work around a probable Spark bug on serializing closures
+    inside loop.
+    """
+    return _form_term_from_wick(
+        term, contrs, phase, resolvers.value, wick_scheme
     )
 
 
