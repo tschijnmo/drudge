@@ -110,10 +110,27 @@ class WickDrudge(Drudge, abc.ABC):
             term, comparator, contractor, symms.value, resolvers.value
         ))
 
-        normal_ordered = wick_terms.flatMap(lambda x: [
-            _form_term_from_wick(x[0], x[1], phase, resolvers.value, i)
-            for i in x[2]
-            ])
+        if self._wick_parallel == 0:
+
+            normal_ordered = wick_terms.flatMap(lambda x: [
+                _form_term_from_wick(x[0], x[1], phase, resolvers.value, i)
+                for i in x[2]
+                ])
+
+        elif self._wick_parallel == 1:
+
+            normal_ordered = wick_terms.flatMap(
+                lambda x: [(x[0], x[1], i) for i in x[2]]
+            ).map(lambda x: _form_term_from_wick(
+                x[0], x[1], phase, resolvers.value, x[2]
+            ))
+
+        elif self._wick_parallel == 2:
+            raise NotImplementedError()
+        else:
+            raise ValueError(
+                'Invalid Wick expansion parallel level', self._wick_parallel
+            )
 
         return terms_to_keep.union(normal_ordered)
 
