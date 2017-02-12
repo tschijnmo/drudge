@@ -15,7 +15,7 @@ from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term
 )
-from .utils import ensure_symb, BCastVar, nest_bind
+from .utils import ensure_symb, BCastVar, nest_bind, prod_
 
 
 class Tensor:
@@ -264,14 +264,18 @@ class Tensor:
         """
         return self.apply(self._merge, free_vars=self._free_vars)
 
-    @staticmethod
-    def _merge(terms):
+    def _merge(self, terms):
         """Get the term when they are attempted to be merged."""
-        return terms.map(
-            lambda term: ((term.sums, term.vecs), term.amp)
-        ).reduceByKey(operator.add).map(
-            lambda x: Term(x[0][0], x[1], x[0][1])
-        )
+        if not self._drudge.simple_merge:
+            return terms.map(
+                lambda term: ((term.sums, term.vecs), term.amp)
+            ).reduceByKey(operator.add).map(
+                lambda x: Term(x[0][0], x[1], x[0][1])
+            )
+        else:
+            return terms.map(_decompose_term).reduceByKey(operator.add).map(
+                lambda x: Term(x[0][0], x[1] * x[0][2], x[0][1])
+            )
 
     #
     # Canonicalization
@@ -734,7 +738,7 @@ class Drudge:
     # We do not need slots here.  There is generally only one drudge instance.
 
     def __init__(self, ctx: SparkContext, num_partitions=None,
-                 full_simplify=True):
+                 full_simplify=True, simple_merge=False):
         """Initialize the drudge.
 
         Parameters
@@ -750,11 +754,18 @@ class Drudge:
         full_simplify
             Perform deep simplification for amplitude expressions.
 
+        simple_merge
+            If only terms with same factors involving dummies are going to be
+            merged.  This can be helpful for cases where the amplitude are all
+            simple polynomials of tensorial quantities.  Note that this could
+            disable some SymPy simplification.
+
         """
 
         self._ctx = ctx
         self._num_partitions = num_partitions
         self._full_simplify = full_simplify
+        self._simple_merge = simple_merge
 
         self._dumms = BCastVar(self._ctx, {})
         self._symms = BCastVar(self._ctx, {})
@@ -781,12 +792,28 @@ class Drudge:
 
     @full_simplify.setter
     def full_simplify(self, value):
+        """Set if full simplification is going to be carried out."""
         if value is not True and value is not False:
             raise TypeError(
                 'Invalid full simplification option', value,
                 'expecting boolean'
             )
         self._full_simplify = value
+
+    @property
+    def simple_merge(self):
+        """If only simple merge is to be carried out."""
+        return self._simple_merge
+
+    @simple_merge.setter
+    def simple_merge(self, value):
+        """Set if simple merge is going to be carried out."""
+        if value is not True and value is not False:
+            raise ValueError(
+                'Invalid simple merge setting', value,
+                'expecting plain boolean'
+            )
+        self._simple_merge = value
 
     #
     # Name archive utilities.
@@ -1053,3 +1080,18 @@ def _union(orig, new):
     """Union the two sets and return the first."""
     orig |= new
     return orig
+
+
+def _decompose_term(term):
+    """Decompose a term for simple merging.
+
+    The given term will be decomposed into a pair, where the first field has the
+    summations, vectors, and product of factors containing at least one dummy.
+    And the second field contains factors involving no dummies.
+    """
+
+    factors, coeff = term.amp_factors
+    return (
+        (term.sums, term.vecs, prod_(factors)),
+        coeff
+    )
