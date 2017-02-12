@@ -338,13 +338,13 @@ def _add_wick(schemes, avail, pivot, contred, vec_order, contrs):
     return
 
 
-def _form_term_from_wick(term, contrs, phase, resolvers, wick_res):
+def _form_term_from_wick(term, contrs, phase, resolvers, wick_scheme):
     """Generate a full Term from a Wick expansion scheme.
     """
 
     sums_dict = term.dumms
 
-    perm, n_contred = wick_res
+    perm, n_contred = wick_scheme
     phase = _get_perm_phase(perm, phase)
 
     amp = phase
