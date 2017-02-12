@@ -95,7 +95,6 @@ class WickDrudge(Drudge, abc.ABC):
         """
         comparator = kwargs.pop('comparator', self.comparator)
         contractor = kwargs.pop('contractor', self.contractor)
-        num_partitions = kwargs.pop('num_partitions', None)
         if len(kwargs) != 0:
             raise ValueError(
                 'Invalid arguments to Wick normal order', kwargs
@@ -114,8 +113,8 @@ class WickDrudge(Drudge, abc.ABC):
             return terms_to_keep
 
         # Triples: term, contractions, schemes.
-        wick_terms = terms_to_proc.map(lambda term: _prepare_wick(
-            term, comparator, contractor, symms.value, resolvers.value
+        wick_terms = terms_to_proc.map(lambda x: _prepare_wick(
+            x, comparator, contractor, symms.value, resolvers.value
         ))
 
         if self._wick_parallel == 0:
