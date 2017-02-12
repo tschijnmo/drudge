@@ -72,10 +72,17 @@ class WickDrudge(Drudge, abc.ABC):
         symms = self.symms
         resolvers = self.resolvers
 
-        return terms.flatMap(lambda term: wick_expand_term(
+        terms.cache()
+        terms_to_proc = terms.filter(lambda x: len(x.vecs) > 1)
+        keep_top = 0 if comparator is None else 1
+        terms_to_keep = terms.filter(lambda x: len(x.vecs) <= keep_top)
+
+        normal_ordered = terms_to_proc.flatMap(lambda term: wick_expand_term(
             term, comparator=comparator, contractor=contractor, phase=phase,
             symms=symms.value, resolvers=resolvers.value
         ))
+
+        return terms_to_keep.union(normal_ordered)
 
 
 #
