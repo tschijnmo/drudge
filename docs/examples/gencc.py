@@ -32,7 +32,7 @@ theory = args.theory
 n_cpus = os.cpu_count()
 if 'SLURM_JOB_NUM_NODES' in os.environ:
     n_cpus *= int(os.environ['SLURM_JOB_NUM_NODES'])
-n_parts = n_cpus * 6
+n_parts = n_cpus * 3
 
 conf = SparkConf().setAppName('{}-derivation'.format(theory))
 ctx = SparkContext(conf=conf)
@@ -43,7 +43,7 @@ print('Derive {} theory, default partition {}'.format(theory.upper(), n_parts))
 # Setting input tensors
 #
 
-dr = PartHoleDrudge(ctx)
+dr = PartHoleDrudge(ctx, num_partitions=n_parts)
 p = dr.names
 
 c_ = p.c_
@@ -80,7 +80,7 @@ time_begin = time.time()
 curr = dr.ham
 h_bar = dr.ham
 for i in range(4):
-    curr = (curr | corr).simplify(n_parts) * Rational(1, i + 1)
+    curr = (curr | corr).simplify() * Rational(1, i + 1)
     curr.cache()
     h_bar += curr
     n_terms = curr.n_terms
@@ -93,8 +93,8 @@ for i in range(4):
 
     continue
 
-h_bar = h_bar.simplify(n_parts).expand()
-h_bar.repartition(n_parts, cache=True)
+h_bar = h_bar.simplify().expand()
+h_bar.repartition(cache=True)
 n_terms = h_bar.n_terms
 
 now = time.time()
@@ -103,7 +103,7 @@ print('H-bar assembly done.  {} terms,  wall time {}s'.format(
 ))
 time_begin = now
 
-en_eqn = h_bar.eval_fermi_vev().simplify(n_parts)
+en_eqn = h_bar.eval_fermi_vev().simplify()
 en_eqn.cache()
 n_terms = en_eqn.n_terms
 now = time.time()
@@ -120,7 +120,7 @@ for order in cluster_bases.keys():
         c_[j] for j in reversed(v_dumms[:order])
     )
 
-    eqn = (proj * h_bar).eval_fermi_vev().simplify(n_parts)
+    eqn = (proj * h_bar).eval_fermi_vev().simplify()
     eqn.cache()
     n_terms = eqn.n_terms
     amp_eqns[order] = eqn
