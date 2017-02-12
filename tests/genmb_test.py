@@ -30,6 +30,36 @@ def test_genmb_has_basic_properties(genmb):
     # The details of the Hamiltonian will be tested in other ways.
 
 
+def test_genmb_simplify_simple_expressions(genmb):
+    """Test the basic Wick expansion facility on a single Fermion expression."""
+
+    dr = genmb
+
+    c_ = dr.op[AN]
+    c_dag = dr.op[CR]
+    r = dr.names.L
+    a, b, c, d = dr.names.L_dumms[:4]
+
+    t = IndexedBase('t')
+    u = IndexedBase('u')
+
+    inp = dr.sum(
+        (a, r), (b, r), (c, r), (d, r),
+        t[a, b] * u[c, d] * c_dag[a] * c_[b] * c_dag[c] * c_[d]
+    )
+
+    res = inp.simplify()
+
+    assert res.n_terms == 2
+
+    expected = dr.einst(
+        t[a, c] * u[b, d] * c_dag[a] * c_dag[b] * c_[d] * c_[c] +
+        t[a, c] * u[c, b] * c_dag[a] * c_[b]
+    ).simplify()
+
+    assert res == expected
+
+
 def test_genmb_derives_spin_orbit_hartree_fock(genmb):
     """Test general many-body model can derive HF theory in spin-orbital basis.
     """
