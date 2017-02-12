@@ -102,13 +102,6 @@ def wick_expand_term(
 
     symms = {} if symms is None else symms
     contr_all = comparator is None
-    vecs = term.vecs
-    n_vecs = len(vecs)
-
-    if n_vecs == 0:
-        return [term]
-    elif n_vecs == 1:
-        return [] if contr_all else [term]
 
     # First the vectors and contractions need to be formed as required by the
     # Wick expander.
