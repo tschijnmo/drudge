@@ -252,10 +252,9 @@ def _add_wick(schemes, avail, pivot, contred, vec_order, contrs):
     except StopIteration:
         # When everything is already decided, add the current term.
         if not contr_all or all(not i for i in avail):
-            vec_perm = (
-                contred if contr_all else
-                contred + [i for i in vec_order if avail[i]]
-            )
+            vec_perm = list(contred)
+            if not contr_all:
+                vec_perm.extend(i for i in vec_order if avail[i])
             schemes.append((
                 vec_perm, len(contred)
             ))
@@ -272,11 +271,13 @@ def _add_wick(schemes, avail, pivot, contred, vec_order, contrs):
     for vec_idx in range(pivot + 1, n_vecs):
         if avail[vec_idx] and vec_idx in pivot_contrs:
             avail[vec_idx] = False
+            contred.extend([pivot, vec_idx])
             _add_wick(
-                schemes, avail, pivot + 1, contred + [pivot, vec_idx],
-                vec_order, contrs
+                schemes, avail, pivot + 1, contred, vec_order, contrs
             )
             avail[vec_idx] = True
+            contred.pop()
+            contred.pop()
         continue
 
     avail[pivot] = True
