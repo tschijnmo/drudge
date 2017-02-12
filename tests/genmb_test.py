@@ -50,14 +50,14 @@ def test_genmb_simplify_simple_expressions(genmb, par_level, full_simplify):
         t[a, b] * u[c, d] * c_dag[a] * c_[b] * c_dag[c] * c_[d]
     )
 
-    dr.set_wick_parallel(par_level)
+    dr.wick_parallel = par_level
     assert dr.wick_parallel == par_level
     dr.full_simplify = full_simplify
     assert dr.full_simplify == full_simplify
 
     res = inp.simplify()
 
-    dr.set_wick_parallel(0)
+    dr.wick_parallel = 0
     assert dr.wick_parallel == 0
     dr.full_simplify = True
     assert dr.full_simplify

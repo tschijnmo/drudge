@@ -13,7 +13,6 @@ def parthole(spark_ctx):
     return dr
 
 
-
 @pytest.mark.parametrize('par_level', [0, 1, 2])
 @pytest.mark.parametrize('full_simplify', [True, False])
 def test_simple_parthole_normal_order(parthole, par_level, full_simplify):
@@ -36,12 +35,11 @@ def test_simple_parthole_normal_order(parthole, par_level, full_simplify):
         t[i, j] * c_dag[i] * c_[j]
     )
 
-    dr.set_wick_parallel(par_level)
+    dr.wick_parallel = par_level
     dr.full_simplify = full_simplify
     res = inp.simplify()
-    dr.set_wick_parallel(0)
+    dr.wick_parallel = 0
     dr.full_simplify = True
-
 
     assert res.n_terms == 2
     assert res == dr.einst(
