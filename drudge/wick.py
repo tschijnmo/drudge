@@ -129,8 +129,8 @@ class WickDrudge(Drudge, abc.ABC):
             flattened = wick_terms.flatMap(
                 lambda x: [(x[0], x[1], i) for i in x[2]]
             )
-            if num_partitions is not None:
-                flattened = flattened.repartition(num_partitions)
+            if self._num_partitions is not None:
+                flattened = flattened.repartition(self._num_partitions)
 
             normal_ordered = flattened.map(lambda x: _form_term_from_wick(
                 x[0], x[1], phase, resolvers.value, x[2]
