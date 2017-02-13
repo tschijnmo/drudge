@@ -271,6 +271,16 @@ class FockDrudge(WickDrudge):
         res[0], res[1] = res[1], res[0]
         return res
 
+    def _latex_vec(self, vec):
+        """Get the LaTeX form of field operators.
+        """
+
+        head = r'{}^{{{}}}'.format(vec.label, self._latex_sympy(vec.indices[0]))
+        indices = ', '.join(self._latex_sympy(i) for i in vec.indices[1:])
+        return r'{}_{{{}}}'.format(head, indices)
+
+    _latex_vec_mul = ' '
+
 
 def parse_field_op(op: Vec, _: Term):
     """Get the operator label, character and actual indices.
