@@ -8,7 +8,8 @@ import typing
 from collections.abc import Iterable, Sequence
 
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Integer, Wild
+from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex
+from IPython.display import Math
 
 from .canonpy import Perm, Group
 from .term import (
@@ -151,6 +152,27 @@ class Tensor:
             return '0'
         else:
             return '\n + '.join(str(i) for i in self.local_terms)
+
+    def latex(self, sep_lines=False):
+        r"""Get the latex form for the tensor.
+
+        The actual printing is dispatched to the drudge object for the
+        convenience of tuning the appearance.
+
+        Parameters
+        ----------
+
+        sep_lines : bool
+            If terms should be put into separate lines by separating them with
+            ``\\``.
+
+        """
+        return self._drudge.format_latex(self, sep_lines=sep_lines)
+
+    def display(self, sep_lines=False):
+        """Display the tensor in interactive IPython notebook sessions.
+        """
+        return Math(self.latex(sep_lines=sep_lines))
 
     #
     # Small manipulations
@@ -1084,6 +1106,81 @@ class Drudge:
         should not be necessary in user code.
         """
         return Tensor(self, self._ctx.parallelize(terms))
+
+    #
+    # Printing
+    #
+
+    def format_latex(self, tensor, sep_lines=False):
+        """Get the LaTeX form of a given tensor.
+
+        Subclasses should fine-tune the appearance of the resulted LaTeX form by
+        overriding ``_latex_sympy``, ``_latex_vec``, and ``_latex_vec_mul``.
+
+        """
+
+        if tensor.n_terms == 0:
+            return '0'
+
+        terms = []
+        for i, v in enumerate(tensor.local_terms):
+            term = self._latex_term(v)
+            if i != 0 and term[0] not in {'+', '-'}:
+                term = ' + ' + term
+            terms.append(term)
+            continue
+
+        term_sep = r' \\ ' if sep_lines else ' '
+
+        return term_sep.join(terms)
+
+    def _latex_term(self, term):
+        """Format a term into LaTeX form.
+
+        This method does not generally need to be overridden.
+        """
+
+        parts = []
+
+        sums = ''.join(r'\sum_{{{} \in {}}}'.format(
+            i, j.label
+        ) for i, j in term.sums)
+
+        amp = self._latex_sympy(term.amp)
+
+        if amp[0] in {'+', '-'}:
+            parts.append(amp[0])
+            amp = amp[1:]
+
+        vecs = self._latex_vec_mul.join(
+            self._latex_vec(i) for i in term.vecs
+        )
+
+        parts.extend([sums, amp, vecs])
+
+        return ' '.join(parts)
+
+    @staticmethod
+    def _latex_sympy(expr):
+        """Get the LaTeX form of SymPy expressions.
+
+        The default SymPy method will be used, subclasses can override this
+        method for fine tuning of the form.
+        """
+        return latex(expr)
+
+    def _latex_vec(self, vec):
+        """Get the LaTeX form of a vector.
+
+        By default, the vector name is going to be put into boldface, and the
+        indices are put into the subscripts.
+        """
+
+        head = r'\mathbf{{{}}}'.format(vec.label)
+        indices = ', '.join(self._latex_sympy(i) for i in vec.indices)
+        return r'{}_{{{}}}'.format(head, indices)
+
+    _latex_vec_mul = r' \otimes '
 
 
 #
