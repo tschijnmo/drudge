@@ -26,7 +26,7 @@ def test_ancr_character_has_basic_properties():
         assert str(an) == 'AN'
         assert repr(cr) == 'CranChar.CR'
         assert repr(an) == 'CranChar.AN'
-        assert latex(cr) == r'\dag'
+        assert latex(cr) == r'\dagger'
         assert latex(an) == ''
 
         # Ordering, in its original form and as SymPy key.
