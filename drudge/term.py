@@ -1273,6 +1273,9 @@ def einst_term(term: Term, resolvers):
             new_sums.append((symb, range_))
         continue
 
+    # Make summation from Einstein convention deterministic.
+    new_sums.sort(key=lambda x: (x[1].sort_key, x[0].name))
+
     return Term(_cat_sums(term.sums, new_sums), term.amp, term.vecs)
 
 
