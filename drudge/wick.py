@@ -15,6 +15,7 @@ from sympy import Expr
 from .drudge import Drudge
 from .term import Term, Vec, simplify_deltas_in_expr, compose_simplified_delta
 from .utils import sympy_key
+from .wickcore import compose_wick
 
 
 class WickDrudge(Drudge, abc.ABC):
@@ -186,7 +187,8 @@ def _prepare_wick(term, comparator, contractor, symms, resolvers):
             term, comparator, contractor, resolvers=resolvers
         )
 
-    schemes = _compute_wick_schemes(vec_order, contrs)
+    # schemes = _compute_wick_schemes(vec_order, contrs)
+    schemes = compose_wick(vec_order, contrs)
 
     return term, contrs, schemes
 
