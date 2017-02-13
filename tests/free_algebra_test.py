@@ -286,3 +286,21 @@ def test_tensor_method(free_alg):
 
     with pytest.raises(AttributeError):
         tensor.get_two()
+
+
+def test_tensors_has_string_form(free_alg):
+    """Test the string form representation of tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    v = p.v
+    i = p.i
+    x = IndexedBase('x')
+
+    tensor = dr.einst(x[i] * v[i] - x[i] * v[i])
+    orig = str(tensor)
+    assert orig == 'sum_{i} x[i] * v[i]\n + sum_{i} -x[i] * v[i]'
+
+    zero = tensor.simplify()
+    assert str(zero) == '0'
