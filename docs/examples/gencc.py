@@ -150,4 +150,5 @@ tce_res = [
 print('Checking with TCE result: ')
 print('Energy: ', en_eqn == tce_res[0])
 for i, order in enumerate(amp_eqns.keys()):
-    print('T{} amplitude: '.format(order), amp_eqns[order] == tce_res[i + 1])
+    diff = (amp_eqns[order] - tce_res[i + 1]).simplify()
+    print('T{} amplitude: '.format(order), diff == 0)
