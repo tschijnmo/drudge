@@ -43,7 +43,7 @@ print('Derive {} theory, default partition {}'.format(theory.upper(), n_parts))
 # Setting input tensors
 #
 
-dr = PartHoleDrudge(ctx, num_partitions=n_parts)
+dr = PartHoleDrudge(ctx, num_partitions=n_parts, full_simplify=False)
 p = dr.names
 
 c_ = p.c_
