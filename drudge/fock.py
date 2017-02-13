@@ -708,3 +708,23 @@ class PartHoleDrudge(GenMBDrudge):
             continue
 
         return self.create_tensor([i.subst(substs) for i in terms])
+
+
+class SpinOneHalf(EnumSymbs):
+    """Labels for an orthogonal basis for a spin one-half particle.
+
+    It values, which can be accessed as the class or module attributes ``UP``
+    and ``DOWN``, can optionally be used to denote the direction of a spin
+    one-half particle.
+
+    """
+
+    _symbs_ = [
+        ('UP', r'\uparrow'),
+        ('DOWN', r'\downarrow')
+    ]
+
+
+UP = SpinOneHalf.UP
+DOWN = SpinOneHalf.DOWN
+
