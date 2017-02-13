@@ -7,9 +7,9 @@ import types
 import typing
 from collections.abc import Iterable, Sequence
 
+from IPython.display import Math
 from pyspark import RDD, SparkContext
 from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex
-from IPython.display import Math
 
 from .canonpy import Perm, Group
 from .term import (
@@ -1142,21 +1142,32 @@ class Drudge:
 
         parts = []
 
-        sums = ''.join(r'\sum_{{{} \in {}}}'.format(
+        factors, coeff = term.amp_factors
+        if coeff == 1:
+            coeff_latex = None
+        elif coeff == -1:
+            parts.append('-')
+            coeff_latex = None
+        else:
+            coeff_latex = self._latex_sympy(coeff)
+            if coeff_latex[0] == '-':
+                parts.append('-')
+                coeff_latex = coeff_latex[1:]
+
+        parts.extend(r'\sum_{{{} \in {}}}'.format(
             i, j.label
         ) for i, j in term.sums)
 
-        amp = self._latex_sympy(term.amp)
+        if coeff_latex is not None:
+            parts.append(coeff_latex)
 
-        if amp[0] in {'+', '-'}:
-            parts.append(amp[0])
-            amp = amp[1:]
+        if len(factors) > 0:
+            parts.extend(self._latex_sympy(i) for i in factors)
 
         vecs = self._latex_vec_mul.join(
             self._latex_vec(i) for i in term.vecs
         )
-
-        parts.extend([sums, amp, vecs])
+        parts.append(vecs)
 
         return ' '.join(parts)
 

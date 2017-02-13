@@ -309,7 +309,7 @@ def test_tensors_has_string_and_latex_form(free_alg):
     # The LaTeX form.
     expected = (
         r'\sum_{i \in R} x_{i} \mathbf{v}_{i} '
-        '- \sum_{i \in R}  x_{i} \mathbf{v}_{i}'
+        '- \sum_{i \in R} x_{i} \mathbf{v}_{i}'
     )
     assert tensor.latex() == expected
     assert tensor.latex(sep_lines=True) != expected
