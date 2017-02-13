@@ -728,3 +728,17 @@ class SpinOneHalf(EnumSymbs):
 UP = SpinOneHalf.UP
 DOWN = SpinOneHalf.DOWN
 
+
+class SpinOneHalfGenDrudge(GenMBDrudge):
+    """Drudge for many-body problems of particles with explicit 1/2 spin.
+
+    This is just a shallow subclass of the drudge for general many-body
+    problems, with exchange set to fermi and has explicit spin values of up and
+    down.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the drudge object.
+        """
+
+        super().__init__(*args, exch=FERMI, spin=[UP, DOWN], **kwargs)
