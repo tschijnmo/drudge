@@ -115,3 +115,22 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
     expected = expected.simplify()
 
     assert res == expected
+
+
+def test_fock_drudge_prints_operators(genmb):
+    """Test the LaTeX printing by Fock drudge.
+
+    Things like term linkage should be tested for the base class.  Here we
+    concentrate on the vector part, which is turned for field operators.
+    """
+
+    dr = genmb
+    p = dr.names
+
+    x = IndexedBase('x')
+    a, b = p.L_dumms[:2]
+
+    tensor = dr.einst(- x[a, b] * p.c_dag[a] * p.c_[b])
+    assert tensor.latex() == (
+        r'- \sum_{a \in L} \sum_{b \in L} x_{a,b} c^{\dagger}_{a} c^{}_{b}'
+    )
