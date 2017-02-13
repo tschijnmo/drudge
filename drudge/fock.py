@@ -541,7 +541,7 @@ class GenMBDrudge(FockDrudge):
             *two_body_sums,
             two_body_coeff * two_body[orb_dumms] *
             cr[indices[0]] * cr[indices[1]] * an[indices[3]] * an[indices[2]],
-            predicate=conserve_spin(spin_dumms) if has_spin else None
+            predicate=conserve_spin(*spin_dumms) if has_spin else None
         )
 
         # We need to at lease remove the internal symbols.
