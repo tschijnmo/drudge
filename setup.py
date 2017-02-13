@@ -22,12 +22,20 @@ INCLUDE_DIRS = [
     '/'.join([PROJ_ROOT, i])
     for i in ['deps/libcanon/include', 'drudge']
     ]
+COMPILE_FLAGS = ['-std=c++14']
 
 canonpy = Extension(
     'drudge.canonpy',
     ['drudge/canonpy.cpp'],
     include_dirs=INCLUDE_DIRS,
-    extra_compile_args=['-std=c++14']
+    extra_compile_args=COMPILE_FLAGS
+)
+
+wickcore = Extension(
+    'drudge.wickcore',
+    ['drudge/wickcore.cpp'],
+    include_dirs=INCLUDE_DIRS,
+    extra_compile_args=COMPILE_FLAGS
 )
 
 setup(
@@ -41,5 +49,6 @@ setup(
     license='MIT',
     classifiers=CLASSIFIERS,
     packages=find_packages(),
-    ext_modules=[canonpy], install_requires=['sympy']
+    ext_modules=[canonpy, wickcore],
+    install_requires=['sympy']
 )
