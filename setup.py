@@ -50,5 +50,5 @@ setup(
     classifiers=CLASSIFIERS,
     packages=find_packages(),
     ext_modules=[canonpy, wickcore],
-    install_requires=['sympy']
+    install_requires=['sympy', 'IPython']
 )
