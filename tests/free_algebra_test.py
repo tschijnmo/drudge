@@ -288,8 +288,8 @@ def test_tensor_method(free_alg):
         tensor.get_two()
 
 
-def test_tensors_has_string_form(free_alg):
-    """Test the string form representation of tensors."""
+def test_tensors_has_string_and_latex_form(free_alg):
+    """Test the string and LaTeX form representation of tensors."""
 
     dr = free_alg
     p = dr.names
@@ -299,8 +299,20 @@ def test_tensors_has_string_form(free_alg):
     x = IndexedBase('x')
 
     tensor = dr.einst(x[i] * v[i] - x[i] * v[i])
+    zero = tensor.simplify()
+
+    # The basic string form.
     orig = str(tensor)
     assert orig == 'sum_{i} x[i] * v[i]\n + sum_{i} -x[i] * v[i]'
-
-    zero = tensor.simplify()
     assert str(zero) == '0'
+
+    # The LaTeX form.
+    expected = (
+        r'\sum_{i \in R} x_{i} \mathbf{v}_{i} '
+        '- \sum_{i \in R}  x_{i} \mathbf{v}_{i}'
+    )
+    assert tensor.latex() == expected
+    assert tensor.latex(sep_lines=True) != expected
+    assert tensor.latex(sep_lines=True).replace(r'\\ ', '') == expected
+    assert zero.latex() == '0'
+    assert zero.latex(sep_lines=True) == '0'
