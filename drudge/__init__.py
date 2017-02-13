@@ -9,7 +9,10 @@ from .term import Range, Vec, Term
 from .canon import IDENT, NEG, CONJ
 from .drudge import Tensor, Drudge
 from .wick import WickDrudge
-from .fock import (CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge)
+from .fock import (
+    CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
+    UP, DOWN, SpinOneHalfGenDrudge
+)
 from .utils import sum_, prod_
 
 __all__ = [
@@ -42,6 +45,8 @@ __all__ = [
     'CR', 'AN', 'FERMI', 'BOSE',
     'FockDrudge',
     'GenMBDrudge', 'PartHoleDrudge',
+    'UP', 'DOWN',
+    'SpinOneHalfGenDrudge',
 
     # Small user utilities.
     'sum_',
