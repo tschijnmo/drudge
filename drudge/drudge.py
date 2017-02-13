@@ -138,6 +138,21 @@ class Tensor:
         return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
     #
+    # Printing support
+    #
+
+    def __str__(self):
+        """Get the string representation of the tensor.
+
+        Note that this function will **gather** all terms into the driver.
+
+        """
+        if self.n_terms == 0:
+            return '0'
+        else:
+            return '\n + '.join(str(i) for i in self.local_terms)
+
+    #
     # Small manipulations
     #
 
