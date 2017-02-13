@@ -35,7 +35,7 @@ class CranChar(EnumSymbs):
     """
 
     _symbs_ = [
-        ('CR', r'\dag'),
+        ('CR', r'\dagger'),
         ('AN', '')
     ]
 
