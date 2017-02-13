@@ -84,17 +84,17 @@ static int add_wick(PyObject* schemes, std::vector<bool>& avail, size_t pivot,
 
             // This loop will be can skipped when all vectors are contracted.
             if (!contr_all) {
-                std::for_each(
-                    vec_order.begin(), vec_order.end(), [&](size_t j) {
-                        if (avail[j]) {
-                            PyObject* curr_vec = PyLong_FromSize_t(j);
-                            if (curr_vec == NULL) {
-                                Py_DECREF(scheme);
-                                return 1;
-                            }
-                            PyList_SET_ITEM(perm, i++, curr_vec);
+                for (auto j = vec_order.begin(); j != vec_order.end(); ++j) {
+                    size_t vec_idx = *j;
+                    if (avail[vec_idx]) {
+                        PyObject* curr_vec = PyLong_FromSize_t(vec_idx);
+                        if (curr_vec == NULL) {
+                            Py_DECREF(scheme);
+                            return 1;
                         }
-                    });
+                        PyList_SET_ITEM(perm, i++, curr_vec);
+                    }
+                };
             }
 
             assert(i == n_vecs);
