@@ -530,7 +530,16 @@ class Tensor:
         if not isinstance(other, Tensor):
             other = self._drudge.sum(other)
 
-        return Tensor(self._drudge, self._terms.union(other.terms))
+        if self._free_vars is not None and other._free_vars is not None:
+            free_vars = self.free_vars | other.free_vars
+        else:
+            free_vars = None
+
+        return Tensor(
+            self._drudge, self._terms.union(other.terms),
+            free_vars=free_vars,
+            expanded=self._expanded and other.expanded
+        )
 
     def __sub__(self, other):
         """Subtract another tensor from this tensor.
@@ -561,12 +570,12 @@ class Tensor:
 
     def _mul(self, other, right=False):
         """Multiply the tensor with another."""
-        prod, free_vars = self._cartesian_terms(other, right)
+        prod, free_vars, expanded = self._cartesian_terms(other, right)
 
         dumms = self._drudge.dumms
         return Tensor(self._drudge, prod.map(
             lambda x: x[0].mul_term(x[1], dumms=dumms.value, excl=free_vars)
-        ), free_vars=free_vars)
+        ), free_vars=free_vars, expanded=expanded)
 
     def __or__(self, other):
         """Compute the commutator with another tensor.
@@ -582,12 +591,12 @@ class Tensor:
 
     def _comm(self, other, right=False):
         """Compute the commutator."""
-        prod, free_vars = self._cartesian_terms(other, right)
+        prod, free_vars, expanded = self._cartesian_terms(other, right)
 
         dumms = self._drudge.dumms
         return Tensor(self._drudge, prod.flatMap(
             lambda x: x[0].comm_term(x[1], dumms=dumms.value, excl=free_vars)
-        ), free_vars=free_vars)
+        ), free_vars=free_vars, expanded=expanded)
 
     def _cartesian_terms(self, other, right):
         """Cartesian the terms with the terms in another tensor.
@@ -605,6 +614,7 @@ class Tensor:
                 prod = self._terms.cartesian(other.terms)
 
             free_vars = self.free_vars | other.free_vars
+            expanded = self._expanded and other._expanded
 
         else:
             # Special optimized version when the other terms are local.
@@ -627,8 +637,9 @@ class Tensor:
                 i.free_vars for i in other_terms
                 ])
             free_vars |= self.free_vars
+            expanded = False
 
-        return prod, free_vars
+        return prod, free_vars, expanded
 
     #
     # Substitution
