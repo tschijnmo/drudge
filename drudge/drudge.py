@@ -270,12 +270,8 @@ class Tensor:
         The dummies will be set to the canonical dummies according to the order
         in the summation list.  This method is especially useful on
         canonicalized tensors.
-
-        Note that direct calling this method will recompute the free variables
-        in the tensor.
         """
 
-        self._free_vars = None
         return self.apply(self._reset_dumms)
 
     def _reset_dumms(self, terms: RDD, excl=None) -> RDD:
@@ -303,13 +299,12 @@ class Tensor:
         using the facility from SymPy and tensor specific facilities for deltas.
         The zero terms will be filtered out as well.
 
-        The result is assumed to have the same free variables as the input, even
-        when some of them may have been canceled in the simplification.  When
-        that happens, the dummy resetting method can be explicitly called to
-        recompute the free variables.
         """
 
-        return self.apply(self._simplify_amps, free_vars=self._free_vars)
+        # Some free variables might be canceled.
+        return self.apply(
+            self._simplify_amps, free_vars=None, repartitioned=False
+        )
 
     def _simplify_amps(self, terms):
         """Get the terms with amplitude simplified."""
