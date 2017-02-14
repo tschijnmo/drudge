@@ -742,3 +742,18 @@ class SpinOneHalfGenDrudge(GenMBDrudge):
         """
 
         super().__init__(*args, exch=FERMI, spin=[UP, DOWN], **kwargs)
+
+
+class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
+    """Drudge for the particle-hole problems with explicit one-half spin.
+
+    This is a shallow subclass over the general particle-hole drudge without
+    explicit spin.  The spin values are given explicitly to be up and down and
+    the double-bar of the two-body interaction is disabled.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the particle-hole drudge."""
+
+        super().__init__(*args, spin=[UP, DOWN], dbbar=False, **kwargs)

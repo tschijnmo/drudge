@@ -11,7 +11,7 @@ from .drudge import Tensor, Drudge
 from .wick import WickDrudge
 from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
-    UP, DOWN, SpinOneHalfGenDrudge
+    UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge
 )
 from .utils import sum_, prod_
 
@@ -46,7 +46,7 @@ __all__ = [
     'FockDrudge',
     'GenMBDrudge', 'PartHoleDrudge',
     'UP', 'DOWN',
-    'SpinOneHalfGenDrudge',
+    'SpinOneHalfGenDrudge', 'SpinOneHalfPartHoleDrudge',
 
     # Small user utilities.
     'sum_',
