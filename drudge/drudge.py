@@ -66,6 +66,12 @@ class Tensor:
         self._expanded = expanded
         self._repartitioned = repartitioned
 
+    # To be used by the apply method.
+    _INIT_ARGS = {
+        'free_vars': '_free_vars',
+        'expanded': '_expanded',
+        'repartitioned': '_repartitioned'
+    }
 
     #
     # Basic information
@@ -218,14 +224,37 @@ class Tensor:
     # Small manipulations
     #
 
-    def apply(self, func, free_vars=None):
+    def apply(self, func, **kwargs):
         """Apply the given function to the RDD of terms.
 
-        Since this method is mostly a developer function, sanity check is not
-        performed.  But note that the given function will be called with the RDD
-        of the terms in the current tensor, and another RDD should be returned.
+        This function is analogous to the replace function of Python named
+        tuples, the same value from self for the tensor initializer is going to
+        be used when it is not given.  The terms get special treatment since it
+        is the centre of tensor objects.  The drudge is kept the same always.
+
+        Users generally do not need this method.  It is exposed here just for
+        flexibility and convenience.
+
+        .. warning::
+
+            For developers:  Note that the resulted tensor will inherit all
+            unspecified keyword arguments from self.  This method can give
+            *unexpected results* if certain arguments are not correctly reset
+            when they need to.  For instance, when expanded is not reset when
+            the result is no longer guaranteed to be in expanded form, later
+            expansions could be skipped when they actually need to be performed.
+
+            So all functions using this methods need to be reviewed when new
+            property are added to tensor class.  Direct invocation of the tensor
+            constructor is a much safe alternative.
+
         """
-        return Tensor(self._drudge, func(self._terms), free_vars=free_vars)
+
+        for k, v in self._INIT_ARGS.items():
+            if k not in kwargs:
+                kwargs[k] = getattr(self, v)
+
+        return Tensor(self._drudge, func(self._terms), **kwargs)
 
     #
     # Here for a lot of methods, we have two versions, with one being public,
