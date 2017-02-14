@@ -344,7 +344,7 @@ class Tensor:
 
         The terms will generally be sorted according to increasing complexity.
         """
-        self.apply(self._sort, free_vars=self._free_vars)
+        self.apply(self._sort)
 
     @staticmethod
     def _sort(terms: RDD):
@@ -358,7 +358,11 @@ class Tensor:
         part are *syntactically* the same.  So it is more useful when the
         canonicalization has been performed and the dummies reset.
         """
-        return self.apply(self._merge, free_vars=self._free_vars)
+
+        # All the traits could be invalidated by merging.
+        return Tensor(
+            self._drudge, self._merge(self._terms)
+        )
 
     def _merge(self, terms):
         """Get the term when they are attempted to be merged."""
@@ -708,9 +712,10 @@ class Tensor:
         replaced with the wilds if it is needed.
         """
 
-        free_vars = self._drudge.ctx.broadcast(
+        free_vars_local = (
             self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
         )
+        free_vars = self._drudge.ctx.broadcast(free_vars_local)
         dumms = self._drudge.dumms
 
         # We keep the dummbegs dictionary for each term and substitute all
@@ -734,7 +739,9 @@ class Tensor:
             ))
 
         res_terms = res.map(operator.itemgetter(0))
-        return Tensor(self._drudge, res_terms)
+        return Tensor(
+            self._drudge, res_terms, free_vars=free_vars_local, expanded=True
+        )
 
     #
     # Term filter and cherry picking
@@ -742,7 +749,10 @@ class Tensor:
 
     def filter(self, crit):
         """Filter out terms satisfying the given criterion."""
-        return Tensor(self._drudge, self._terms.filter(crit))
+        return self.apply(
+            lambda terms: terms.filter(crit),
+            free_vars=None, repartitioned=False
+        )
 
     #
     # Operations from the drudge
