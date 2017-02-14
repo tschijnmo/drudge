@@ -138,6 +138,17 @@ class Tensor:
 
         return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
+    @property
+    def free_vars(self):
+        """The free variables in the tensor."""
+        if self._free_vars is None:
+            self._free_vars = self.terms.map(
+                lambda term: term.free_vars
+            ).aggregate(set(), _union, _union)
+            # TODO: investigate performance characteristic with treeAggregate.
+
+        return self._free_vars
+
     #
     # Printing support
     #
@@ -194,17 +205,6 @@ class Tensor:
     # public version operates on the terms of the current tensor, and return
     # another tensor.
     #
-
-    @property
-    def free_vars(self):
-        """The free variables in the tensor."""
-        if self._free_vars is None:
-            self._free_vars = self.terms.map(
-                lambda term: term.free_vars
-            ).aggregate(set(), _union, _union)
-            # TODO: investigate performance characteristic with treeAggregate.
-
-        return self._free_vars
 
     def reset_dumms(self):
         """Reset the dummies.
