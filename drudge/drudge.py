@@ -167,7 +167,6 @@ class Tensor:
     def free_vars(self):
         """The free variables in the tensor."""
         if self._free_vars is None:
-
             # The terms are definitely going to be used for other purposes.
             self.terms.cache()
 
@@ -385,9 +384,12 @@ class Tensor:
         canonicalization algorithm is going to be applied to each of the terms.
         Note that this method does not rename the dummies.
         """
-        return self.apply(self._canon, free_vars=self._free_vars)
+        return self.apply(
+            functools.partial(self._canon, expanded=self._expanded),
+            expanded=True, repartitioned=self._expanded and self._repartitioned
+        )
 
-    def _canon(self, terms):
+    def _canon(self, terms, expanded):
         """Compute the canonicalized terms."""
 
         symms = self._drudge.symms
@@ -395,7 +397,10 @@ class Tensor:
         vec_colour = self._drudge.vec_colour
         # Normally a static function, not broadcast variable.
 
-        expanded_terms = self._expand(terms)
+        if not expanded:
+            expanded_terms = self._expand(terms)
+        else:
+            expanded_terms = terms
         canoned = expanded_terms.map(
             lambda term: term.canon(symms=symms.value, vec_colour=vec_colour)
         )
@@ -407,10 +412,12 @@ class Tensor:
         The actual work is dispatched to the drudge, who has domain specific
         knowledge about the noncommutativity of the vectors.
 
-        Note that it is assumed that the normal ordering operation does not add
-        new free variables to the terms.
         """
-        return self.apply(self._drudge.normal_order, free_vars=self._free_vars)
+
+        # Free variables, expanded, and repartitioned can all be invalidated.
+        return Tensor(
+            self._drudge, self._drudge.normal_order(self.terms)
+        )
 
     #
     # The driver simplification.
@@ -423,8 +430,8 @@ class Tensor:
 
         """
 
-        return self.apply(
-            self._simplify, free_vars=self._free_vars
+        return Tensor(
+            self._drudge, self._simplify(self._terms), expanded=True
         )
 
     def _simplify(self, terms):
@@ -432,8 +439,12 @@ class Tensor:
 
         num_partitions = self._drudge.num_partitions
 
-        terms = self._expand(terms)
-        if num_partitions is not None:
+        repartitioned = self._repartitioned
+        if not self._expanded:
+            terms = self._expand(terms)
+            repartitioned = False
+
+        if not repartitioned and num_partitions is not None:
             terms = terms.repartition(num_partitions)
 
         # First we make the vector part normal-ordered.
@@ -445,16 +456,17 @@ class Tensor:
         terms = self._simplify_amps(terms)
 
         # Canonicalize the terms and see if they can be merged.
-        terms = self._canon(terms)
+        terms = self._canon(terms, False)
+        # In rare cases, normal order could make the result unexpanded.
+
         terms = self._reset_dumms(terms)
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
         terms = self._simplify_amps(terms)
 
+        # Make the final expansion.
         terms = self._expand(terms)
-        if num_partitions is not None:
-            terms = terms.repartition(num_partitions)
 
         return terms
 
