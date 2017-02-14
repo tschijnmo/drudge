@@ -779,10 +779,14 @@ class Term(ATerms):
     def expand(self):
         """Expand the term into many terms."""
         expanded_amp = self.amp.expand()
-        if isinstance(expanded_amp, Add):
+
+        if expanded_amp == 0:
+            return []
+        elif isinstance(expanded_amp, Add):
             amp_terms = expanded_amp.args
         else:
             amp_terms = (expanded_amp,)
+
         return [self.map(lambda x: x, amp=i) for i in amp_terms]
 
     #
