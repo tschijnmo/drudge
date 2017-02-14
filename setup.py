@@ -50,5 +50,6 @@ setup(
     classifiers=CLASSIFIERS,
     packages=find_packages(),
     ext_modules=[canonpy, wickcore],
-    install_requires=['sympy', 'IPython']
+    package_data={'drudge': ['templates/*']},
+    install_requires=['sympy', 'ipython', 'Jinja2']
 )
