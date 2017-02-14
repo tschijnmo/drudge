@@ -167,6 +167,10 @@ class Tensor:
     def free_vars(self):
         """The free variables in the tensor."""
         if self._free_vars is None:
+
+            # The terms are definitely going to be used for other purposes.
+            self.terms.cache()
+
             self._free_vars = self.terms.map(
                 lambda term: term.free_vars
             ).aggregate(set(), _union, _union)
