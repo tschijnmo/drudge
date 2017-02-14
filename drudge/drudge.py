@@ -467,9 +467,12 @@ class Tensor:
         tensors.  Mathematically equal tensors might be compared to be unequal
         by this function when they are not simplified.
 
-        Note that this function gathers all terms in the tensor and can be very
-        expensive.  So it is mostly suitable for testing and debugging on small
-        problems only.
+        Note that only comparison with zero is performed by counting the number
+        of terms distributed.  Or this function gathers all terms in both
+        tensors and can be very expensive.  So direct comparison of two tensors
+        is mostly suitable for testing and debugging on small problems only.
+        For large scale problems, it is advised to compare the simplified
+        difference with zero.
         """
 
         n_terms = self.n_terms
