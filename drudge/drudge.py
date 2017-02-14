@@ -458,6 +458,8 @@ class Tensor:
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms, False)
         # In rare cases, normal order could make the result unexpanded.
+        #
+        # TODO: Find a design to skip repartition in most cases.
 
         terms = self._reset_dumms(terms)
         terms = self._merge(terms)
