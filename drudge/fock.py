@@ -9,7 +9,7 @@ import functools
 import typing
 import warnings
 
-from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational
+from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols
 
 from ._tceparser import parse_tce_out
 from .canon import NEG, IDENT
@@ -749,11 +749,26 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
 
     This is a shallow subclass over the general particle-hole drudge without
     explicit spin.  The spin values are given explicitly to be up and down and
-    the double-bar of the two-body interaction is disabled.
+    the double-bar of the two-body interaction is disabled.  And some additional
+    dummies traditional in the field are also added.
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, *args,
+            part_orb=(
+                    Range('V'),
+                    PartHoleDrudge.DEFAULT_PART_DUMMS + symbols('beta gamma')
+            ),
+            hole_orb=(
+                    Range('O'),
+                    PartHoleDrudge.DEFAULT_HOLE_DUMMS + symbols('u v')
+            ),
+            **kwargs
+    ):
         """Initialize the particle-hole drudge."""
 
-        super().__init__(*args, spin=[UP, DOWN], dbbar=False, **kwargs)
+        super().__init__(
+            *args, spin=[UP, DOWN], dbbar=False,
+            part_orb=part_orb, hole_orb=hole_orb, **kwargs
+        )
