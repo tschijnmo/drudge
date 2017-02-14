@@ -392,6 +392,10 @@ class Tensor:
         # Finally simplify the merged amplitude again.
         terms = self._simplify_amps(terms)
 
+        terms = self._expand(terms)
+        if num_partitions is not None:
+            terms = terms.repartition(num_partitions)
+
         return terms
 
     #

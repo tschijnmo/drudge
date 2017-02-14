@@ -92,7 +92,7 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
 
     rot = c_dag[a] * c_[b]
     comm = (dr.ham | rot).simplify()
-    assert comm.n_terms == 4
+    assert comm.n_terms == 6
 
     rho = IndexedBase('rho')
     # Following Ring and Schuck, here all creation comes before the
@@ -102,7 +102,7 @@ def test_genmb_derives_spin_orbit_hartree_fock(genmb):
         if op1.indices[0] == CR and op2.indices[0] == AN
         else 0
     )).simplify()
-    assert res.n_terms == 2
+    assert res.n_terms == 6
 
     # The correct result: [\rho, f]^b_a
 
