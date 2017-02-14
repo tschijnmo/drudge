@@ -93,7 +93,7 @@ for i in range(4):
 
     continue
 
-h_bar = h_bar.simplify().expand()
+h_bar = h_bar.simplify()
 h_bar.repartition(cache=True)
 n_terms = h_bar.n_terms
 
