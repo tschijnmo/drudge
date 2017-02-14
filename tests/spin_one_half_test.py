@@ -1,4 +1,4 @@
-"""Tests for the general model with explicit one-half spin."""
+"""Tests for the drudges with explicit one-half spin."""
 
 import pytest
 
@@ -8,22 +8,25 @@ from drudge import CR, AN, UP, DOWN, SpinOneHalfGenDrudge
 
 
 @pytest.fixture(scope='module')
-def dr(spark_ctx):
+def genmb(spark_ctx):
     """The fixture with a general spin one-half drudge."""
     return SpinOneHalfGenDrudge(spark_ctx)
 
 
-def test_spin_one_half_general_drudge_has_properties(dr):
+def test_spin_one_half_general_drudge_has_properties(genmb):
     """Test the basic properties of the drudge."""
+
+    dr = genmb
 
     assert dr.spin_vals == [UP, DOWN]
     assert dr.orig_ham.n_terms == 2 + 4
     assert dr.ham.n_terms == 2 + 3
 
 
-def test_restricted_hf_theory(dr):
+def test_restricted_hf_theory(genmb):
     """Test the derivation of restricted HF theory."""
 
+    dr = genmb
     p = dr.names
 
     c_dag = p.c_dag
