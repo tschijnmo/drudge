@@ -160,6 +160,16 @@ class Tensor:
 
         return self._free_vars
 
+    @property
+    def expanded(self):
+        """If the tensor is already expanded."""
+        return self._expanded
+
+    @property
+    def repartitioned(self):
+        """If the terms in the tensor is already repartitioned."""
+        return self._repartitioned
+
     #
     # Printing support
     #
