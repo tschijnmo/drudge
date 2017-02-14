@@ -4,7 +4,9 @@ import pytest
 
 from sympy import IndexedBase, symbols, Rational
 
-from drudge import CR, AN, UP, DOWN, SpinOneHalfGenDrudge
+from drudge import (
+    CR, AN, UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge
+)
 
 
 @pytest.fixture(scope='module')
@@ -63,3 +65,24 @@ def test_restricted_hf_theory(genmb):
     expected = expected.simplify()
 
     assert res == expected
+
+
+@pytest.fixture(scope='module')
+def parthole(spark_ctx):
+    """The fixture with a particle-hole spin one-half drudge."""
+    return SpinOneHalfPartHoleDrudge(spark_ctx)
+
+
+def test_spin_one_half_particle_hole_drudge_has_basic_properties(parthole):
+    """Test basic properties of spin one-half particle-hole drudge."""
+
+    dr = parthole
+    p = dr.names
+
+    assert dr.orig_ham.n_terms == 8 + 4 * 2 ** 4
+
+    ham_terms = dr.ham.local_terms
+    # Numbers are from the old PySLATA code.
+    assert len([i for i in ham_terms if len(i.vecs) == 2]) == 8
+    assert len([i for i in ham_terms if len(i.vecs) == 4]) == 36
+    assert dr.ham.n_terms == 8 + 36
