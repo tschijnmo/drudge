@@ -1,5 +1,8 @@
 """Tests for the basic tensor facilities using free algebra."""
 
+import os
+import os.path
+
 import pytest
 from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
 
@@ -288,7 +291,7 @@ def test_tensor_method(free_alg):
         tensor.get_two()
 
 
-def test_tensors_has_string_and_latex_form(free_alg):
+def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
     """Test the string and LaTeX form representation of tensors."""
 
     dr = free_alg
@@ -316,3 +319,13 @@ def test_tensors_has_string_and_latex_form(free_alg):
     assert tensor.latex(sep_lines=True).replace(r'\\ ', '') == expected
     assert zero.latex() == '0'
     assert zero.latex(sep_lines=True) == '0'
+
+    # Test the reporting facility.
+    with tmpdir.as_cwd():
+        filename = 'freealg.html'
+        with dr.report(filename, 'Simple report test') as rep:
+            rep.add('A simple tensor', tensor, description='Nothing')
+
+        # Here we just simply test the existence of the file.
+        assert os.path.isfile(filename)
+        os.remove(filename)
