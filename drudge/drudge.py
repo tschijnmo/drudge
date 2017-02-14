@@ -34,7 +34,9 @@ class Tensor:
         '_drudge',
         '_terms',
         '_local_terms',
-        '_free_vars'
+        '_free_vars',
+        '_expanded',
+        '_repartitioned'
     ]
 
     #
@@ -42,19 +44,28 @@ class Tensor:
     #
 
     def __init__(self, drudge: 'Drudge', terms: RDD,
-                 free_vars: typing.Set[Symbol] = None):
+                 free_vars: typing.Set[Symbol] = None,
+                 expanded=False, repartitioned=False):
         """Initialize the tensor.
 
         This function is not designed to be called by users directly.  Tensor
         creation should be carried out by factory function inside drudges and
         the operations defined here.
+
+        The default values for the keyword arguments are always the safest
+        choice, for better performance, manipulations are encouraged to have
+        proper consideration of all the keyword arguments.
         """
 
         self._drudge = drudge
         self._terms = terms
 
         self._local_terms = None  # type: typing.List[Term]
+
         self._free_vars = free_vars
+        self._expanded = expanded
+        self._repartitioned = repartitioned
+
 
     #
     # Basic information
