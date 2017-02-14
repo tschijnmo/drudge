@@ -331,7 +331,10 @@ class Tensor:
         By calling this method, terms in the tensor whose amplitude is the
         addition of multiple parts will be expanded into multiple terms.
         """
-        return self.apply(self._expand, free_vars=self._free_vars)
+        if self._expanded:
+            return self
+        else:
+            return self.apply(self._expand, expanded=True, repartitioned=False)
 
     @staticmethod
     def _expand(terms):
