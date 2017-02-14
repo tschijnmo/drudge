@@ -5,6 +5,8 @@ import inspect
 import operator
 import types
 import typing
+import contextlib
+
 from collections.abc import Iterable, Sequence
 
 from IPython.display import Math
@@ -17,6 +19,7 @@ from .term import (
     subst_vec_in_term, parse_terms, einst_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_
+from .report import Report
 
 
 class Tensor:
@@ -1294,6 +1297,19 @@ class Drudge:
         return r'{}_{{{}}}'.format(head, indices)
 
     _latex_vec_mul = r' \otimes '
+
+    @contextlib.contextmanager
+    def report(self, filename, title):
+        """Make a report for results.
+
+        This function should be used within a ``with`` statement to open a
+        report for results.
+
+        """
+
+        report = Report(filename, title)
+        yield report
+        report.write()
 
 
 #
