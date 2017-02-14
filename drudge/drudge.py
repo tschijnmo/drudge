@@ -131,10 +131,18 @@ class Tensor:
         good performance.
         """
 
-        if num_partitions is None:
-            num_partitions = self._drudge.num_partitions
+        if not self._repartitioned:
 
-        self._terms = self._terms.repartition(num_partitions)
+            num_partitions = (
+                self._drudge.num_partitions if num_partitions is None else
+                num_partitions
+            )
+            if num_partitions is None:
+                raise ValueError('No default number of partitions available')
+
+            self._terms = self._terms.repartition(num_partitions)
+            self._repartitioned = True
+
         if cache:
             self.cache()
         return self
