@@ -3,6 +3,7 @@
 import functools
 import operator
 from collections.abc import Sequence
+import time
 
 from pyspark import RDD, SparkContext
 from sympy import (
@@ -376,3 +377,39 @@ def prod_(obj):
         return 1
     else:
         return functools.reduce(operator.mul, i, init)
+
+
+class TimeStamper:
+    """Utility class for printing timing information.
+
+    This class helps to timing the progression of batch jobs.  It is capable of
+    getting and formatting the elapsed wall time between consecutive steps.
+    Note that the timing here might not be accurate to one second.
+
+    """
+
+    def __init__(self):
+        """Initialize the time stamper"""
+        self._prev = time.time()
+
+    def stamp(self, label, tensor=None):
+        """Make a timestamp.
+
+        A formatted timestamp will be returned as a string.  When a tensor is
+        given, it will be cached, counted its number of terms.  This method has
+        this parameter since if no reduction is performed on the tensor, it
+        might remain unevaluated inside Spark and give misleading timing
+        information.
+
+        """
+
+        if tensor is not None:
+            tensor.cache()
+            n_terms = '{} terms, '.format(tensor.n_terms)
+        else:
+            n_terms = ''
+
+        now = time.time()
+        elapse = now - self._prev
+        self._prev = now
+        return '{} done, {}wall time: {:.2} s'.format(label, n_terms, elapse)
