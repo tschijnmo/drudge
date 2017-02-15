@@ -13,7 +13,9 @@ from sympy import (
     Add, Mul, Indexed, IndexedBase, Expr, Basic, Pow)
 
 from .canon import canon_factors
-from .utils import ensure_symb, ensure_expr, sympy_key, is_higher
+from .utils import (
+    ensure_symb, ensure_expr, sympy_key, is_higher, NonsympifiableFunc
+)
 
 #
 # Utility constants
@@ -956,8 +958,8 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
         else:
             return Pow(base, e)
 
-    amp = amp.replace(Pow, decouple_pow)
-    amp = amp.replace(query_func, replace_func)
+    amp = amp.replace(Pow, NonsympifiableFunc(decouple_pow))
+    amp = amp.replace(query_func, NonsympifiableFunc(replace_func))
 
     if not found[0]:
         return None
@@ -1228,7 +1230,7 @@ def einst_term(term: Term, resolvers):
         next_idx[0] += 1
         return placeholder
 
-    res_amp = term.amp.replace(Indexed, replace_cb)
+    res_amp = term.amp.replace(Indexed, NonsympifiableFunc(replace_cb))
     for i in term.vecs:
         indices.extend(i.indices)
 
@@ -1354,9 +1356,9 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
     if amp == 0:
         return amp, substs
 
-    new_amp = amp.replace(KroneckerDelta, functools.partial(
+    new_amp = amp.replace(KroneckerDelta, NonsympifiableFunc(functools.partial(
         _proc_delta_in_amp, sums_dict, resolvers, substs
-    ))
+    )))
 
     return new_amp, substs
 
