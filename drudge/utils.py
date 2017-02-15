@@ -6,9 +6,10 @@ from collections.abc import Sequence
 
 from pyspark import RDD, SparkContext
 from sympy import (
-    sympify, Symbol, Expr, SympifyError, count_ops,
-    default_sort_key, AtomicExpr, Integer, S
+    sympify, Symbol, Expr, SympifyError, count_ops, default_sort_key,
+    AtomicExpr, Integer, S
 )
+from sympy.core.sympify import CantSympify
 from sympy.core.assumptions import ManagedProperties
 
 
@@ -64,6 +65,26 @@ def is_higher(obj, priority):
     """
 
     return getattr(obj, '_op_priority', priority - 1) > priority
+
+
+class NonsympifiableFunc(CantSympify):
+    """Utility for wrapping callable to be used for SymPy.
+
+    Inside SymPy functions like replace, things will first be attempted to be
+    sympified, which can be very expensive.  By wrapping callable inside this
+    class, sympification attempts will be aborted very early on.
+
+    """
+
+    __slots__ = ['_func']
+
+    def __init__(self, func):
+        """Initialize the object."""
+        self._func = func
+
+    def __call__(self, *args, **kwargs):
+        """Dispatch to the wrapped callable."""
+        return self._func(*args, **kwargs)
 
 
 class _EnumSymbsMeta(ManagedProperties):
