@@ -2,7 +2,7 @@
 
 import pytest
 
-from sympy import sympify
+from sympy import sympify, SympifyError
 
 from drudge import Vec
 
@@ -30,5 +30,5 @@ def test_vecs_has_basic_properties():
         assert repr(i) == repr_ref
 
         # Vectors should not be sympified.
-        with pytest.raises(TypeError):
+        with pytest.raises(SympifyError):
             sympify(i)

@@ -9,8 +9,10 @@ import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
-    sympify, Symbol, KroneckerDelta, Eq, solve, S, Integer,
-    Add, Mul, Indexed, IndexedBase, Expr, Basic, Pow)
+    sympify, Symbol, KroneckerDelta, Eq, solve, S, Integer, Add, Mul, Indexed,
+    IndexedBase, Expr, Basic, Pow
+)
+from sympy.core.sympify import CantSympify
 
 from .canon import canon_factors
 from .utils import (
@@ -284,7 +286,7 @@ def parse_terms(obj) -> typing.List['Term']:
         return [Term((), expr, ())]
 
 
-class Vec(ATerms):
+class Vec(ATerms, CantSympify):
     """Vectors.
 
     Vectors are the basic non-commutative quantities.  Its objects consist of an
@@ -402,14 +404,6 @@ class Vec(ATerms):
     def map(self, func):
         """Map the given function to indices."""
         return Vec(self._label, (func(i) for i in self._indices))
-
-    def _sympy_(self):
-        """Disable the sympification of vectors.
-
-        This could given more sensible errors when vectors are accidentally
-        attempted to be manipulated as SymPy quantities.
-        """
-        raise TypeError('Vectors cannot be sympified', self)
 
     @property
     def terms(self):
@@ -809,7 +803,7 @@ class Term(ATerms):
 
         factors = []
 
-        wrapper_base = IndexedBase('internalWrapper', shape=('internalShape',))
+        wrapper_base = _INTERNAL_WRAPPER_BASE
         amp_factors, coeff = self.amp_factors
         for i in amp_factors:
             # TODO: make it able to treat indexed inside function.
@@ -849,6 +843,11 @@ class Term(ATerms):
             continue
 
         return Term(tuple(res_sums), res_amp, tuple(res_vecs))
+
+
+_INTERNAL_WRAPPER_BASE = IndexedBase(
+    'internalWrapper', shape=('internalShape',)
+)
 
 
 #
