@@ -1,6 +1,10 @@
 """Tests for user utility functions."""
 
-from drudge import Vec, sum_, prod_
+import time
+import types
+from unittest.mock import MagicMock
+
+from drudge import Vec, sum_, prod_, TimeStamper
 from drudge.term import parse_terms
 
 
@@ -17,3 +21,21 @@ def test_sum_prod_utility():
 
     assert sum_([]) == 0
     assert prod_([]) == 1
+
+
+def test_time_stamper():
+    """Test the time stamper utility."""
+
+    tensor = types.SimpleNamespace(n_terms=2, cache=MagicMock())
+
+    stamper = TimeStamper()
+    time.sleep(0.5)
+    res = stamper.stamp('Nothing')
+    assert res.startswith('Nothing done')
+    assert float(res.split()[-2]) - 0.5 < 0.1
+
+    time.sleep(0.5)
+    res = stamper.stamp('Tensor', tensor)
+    assert res.startswith('Tensor done, 2 terms')
+    assert float(res.split()[-2]) - 0.5 < 0.1
+    tensor.cache.assert_called_once_with()
