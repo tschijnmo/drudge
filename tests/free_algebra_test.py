@@ -329,3 +329,11 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
         # Here we just simply test the existence of the file.
         assert os.path.isfile(filename)
         os.remove(filename)
+
+
+def test_drudge_has_default_properties(free_alg):
+    """Test some basic default properties for drudge objects."""
+
+    assert isinstance(free_alg.num_partitions, int)
+    assert free_alg.full_simplify
+    assert not free_alg.simple_merge
