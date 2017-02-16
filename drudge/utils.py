@@ -388,9 +388,14 @@ class TimeStamper:
 
     """
 
-    def __init__(self):
-        """Initialize the time stamper"""
+    def __init__(self, print_cb=print):
+        """Initialize the time stamper.
+
+        The given function will be called with the formatted time-stamp.  By
+        default, it will just be written to stdout.
+        """
         self._prev = time.time()
+        self._print = print_cb
 
     def stamp(self, label, tensor=None):
         """Make a timestamp.
@@ -412,4 +417,7 @@ class TimeStamper:
         now = time.time()
         elapse = now - self._prev
         self._prev = now
-        return '{} done, {}wall time: {:.2} s'.format(label, n_terms, elapse)
+
+        self._print(
+            '{} done, {}wall time: {:.2} s'.format(label, n_terms, elapse)
+        )
