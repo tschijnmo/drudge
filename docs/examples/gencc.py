@@ -90,6 +90,8 @@ stamper.stamp('H-bar assembly', h_bar)
 en_eqn = h_bar.eval_fermi_vev().simplify()
 stamper.stamp('Energy equation', en_eqn)
 
+dr.wick_parallel = 1
+
 amp_eqns = collections.OrderedDict()
 for order in cluster_bases.keys():
     proj = prod_(
