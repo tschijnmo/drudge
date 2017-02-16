@@ -745,6 +745,19 @@ class Tensor:
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
+    def act(self, lhs, tensor, wilds=None):
+        """Act on a tensor by substituting all its appearances.
+
+        This method is the active voice version of the subst function.  Here
+        the tensor object that is called on serves as the definition, and the
+        argument gives the tensor to be replaced.
+        """
+
+        if not isinstance(tensor, Tensor):
+            tensor = self._drudge.sum(tensor)
+
+        return tensor.subst(lhs, self, wilds=wilds)
+
     #
     # Term filter and cherry picking
     #

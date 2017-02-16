@@ -270,7 +270,6 @@ def test_tensors_can_be_substituted_scalars(free_alg):
 
     x_def = dr.sum((j, r), y[j] * z[i])
     orig = dr.sum((i, r), x[i] ** 2 * x[k])
-    res = orig.subst(x[i], x_def)
 
     # k is free.
     expected = dr.sum(
@@ -278,7 +277,8 @@ def test_tensors_can_be_substituted_scalars(free_alg):
         z[i] ** 2 * y[j] * y[l] * y[m] * z[k]
     )
 
-    assert res.simplify() == expected.simplify()
+    for res in [orig.subst(x[i], x_def), x_def.act(x[i], orig)]:
+        assert res.simplify() == expected.simplify()
 
 
 def test_tensor_method(free_alg):
