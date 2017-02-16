@@ -74,7 +74,7 @@ dr.wick_parallel = 1
 e_dag = Vec(r'E^\dagger')
 beta, gamma, u, v = symbols('beta gamma u v')
 spin = symbols('spin')
-e_dag_def = dr.sum((spin, UP, DOWN), c_[i, spin] * c[a, spin])
+e_dag_def = dr.sum((spin, UP, DOWN), c_dag[i, spin] * c_[a, spin])
 projs = [e_dag_def.act(e_dag[a, i], p) for p in [
     e_dag[beta, u],
     e_dag[beta, u] * e_dag[gamma, v]
