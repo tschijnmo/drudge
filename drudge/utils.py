@@ -419,5 +419,5 @@ class TimeStamper:
         self._prev = now
 
         self._print(
-            '{} done, {}wall time: {:.2} s'.format(label, n_terms, elapse)
+            '{} done, {}wall time: {:.2f} s'.format(label, n_terms, elapse)
         )
