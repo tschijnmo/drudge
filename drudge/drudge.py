@@ -1,12 +1,11 @@
 """The main drudge and tensor class definition."""
 
+import contextlib
 import functools
 import inspect
 import operator
 import types
 import typing
-import contextlib
-
 from collections.abc import Iterable, Sequence
 
 from IPython.display import Math
@@ -14,12 +13,12 @@ from pyspark import RDD, SparkContext
 from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex
 
 from .canonpy import Perm, Group
+from .report import Report
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_
-from .report import Report
 
 
 class Tensor:
@@ -879,8 +878,7 @@ class Drudge:
 
     # We do not need slots here.  There is generally only one drudge instance.
 
-    def __init__(self, ctx: SparkContext, num_partitions=None,
-                 full_simplify=True, simple_merge=False):
+    def __init__(self, ctx: SparkContext, num_partitions=True):
         """Initialize the drudge.
 
         Parameters
@@ -890,24 +888,24 @@ class Drudge:
             The Spark context to be used.
 
         num_partitions
-            The preferred number of partitions.  By default, it is None,
-            disabling explicit load-balancing by shuffling.
-
-        full_simplify
-            Perform deep simplification for amplitude expressions.
-
-        simple_merge
-            If only terms with same factors involving dummies are going to be
-            merged.  This can be helpful for cases where the amplitude are all
-            simple polynomials of tensorial quantities.  Note that this could
-            disable some SymPy simplification.
+            The preferred number of partitions.  By default, it is the default
+            parallelism of the given Spark environment.  Or an explicit integral
+            value can be given.  It can be set to None, which disable all
+            explicit load-balancing by shuffling.
 
         """
 
         self._ctx = ctx
-        self._num_partitions = num_partitions
-        self._full_simplify = full_simplify
-        self._simple_merge = simple_merge
+
+        if num_partitions is True:
+            self._num_partitions = self._ctx.defaultParallelism
+        elif isinstance(num_partitions, int) or num_partitions is None:
+            self._num_partitions = num_partitions
+        else:
+            raise TypeError('Invalid default partition', num_partitions)
+
+        self._full_simplify = True
+        self._simple_merge = False
 
         self._dumms = BCastVar(self._ctx, {})
         self._symms = BCastVar(self._ctx, {})
@@ -927,6 +925,17 @@ class Drudge:
         """The preferred number of partitions for data."""
         return self._num_partitions
 
+    @num_partitions.setter
+    def num_partitions(self, value):
+        """Set the preferred number of partitions for data."""
+        if isinstance(value, int) or value is None:
+            self._num_partitions = value
+        else:
+            raise TypeError(
+                'Invalid default number of partitions', value,
+                'expecting integer or None'
+            )
+
     @property
     def full_simplify(self):
         """If full simplification is to be performed on amplitudes."""
@@ -934,7 +943,12 @@ class Drudge:
 
     @full_simplify.setter
     def full_simplify(self, value):
-        """Set if full simplification is going to be carried out."""
+        """Set if full simplification is going to be carried out.
+
+        It can be used to disable full simplification of the amplitude
+        expression by SymPy.  For simple polynomial amplitude, this option is
+        generally safe to be disabled.
+        """
         if value is not True and value is not False:
             raise TypeError(
                 'Invalid full simplification option', value,
@@ -949,7 +963,21 @@ class Drudge:
 
     @simple_merge.setter
     def simple_merge(self, value):
-        """Set if simple merge is going to be carried out."""
+        """Set if simple merge is going to be carried out.
+
+        When it is set to true, only terms with same factors involving dummies
+        are going to be merged.  This might be helpful for cases where the
+        amplitude are all simple polynomials of tensorial quantities.  Note that
+        this could disable some SymPy simplification.
+
+        .. warning::
+
+            This option might not give much more than disabling full
+            simplification but taketh away many simplifications.  It is in
+            general not recommended to be used.
+
+        """
+
         if value is not True and value is not False:
             raise ValueError(
                 'Invalid simple merge setting', value,
