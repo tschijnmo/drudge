@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
 #
-# Run the given drudge script in a SLURM job.
+# Start an stand-alone Spark cluster in a SLURM job.
 #
-# The actual script and its command line arguments should be given to this
-# auxiliary script.
+# This script should be called *within* the current shell.  Then a standalone
+# Spark cluster will be started.  The spark-submit command can next be used to
+# submit the actual job.
 #
 # Before calling this script, the environmental variables SPARK_HOME,
 # JAVA_HOME, and PYTHONPATH need to be set correctly.  And the program
@@ -14,21 +15,11 @@
 # SPARK_LOG_LEVEL can be used to tune the logging level for Spark, by default,
 # only errors are logged due to performance reasons.
 #
-# MEM_AMOUNT can be used to tune the memory amount for both the driver and
-# worker during spark-submit.  Normally this does not need to be set.  A
-# symbolic value of ALL can be used to use up all available memory.
-#
 
 if [ -z "${SPARK_HOME}" ]; then
     echo "SPARK_HOME is not set!"
     exit 1
 fi
-
-if [ "$#" -lt 1 ]; then
-    echo "No script is given!"
-    exit 1
-fi
-
 
 #
 # Create the directories needed by Spark for the job.
@@ -58,6 +49,7 @@ spark_master_host=$(hostname)
 spark_master_port=7077
 
 export SPARK_CONF_DIR=${spark_conf_dir}
+# This is why this script has to be called within the current shell.
 
 cat > ${spark_conf_dir}/spark-env.sh << EOF
 export SPARK_LOG_DIR=${spark_log_dir}
@@ -108,75 +100,35 @@ JAVA_HOME,SPARK_CONF_DIR,SPARK_NO_DAEMONIZE,\
 PYTHONPATH,PYTHONHASHSEED"
 
 if [ "$SLURM_JOB_NUM_NODES" -gt 1 ]; then
-
+    cross_nodes=1
     export PYTHONHASHSEED=323
     spark_master_link="spark://${spark_master_host}:${spark_master_port}"
 
+    if [ -z "$SLURM_CPUS_PER_TASK" ]; then
+        echo "SLURM jobs should be submitted with explicit `-c` option!"
+        exit 1
+    fi
+
+    spark_default_parallelism=$[ ${SLURM_NTASKS} * ${SLURM_CPUS_PER_TASK} ]
+else
+    cross_nodes=0
+    spark_master_link="local[*]"
+
+    spark_default_parallelism="${SLURM_CPUS_ON_NODE}"
+fi
+
+cat > ${spark_conf_dir}/spark-defaults.conf << EOF
+spark.master ${spark_master_link}
+spark.default.parallelism ${spark_default_parallelism}
+EOF
+
+
+if [ $cross_nodes -eq 1 ]; then
     ${SPARK_HOME}/sbin/start-master.sh
-
     export SPARK_NO_DAEMONIZE=1
-
     srun --export="$export_env" \
     ${SPARK_HOME}/sbin/start-slave.sh ${spark_master_link} &
 
-    unset SPARK_NO_DAEMONIZE
-
     sleep 30
-
-else
-    spark_master_link="local[*]"
 fi
-
-
-#
-# Try to have a sensible setting of memory
-#
-
-MEM_AMOUNT=${MEM_AMOUNT:-DEFAULT}
-
-if [ "$MEM_AMOUNT" = "ALL" ]; then
-    if [ -z "$SLURM_MEM_PER_NODE" ]; then
-        # For lower versions of SLURM where this is not set.
-        MEM_AMOUNT=$(free -g | grep ^Mem: | awk '{print $2}')g
-    else
-        MEM_AMOUNT="$SLURM_MEM_PER_NODE"
-    fi
-fi
-
-if [ "$MEM_AMOUNT" != "DEFAULT" ]; then
-    mem_args="--executor-memory ${MEM_AMOUNT} --driver-memory ${MEM_AMOUNT}"
-else
-    mem_args=""
-fi
-
-
-#
-# Run the given script.
-#
-
-echo "
-
-
-********************************************************************************
-Running Script $1 at ${spark_master_link}
-$(date)
-********************************************************************************
-
-
-"
-
-${SPARK_HOME}/bin/spark-submit --master "${spark_master_link}" \
-${mem_args} \
-"$@"
-
-echo "
-
-
-********************************************************************************
-Script $1 finished
-$(date)
-********************************************************************************
-
-
-"
 
