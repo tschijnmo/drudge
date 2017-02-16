@@ -346,7 +346,7 @@ class Tensor:
 
         The terms will generally be sorted according to increasing complexity.
         """
-        self.apply(self._sort)
+        return self.apply(self._sort)
 
     @staticmethod
     def _sort(terms: RDD):
