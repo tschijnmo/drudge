@@ -8,7 +8,6 @@ have the full power of Python at hand.
 
 import argparse
 import collections
-import os
 import time
 import urllib.request
 
@@ -29,21 +28,19 @@ parser.add_argument(
 args = parser.parse_args()
 theory = args.theory
 
-n_cpus = os.cpu_count()
-if 'SLURM_JOB_NUM_NODES' in os.environ:
-    n_cpus *= int(os.environ['SLURM_JOB_NUM_NODES'])
-n_parts = n_cpus * 3
-
 conf = SparkConf().setAppName('{}-derivation'.format(theory))
 ctx = SparkContext(conf=conf)
-
-print('Derive {} theory, default partition {}'.format(theory.upper(), n_parts))
 
 #
 # Setting input tensors
 #
 
-dr = PartHoleDrudge(ctx, num_partitions=n_parts, full_simplify=False)
+dr = PartHoleDrudge(ctx)
+dr.full_simplify = False
+
+print('Derive {} theory, default partition {}'.format(
+    theory.upper(), dr.num_partitions
+))
 p = dr.names
 
 c_ = p.c_
