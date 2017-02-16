@@ -8,13 +8,12 @@ have the full power of Python at hand.
 
 import argparse
 import collections
-import time
 import urllib.request
 
 from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational, factorial
 
-from drudge import PartHoleDrudge, sum_, prod_
+from drudge import PartHoleDrudge, sum_, prod_, TimeStamper
 
 #
 # Job preparation
@@ -72,42 +71,24 @@ print('Problem setting up done.')
 # Similarity transform the Hamiltonian
 #
 
-time_begin = time.time()
+stamper = TimeStamper()
 
 curr = dr.ham
 h_bar = dr.ham
 for i in range(4):
     curr = (curr | corr).simplify() * Rational(1, i + 1)
-    curr.cache()
+    stamper.stamp('Commutator order {}'.format(i + 1), curr)
     h_bar += curr
-    n_terms = curr.n_terms
-
-    now = time.time()
-    print('Commutator order {} done, {} terms, wall time {}s'.format(
-        i + 1, n_terms, now - time_begin
-    ))
-    time_begin = now
-
     continue
 
 h_bar = h_bar.simplify()
 h_bar.repartition(cache=True)
 n_terms = h_bar.n_terms
 
-now = time.time()
-print('H-bar assembly done.  {} terms,  wall time {}s'.format(
-    n_terms, now - time_begin
-))
-time_begin = now
+stamper.stamp('H-bar assembly', h_bar)
 
 en_eqn = h_bar.eval_fermi_vev().simplify()
-en_eqn.cache()
-n_terms = en_eqn.n_terms
-now = time.time()
-print('Energy equation done.  {} terms, wall time {}s'.format(
-    n_terms, now - time_begin
-))
-time_begin = now
+stamper.stamp('Energy equation', en_eqn)
 
 amp_eqns = collections.OrderedDict()
 for order in cluster_bases.keys():
@@ -118,15 +99,8 @@ for order in cluster_bases.keys():
     )
 
     eqn = (proj * h_bar).eval_fermi_vev().simplify()
-    eqn.cache()
-    n_terms = eqn.n_terms
+    stamper.stamp('T{} equation'.format(order), eqn)
     amp_eqns[order] = eqn
-
-    now = time.time()
-    print('T{} equation done.  {} terms, wall time {}s'.format(
-        order, n_terms, now - time_begin
-    ))
-    time_begin = now
 
     continue
 
