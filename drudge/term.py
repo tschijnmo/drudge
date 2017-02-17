@@ -652,7 +652,7 @@ class Term(ATerms):
 
         return factors, coeff
 
-    def map(self, func, sums=None, amp=None, vecs=None):
+    def map(self, func, sums=None, amp=None, vecs=None, skip_vecs=False):
         """Map the given function to the SymPy expressions in the term.
 
         The given function will **not** be mapped to the dummies in the
@@ -667,7 +667,9 @@ class Term(ATerms):
         return Term(
             self._sums if sums is None else sums,
             func(self._amp if amp is None else amp),
-            tuple(i.map(func) for i in (self._vecs if vecs is None else vecs))
+            (tuple(
+                i.map(func) for i in (self._vecs if vecs is None else vecs)
+            ) if not skip_vecs else self._vecs)
         )
 
     def subst(self, substs, sums=None, amp=None, vecs=None, purge_sums=False):
