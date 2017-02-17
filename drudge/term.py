@@ -1368,43 +1368,8 @@ def parse_term(term):
 
 
 #
-# Misc public functions
-#
-
-def try_resolve_range(i, sums_dict, resolvers):
-    """Attempt to resolve the range of an expression.
-
-    None will be returned if it cannot be resolved.
-    """
-
-    for resolver in itertools.chain([sums_dict], resolvers):
-
-        if isinstance(resolver, Mapping):
-            if i in resolver:
-                return resolver[i]
-            else:
-                continue
-        elif isinstance(resolver, Callable):
-            range_ = resolver(i)
-            if range_ is None:
-                continue
-            else:
-                if isinstance(range_, Range):
-                    return range_
-                else:
-                    raise TypeError('Invalid range: ', range_,
-                                    'from resolver', resolver,
-                                    'expecting range or None')
-        else:
-            raise TypeError('Invalid resolver: ', resolver,
-                            'expecting callable or mapping')
-
-    # Never resolved nor error found.
-    return None
-
-
-#
 # Delta simplification utilities.
+# -------------------------------
 #
 # The core idea of delta simplification is that a delta can be replaced by a
 # new, possibly simpler, expression, with a possible substitution on a dummy.
@@ -1552,3 +1517,45 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
     )
 
     return new_amp
+
+
+#
+# Gradient computation
+# --------------------
+#
+
+#
+# Misc public functions
+# ---------------------
+#
+
+def try_resolve_range(i, sums_dict, resolvers):
+    """Attempt to resolve the range of an expression.
+
+    None will be returned if it cannot be resolved.
+    """
+
+    for resolver in itertools.chain([sums_dict], resolvers):
+
+        if isinstance(resolver, Mapping):
+            if i in resolver:
+                return resolver[i]
+            else:
+                continue
+        elif isinstance(resolver, Callable):
+            range_ = resolver(i)
+            if range_ is None:
+                continue
+            else:
+                if isinstance(range_, Range):
+                    return range_
+                else:
+                    raise TypeError('Invalid range: ', range_,
+                                    'from resolver', resolver,
+                                    'expecting range or None')
+        else:
+            raise TypeError('Invalid resolver: ', resolver,
+                            'expecting callable or mapping')
+
+    # Never resolved nor error found.
+    return None
