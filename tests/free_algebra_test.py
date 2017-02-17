@@ -271,6 +271,51 @@ def test_tensor_math_ops(free_alg):
     assert comm_v1w1.simplify() == expected.simplify()
 
 
+def test_tensors_can_be_differentiated(free_alg):
+    """Test the analytic gradient computation of tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    a = IndexedBase('a')
+    b = IndexedBase('b')
+    i, j, k, l, m, n = p.R_dumms[:6]
+
+    tensor = dr.einst(
+        a[i, j, k, l] * b[i, j] * conjugate(b[k, l])
+    )
+
+    # Test real analytic gradient.
+
+    res = tensor.diff(b[m, n], real=True)
+    expected = dr.einst(
+        b[i, j] * (a[i, j, m, n] + a[m, n, i, j])
+    )
+    assert (res - expected).simplify() == 0
+
+    # Test Wirtinger complex derivative.
+    res, res_conj = [
+        tensor.diff(b[m, n], wirtinger_conj=conj)
+        for conj in [False, True]
+        ]
+
+    expected = dr.einst(
+        conjugate(b[i, j]) * a[m, n, i, j]
+    )
+    expect_conj = dr.einst(
+        a[i, j, m, n] * b[i, j]
+    )
+
+    for res_i, expected_i in [(res, expected), (res_conj, expect_conj)]:
+        assert (res_i - expected_i).simplify() == 0
+
+    # Test real analytic gradient with a simple test case.
+
+    tensor = dr.einst(b[i, j] * b[j, i])
+    grad = tensor.diff(b[m, n])
+    assert (grad - 2 * b[n, m]).simplify() == 0
+
+
 def test_tensors_can_be_substituted_scalars(free_alg):
     """Test vector substitution facility for tensors."""
 
