@@ -1532,20 +1532,15 @@ def diff_term(term: Term, variable, real, wirtinger_conj):
 
     elif isinstance(variable, Indexed):
 
-        idxes = variable.indices
-        for i in idxes:
-            if not isinstance(i, Symbol):
-                raise ValueError('Invalid index', i, 'expecting plain symbol')
-            if i in term.dumms:
-                raise ValueError('Invalid index', i, 'clashing with dummies')
+        indices = variable.indices
         wilds = tuple(
-            Wild(_GRAD_WILD_FMT.format(i)) for i, _ in enumerate(idxes)
+            Wild(_GRAD_WILD_FMT.format(i)) for i, _ in enumerate(indices)
         )
 
         lhs = variable.base[wilds]
         rhs = lhs + functools.reduce(
             operator.mul,
-            (KroneckerDelta(i, j) for i, j in zip(wilds, idxes)), symb
+            (KroneckerDelta(i, j) for i, j in zip(wilds, indices)), symb
         )
 
     else:

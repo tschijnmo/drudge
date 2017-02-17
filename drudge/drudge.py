@@ -811,8 +811,7 @@ class Tensor:
         variable
             The variable to differentiate with respect to.  It should be either
             a plain SymPy symbol or a indexed quantity.  When it is an indexed
-            quantity, the indices should be plain symbols not clashing with any
-            summed dummies in the expression.
+            quantity, the indices should be plain symbols with resolvable range.
 
         real : bool
             If the variable is going to be assumed to be real.  Real variables
@@ -829,8 +828,33 @@ class Tensor:
                 'Wittinger conjugate derivative vanishes for real variables'
             )
 
+        if isinstance(variable, Indexed):
+
+            # We need a copy.
+            excl = set(self.free_vars)
+
+            for i in variable.indices:
+                if not isinstance(i, Symbol):
+                    raise ValueError(
+                        'Invalid index', i, 'expecting plain symbol'
+                    )
+                if i in excl:
+                    raise ValueError(
+                        'Invalid index', i,
+                        'clashing with existing free symbols'
+                    )
+                excl.add(i)
+                continue
+
+            terms = self._reset_dumms(self._terms, excl=excl)
+
+        elif isinstance(variable, Symbol):
+            terms = self._terms
+        else:
+            raise TypeError('Invalid variable to differentiate', variable)
+
         return Tensor(self._drudge, self._diff(
-            self.terms, variable, real=real, wirtinger_conj=wirtinger_conj
+            terms, variable, real=real, wirtinger_conj=wirtinger_conj
         ), expanded=True)
 
     def _diff(self, terms, variable, real, wirtinger_conj):

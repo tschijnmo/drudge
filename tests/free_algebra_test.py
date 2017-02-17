@@ -287,9 +287,9 @@ def test_tensors_can_be_differentiated(free_alg):
 
     # Test real analytic gradient.
 
-    res = tensor.diff(b[m, n], real=True)
+    res = tensor.diff(b[i, j], real=True)
     expected = dr.einst(
-        b[i, j] * (a[i, j, m, n] + a[m, n, i, j])
+        b[k, l] * (a[k, l, i, j] + a[i, j, k, l])
     )
     assert (res - expected).simplify() == 0
 
@@ -312,8 +312,8 @@ def test_tensors_can_be_differentiated(free_alg):
     # Test real analytic gradient with a simple test case.
 
     tensor = dr.einst(b[i, j] * b[j, i])
-    grad = tensor.diff(b[m, n])
-    assert (grad - 2 * b[n, m]).simplify() == 0
+    grad = tensor.diff(b[i, j])
+    assert (grad - 2 * b[j, i]).simplify() == 0
 
 
 def test_tensors_can_be_substituted_scalars(free_alg):
