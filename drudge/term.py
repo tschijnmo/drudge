@@ -801,21 +801,74 @@ class Term(ATerms):
         are never permuted in the result.
         """
 
+        # Factors to canonicalize.
         factors = []
 
-        wrapper_base = _INTERNAL_WRAPPER_BASE
+        # Additional information for factor reconstruction.
+        #
+        # It has integral placeholders for vectors and scalar factors without
+        # any indexed quantity, the expression with (the only) indexed replaced
+        # by the placeholder for factors with indexed.
+        factors_info = []
+        vec_factor = 1
+        unindexed_factor = 2
+
+        #
+        # Get the factors in the amplitude.
+        #
+
+        # Cache globals for performance.
+        wrapper_base = _WRAPPER_BASE
+        indexed_placeholder = _INDEXED_PLACEHOLDER
+
+        # Extractors for the indexed, defined here to avoid repeated list and
+        # function creation for each factor.
+        indexed = []
+
+        def replace_indexed(base, *indices):
+            """Replace the indexed quantity inside the factor."""
+            indexed.append(base[indices])
+            return indexed_placeholder
+
         amp_factors, coeff = self.amp_factors
         for i in amp_factors:
-            # TODO: make it able to treat indexed inside function.
-            #
-            # Currently it cannot gracefully treat expressions like the
-            # conjugate of an indexed quantity.
-            if not isinstance(i, Indexed):
-                i = wrapper_base[i]
-            factors.append((
-                i, (_COMMUTATIVE, sympy_key(i.base))
-            ))
+
+            amp_no_indexed = i.replace(
+                Indexed, NonsympifiableFunc(replace_indexed)
+            )
+
+            n_indexed = len(indexed)
+            if n_indexed > 1:
+                raise ValueError(
+                    'Invalid amplitude factor containing multiple indexed', i
+                )
+            elif n_indexed == 1:
+
+                factors.append((
+                    indexed[0], (
+                        _COMMUTATIVE,
+                        indexed[0].base.label.name,
+                        sympy_key(amp_no_indexed)
+                    )
+                ))
+                factors_info.append(amp_no_indexed)
+
+                indexed.clear()  # Clean the container for the next factor.
+
+            else:  # No indexed.
+
+                # When the factor never has an indexed base, we treat it as
+                # indexing a uni-valence internal indexed base.
+                factors.append((
+                    wrapper_base[i], (_COMMUTATIVE,)
+                ))
+                factors_info.append(unindexed_factor)
+
             continue
+
+        #
+        # Get the factors in the vectors.
+        #
 
         for i, v in enumerate(self._vecs):
             colour = i if vec_colour is None else vec_colour(
@@ -824,30 +877,41 @@ class Term(ATerms):
             factors.append((
                 v, (_NON_COMMUTATIVE, colour)
             ))
+            factors_info.append(vec_factor)
             continue
+
+        #
+        # Invoke the core simplification.
+        #
 
         res_sums, canoned_factors, canon_coeff = canon_factors(
             self._sums, factors, symms if symms is not None else {}
         )
 
+        #
+        # Reconstruct the result
+        #
+
         res_amp = coeff * canon_coeff
         res_vecs = []
-        for i in canoned_factors:
+        for i, j in zip(canoned_factors, factors_info):
 
-            if isinstance(i, Vec):
+            if j == vec_factor:
+                # When we have a vector.
                 res_vecs.append(i)
-            elif isinstance(i, Indexed) and i.base == wrapper_base:
+            elif j == unindexed_factor:
                 res_amp *= i.indices[0]
             else:
-                res_amp *= i
+                res_amp *= j.xreplace({indexed_placeholder: i})
             continue
 
         return Term(tuple(res_sums), res_amp, tuple(res_vecs))
 
 
-_INTERNAL_WRAPPER_BASE = IndexedBase(
+_WRAPPER_BASE = IndexedBase(
     'internalWrapper', shape=('internalShape',)
 )
+_INDEXED_PLACEHOLDER = Symbol('internalIndexedPlaceholder')
 
 
 #
