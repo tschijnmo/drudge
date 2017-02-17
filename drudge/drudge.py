@@ -300,9 +300,8 @@ class Tensor:
     def simplify_amps(self):
         """Simplify the amplitudes in the tensor.
 
-        This method simplifies the amplitude in the terms of the tensor, by
-        using the facility from SymPy and tensor specific facilities for deltas.
-        The zero terms will be filtered out as well.
+        This method simplifies the amplitude in the terms of the tensor by using
+        the facility from SymPy.  The zero terms will be filtered out as well.
 
         """
 
@@ -311,19 +310,43 @@ class Tensor:
             self._simplify_amps, free_vars=None, repartitioned=False
         )
 
-    def _simplify_amps(self, terms):
-        """Get the terms with amplitude simplified."""
-
-        resolvers = self._drudge.resolvers
-        full_simplify = self._drudge.full_simplify
+    @staticmethod
+    def _simplify_amps(terms):
+        """Get the terms with amplitude simplified by SymPy."""
 
         simplified_terms = terms.map(
-            lambda term: term.simplify_amp(
-                full_simplify=full_simplify, resolvers=resolvers.value
-            )
-        ).filter(lambda term: term.amp != 0)
+            lambda term: term.map(lambda x: x.simplify(), skip_vecs=True)
+        ).filter(_is_nonzero)
 
         return simplified_terms
+
+    def simplify_deltas(self):
+        """Simplify the deltas in the tensor.
+
+        Kronecker deltas whose operands contains dummies will be attempted to be
+        simplified.
+        """
+
+        return Tensor(
+            self._drudge,
+            self._simplify_deltas(self._terms, expanded=self._expanded),
+            expanded=True,
+        )
+
+    def _simplify_deltas(self, terms, expanded):
+        """Simplify the deltas in the terms.
+
+        This function will leave the resulted terms in expanded form.
+        """
+
+        if not expanded:
+            terms = self._expand(terms)
+
+        resolvers = self._drudge.resolvers
+
+        return terms.map(
+            lambda x: x.simplify_deltas(resolvers.value)
+        ).filter(_is_nonzero)
 
     def expand(self):
         """Expand the terms in the tensor.
@@ -459,10 +482,12 @@ class Tensor:
             terms = terms.repartition(num_partitions)
 
         # Simplify things like zero or deltas.
-        terms = self._simplify_amps(terms)
+        if self._drudge.full_simplify:
+            terms = self._simplify_amps(terms)
+        terms = self._simplify_deltas(terms, False)
 
         # Canonicalize the terms and see if they can be merged.
-        terms = self._canon(terms, False)
+        terms = self._canon(terms, True)
         # In rare cases, normal order could make the result unexpanded.
         #
         # TODO: Find a design to skip repartition in most cases.
@@ -471,7 +496,8 @@ class Tensor:
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
-        terms = self._simplify_amps(terms)
+        if self._drudge.full_simplify:
+            terms = self._simplify_amps(terms)
 
         # Make the final expansion.
         terms = self._expand(terms)
@@ -814,7 +840,7 @@ class Tensor:
             lambda x: diff_term(x, variable, real, wirtinger_conj)
         )
         # We have got to simplify here to avoid confuse users.
-        return self._simplify_amps(self._expand(diff))
+        return self._simplify_deltas(diff, False)
 
     #
     # Term filter and cherry picking
@@ -1435,3 +1461,8 @@ def _decompose_term(term):
         (term.sums, term.vecs, prod_(factors)),
         coeff
     )
+
+
+def _is_nonzero(term):
+    """Test if a term is trivially non-zero."""
+    return term.amp != 0

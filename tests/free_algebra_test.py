@@ -174,7 +174,7 @@ def test_tensor_can_be_simplified_amp(free_alg):
     )
     assert tensor.n_terms == 3
 
-    first = tensor.simplify_amps()
+    first = tensor.simplify_deltas().simplify_amps()
     # Now we should have one term killed.
     assert first.n_terms == 2
 
