@@ -913,6 +913,11 @@ _WRAPPER_BASE = IndexedBase(
 )
 _INDEXED_PLACEHOLDER = Symbol('internalIndexedPlaceholder')
 
+# For colour of factors in a term.
+
+_COMMUTATIVE = 1
+_NON_COMMUTATIVE = 0
+
 
 #
 # Substitution by tensor definition
@@ -1547,13 +1552,3 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
     )
 
     return new_amp
-
-
-#
-# Canonicalization
-#
-# For colour of factors in a term.
-#
-
-_COMMUTATIVE = 1
-_NON_COMMUTATIVE = 0
