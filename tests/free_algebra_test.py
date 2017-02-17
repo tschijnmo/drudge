@@ -4,9 +4,11 @@ import os
 import os.path
 
 import pytest
-from sympy import sympify, IndexedBase, sin, cos, KroneckerDelta, symbols
+from sympy import (
+    sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate
+)
 
-from drudge import Drudge, Range, Vec, Term, Perm, NEG
+from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ
 
 
 @pytest.fixture(scope='module')
@@ -30,6 +32,9 @@ def free_alg(spark_ctx):
 
     m = IndexedBase('m')
     dr.set_symm(m, Perm([1, 0], NEG))
+
+    h = IndexedBase('h')
+    dr.set_symm(h, Perm([1, 0], NEG | CONJ))
 
     dr.set_tensor_method('get_one', lambda x: 1)
 
@@ -196,14 +201,24 @@ def test_tensor_can_be_canonicalized(free_alg):
     i, j = p.R_dumms[:2]
     r = p.R
     m = p.m
+    h = p.h
     v = p.v
 
+    # Anti-symmetric real matrix.
     tensor = (
         dr.sum((i, r), (j, r), m[i, j] * v[i] * v[j]) +
         dr.sum((i, r), (j, r), m[j, i] * v[i] * v[j])
     )
     assert tensor.n_terms == 2
 
+    res = tensor.simplify()
+    assert res == 0
+
+    # Hermitian matrix.
+    tensor = dr.einst(
+        h[i, j] * v[i] * v[j] + conjugate(h[j, i]) * v[i] * v[j]
+    )
+    assert tensor.n_terms == 2
     res = tensor.simplify()
     assert res == 0
 
