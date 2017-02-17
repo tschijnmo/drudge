@@ -4,13 +4,14 @@ import abc
 import collections
 import functools
 import itertools
+import operator
 import typing
 import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
     sympify, Symbol, KroneckerDelta, Eq, solve, S, Integer, Add, Mul, Indexed,
-    IndexedBase, Expr, Basic, Pow
+    IndexedBase, Expr, Basic, Pow, Wild, conjugate
 )
 from sympy.core.sympify import CantSympify
 
@@ -1523,6 +1524,75 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
 # Gradient computation
 # --------------------
 #
+
+def diff_term(term: Term, variable, real, wirtinger_conj):
+    """Differentiate a term.
+    """
+
+    symb = _GRAD_REAL_SYMB if real else _GRAD_SYMB
+
+    if isinstance(variable, Symbol):
+
+        lhs = variable
+        rhs = lhs + symb
+
+    elif isinstance(variable, Indexed):
+
+        idxes = variable.indices
+        for i in idxes:
+            if not isinstance(i, Symbol):
+                raise ValueError('Invalid index', i, 'expecting plain symbol')
+            if i in term.dumms:
+                raise ValueError('Invalid index', i, 'clashing with dummies')
+        wilds = tuple(
+            Wild(_GRAD_WILD_FMT.format(i)) for i, _ in enumerate(idxes)
+        )
+
+        lhs = variable.base[wilds]
+        rhs = lhs + functools.reduce(
+            operator.mul,
+            (KroneckerDelta(i, j) for i, j in zip(wilds, idxes)), symb
+        )
+
+    else:
+        raise ValueError('Invalid differentiation variable', variable)
+
+    if real:
+        orig_amp = term.amp.replace(conjugate(lhs), lhs)
+    else:
+        orig_amp = term.amp
+    replaced_amp = (orig_amp.replace(lhs, rhs)).simplify()
+
+    if real:
+        eval_substs = {symb: 0}
+    else:
+        replaced_amp = replaced_amp.replace(
+            conjugate(symb), _GRAD_CONJ_SYMB
+        )
+        eval_substs = {_GRAD_CONJ_SYMB: 0, symb: 0}
+
+    if wirtinger_conj:
+        diff_var = _GRAD_CONJ_SYMB
+    else:
+        diff_var = symb
+
+    # Core evaluation.
+    res_amp = replaced_amp.diff(diff_var).xreplace(eval_substs)
+    res_amp = res_amp.simplify()
+
+    return term.map(lambda x: x, amp=res_amp)
+
+
+# Internal symbols for gradients.
+_GRAD_SYMB_FMT = 'internalGradient{tag}Placeholder'
+_GRAD_SYMB = Symbol(_GRAD_SYMB_FMT.format(tag=''))
+_GRAD_CONJ_SYMB = Symbol(_GRAD_SYMB_FMT.format(tag='Conj'))
+_GRAD_REAL_SYMB = Symbol(
+    _GRAD_SYMB_FMT.format(tag='Real'), real=True
+)
+
+_GRAD_WILD_FMT = 'InternalWildSymbol{}'
+
 
 #
 # Misc public functions

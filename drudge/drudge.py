@@ -16,7 +16,7 @@ from .canonpy import Perm, Group
 from .report import Report
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
-    subst_vec_in_term, parse_terms, einst_term
+    subst_vec_in_term, parse_terms, einst_term, diff_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_
 
@@ -757,6 +757,64 @@ class Tensor:
             tensor = self._drudge.sum(tensor)
 
         return tensor.subst(lhs, self, wilds=wilds)
+
+    #
+    # Analytic gradient
+    #
+
+    def diff(self, variable, real=False, wirtinger_conj=False):
+        """Differentiate the tensor to get the analytic gradient.
+
+        By this function, support is provided for evaluating the derivative with
+        respect to either a plain symbol or a tensor component.  This is
+        achieved by leveraging the core differentiation operation to SymPy.  So
+        very wide range of expressions are supported.
+
+        .. warning::
+
+            For non-analytic complex functions, this function gives the
+            Wittinger derivative with respect to the given variable only.  The
+            other non-vanishing derivative with respect to the conjugate needs
+            to be evaluated by another invocation with ``wittinger_conj`` set to
+            true.
+
+
+        Parameters
+        ----------
+
+        variable
+            The variable to differentiate with respect to.  It should be either
+            a plain SymPy symbol or a indexed quantity.  When it is an indexed
+            quantity, the indices should be plain symbols not clashing with any
+            summed dummies in the expression.
+
+        real : bool
+            If the variable is going to be assumed to be real.  Real variables
+            has conjugate equal to themselves.
+
+        wirtinger_conj : bool
+            If we evaluate the Wirtinger derivative with respect to the
+            conjugate of the variable.
+
+        """
+
+        if real and wirtinger_conj:
+            raise ValueError(
+                'Wittinger conjugate derivative vanishes for real variables'
+            )
+
+        return Tensor(self._drudge, self._diff(
+            self.terms, variable, real=real, wirtinger_conj=wirtinger_conj
+        ), expanded=True)
+
+    def _diff(self, terms, variable, real, wirtinger_conj):
+        """Differentiate the terms."""
+
+        diff = terms.map(
+            lambda x: diff_term(x, variable, real, wirtinger_conj)
+        )
+        # We have got to simplify here to avoid confuse users.
+        return self._simplify_amps(self._expand(diff))
 
     #
     # Term filter and cherry picking
