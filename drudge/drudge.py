@@ -738,7 +738,8 @@ class Tensor:
                 'expecting vector, indexed, or symbol'
             )
 
-        # We need to gather, and later broadcast all the terms.
+        # We need to gather, and later broadcast all the terms.  The rational is
+        # that the RHS is usually small in real problems.
         if isinstance(rhs, Tensor):
             rhs_terms = rhs.local_terms
         else:
@@ -806,9 +807,9 @@ class Tensor:
     def act(self, lhs, tensor, wilds=None):
         """Act on a tensor by substituting all its appearances.
 
-        This method is the active voice version of the subst function.  Here
-        the tensor object that is called on serves as the definition, and the
-        argument gives the tensor to be replaced.
+        This method is the active voice version of the :py:meth:`Tensor.subst`
+        function.  Here the tensor object that is called on serves as the
+        definition, and the argument gives the tensor to be replaced.
         """
 
         if not isinstance(tensor, Tensor):
@@ -914,7 +915,12 @@ class Tensor:
     #
 
     def __getattr__(self, item):
-        """Try to see if the item is a tensor method from the drudge."""
+        """Try to see if the item is a tensor method from the drudge.
+
+        This enables individual drudges to dynamically add domain-specific
+        operations on tensors.
+        """
+
         try:
             meth = self._drudge.get_tensor_method(item)
         except KeyError:
