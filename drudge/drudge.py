@@ -1029,9 +1029,12 @@ class Drudge:
     A drudge is a robot who can help you with the menial tasks of symbolic
     manipulation for tensorial and noncommutative alegbras.  Due to the
     diversity and non-uniformity of tensor and noncommutative algebraic
-    problems, to set up a drudge, information about the problem needs to be
-    given.  Here this is a base class, where the basic operations are defined.
-    Different problems could subclass this base class with customized behaviour.
+    problems, to set up a drudge, domain-specific information about the problem
+    needs to be given.  Here this is a base class, where the basic operations
+    are defined. Different problems could subclass this base class with
+    customized behaviour.  Most importantly, the method :py:meth:`normal_order`
+    should be overridden to give the commutation rules for the algebraic system
+    studied.
 
     """
 
@@ -1076,17 +1079,20 @@ class Drudge:
 
     @property
     def ctx(self):
-        """Access the Spark context of the drudge."""
+        """The Spark context of the drudge.
+        """
         return self._ctx
 
     @property
     def num_partitions(self):
-        """The preferred number of partitions for data."""
+        """The preferred number of partitions for data.
+        """
         return self._num_partitions
 
     @num_partitions.setter
     def num_partitions(self, value):
-        """Set the preferred number of partitions for data."""
+        """Set the preferred number of partitions for data.
+        """
         if isinstance(value, int) or value is None:
             self._num_partitions = value
         else:
@@ -1097,16 +1103,17 @@ class Drudge:
 
     @property
     def full_simplify(self):
-        """If full simplification is to be performed on amplitudes."""
+        """If full simplification is to be performed on amplitudes.
+
+        It can be used to disable full simplification of the amplitude
+        expression by SymPy.  For simple polynomial amplitude, this option is
+        generally safe to be disabled.
+        """
         return self._full_simplify
 
     @full_simplify.setter
     def full_simplify(self, value):
         """Set if full simplification is going to be carried out.
-
-        It can be used to disable full simplification of the amplitude
-        expression by SymPy.  For simple polynomial amplitude, this option is
-        generally safe to be disabled.
         """
         if value is not True and value is not False:
             raise TypeError(
@@ -1117,12 +1124,7 @@ class Drudge:
 
     @property
     def simple_merge(self):
-        """If only simple merge is to be carried out."""
-        return self._simple_merge
-
-    @simple_merge.setter
-    def simple_merge(self, value):
-        """Set if simple merge is going to be carried out.
+        """If only simple merge is to be carried out.
 
         When it is set to true, only terms with same factors involving dummies
         are going to be merged.  This might be helpful for cases where the
@@ -1135,6 +1137,12 @@ class Drudge:
             simplification but taketh away many simplifications.  It is in
             general not recommended to be used.
 
+        """
+        return self._simple_merge
+
+    @simple_merge.setter
+    def simple_merge(self, value):
+        """Set if simple merge is going to be carried out.
         """
 
         if value is not True and value is not False:
@@ -1151,7 +1159,7 @@ class Drudge:
     def set_name(self, obj: typing.Any, label: typing.Any = None):
         """Set the object into the name archive of the drudge.
 
-        The str form of the give label is going to be used for the name of the
+        The str form of the given label is going to be used for the name of the
         object when given, or the str form of the object itself will be used.
         """
 
@@ -1162,10 +1170,10 @@ class Drudge:
 
     @property
     def names(self):
-        """Get the name archive for the drudge.
+        """The name archive for the drudge.
 
-        The name archive object will be returned, which can be used for
-        convenient accessing of objects related to the problem.
+        The name archive object can be used for convenient accessing of objects
+        related to the problem.
 
         """
         return self._names
@@ -1174,7 +1182,7 @@ class Drudge:
         """Inject the names in the name archive into the current global scope.
 
         This function is for the convenience of users, especially interactive
-        users.  Itself is not used in official drudge code except its tests.
+        users.  Itself is not used in official drudge code except its own tests.
 
         Note that this function injects the names in the name archive into the
         **global** scope of the caller, rather than the local scope, even when
@@ -1225,12 +1233,12 @@ class Drudge:
 
     @property
     def dumms(self):
-        """Get the broadcast form of the dummies dictionary.
+        """The broadcast form of the dummies dictionary.
         """
         return self._dumms.bcast
 
     def set_symm(self, base, *symms, set_base_name=True):
-        """Get the symmetry for a given base.
+        """Set the symmetry for a given base.
 
         Permutation objects in the arguments are interpreted as single
         generators, other values will be attempted to be iterated over to get
@@ -1258,7 +1266,8 @@ class Drudge:
 
     @property
     def symms(self):
-        """Get the broadcast form of the symmetries."""
+        """The broadcast form of the symmetries.
+        """
         return self._symms.bcast
 
     def add_resolver(self, resolver):
@@ -1278,7 +1287,8 @@ class Drudge:
 
         With this method, the default dummies for each range will be resolved to
         be within the range for all of them.  This method should normally be
-        called by all subclasses.
+        called by all subclasses after the dummies for all ranges have been
+        properly set.
 
         Note that dummies added later will not be automatically added.  This
         method can be called again.
@@ -1294,16 +1304,15 @@ class Drudge:
 
     @property
     def resolvers(self):
-        """Get the broadcast form of the resolvers."""
+        """The broadcast form of the resolvers."""
         return self._resolvers.bcast
 
     def set_tensor_method(self, name, func):
         """Set a new tensor method under the given name.
 
         A tensor method is a method that can be called from tensors created from
-        the current drudge as if it is a method of the given tensor.  This could
-        given cleaner code.  Drudge objects can be restricted to be used for
-        initial tensor creation.
+        the current drudge as if it is a method of the given tensor. This could
+        give cleaner and more consistent code for all tensor manipulations.
 
         The given function, or bounded method, should be able to accept the
         tensor as the first argument.
@@ -1328,7 +1337,7 @@ class Drudge:
 
     @property
     def vec_colour(self):
-        """Get the vector colour function.
+        """The vector colour function.
 
         Note that this accessor accesses the **function**, rather than directly
         computes the colour for any vector.
@@ -1407,7 +1416,8 @@ class Drudge:
         """Get the LaTeX form of a given tensor.
 
         Subclasses should fine-tune the appearance of the resulted LaTeX form by
-        overriding ``_latex_sympy``, ``_latex_vec``, and ``_latex_vec_mul``.
+        overriding methods ``_latex_sympy``, ``_latex_vec``, and
+        ``_latex_vec_mul``.
 
         """
 
