@@ -81,7 +81,7 @@ class Tensor:
 
     @property
     def terms(self):
-        """Get the terms as an RDD object.
+        """The terms in the tensor, as an RDD object.
 
         Although for users, normally there is no need for direct manipulation of
         the terms, it is still exposed here for flexibility.
@@ -124,8 +124,8 @@ class Tensor:
         """Cache the terms in the tensor.
 
         This method should be called when this tensor is an intermediate result
-        that is used multiple times.  The tensor itself will be returned for the
-        ease of chaining.
+        that will be used multiple times.  The tensor itself will be returned
+        for the ease of chaining.
         """
 
         self._terms.cache()
@@ -139,6 +139,17 @@ class Tensor:
         and might be very expensive.  Its invocation and the number of
         partitions used need to be fine-tuned for different problems to achieve
         good performance.
+
+        Parameters
+        ----------
+
+        num_partitions : int
+            The number of partitions.  By default, the number is read from the
+            drudge object.
+
+        cache : bool
+            If the result is going to be cached.
+
         """
 
         if not self._repartitioned:
