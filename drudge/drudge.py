@@ -290,27 +290,37 @@ class Tensor:
     # another tensor.
     #
 
-    def reset_dumms(self):
+    def reset_dumms(self, excl=None):
         """Reset the dummies.
 
         The dummies will be set to the canonical dummies according to the order
         in the summation list.  This method is especially useful on
         canonicalized tensors.
-        """
 
-        return self.apply(self._reset_dumms)
+        Parameters
+        ----------
 
-    def _reset_dumms(self, terms: RDD, excl=None) -> RDD:
-        """Get terms with dummies reset.
+        excl
+            A set of symbols to be excluded in the dummy selection.  This option
+            can be useful when some symbols already used as dummies are planned
+            to be used for other purposes.
 
-        Note that the given terms are assumed to have the same free variables as
-        the terms in self.
         """
 
         free_vars = self.free_vars
         if excl is None:
-            excl = set()  # So that we do not taint the free_vars.
-        excl |= free_vars
+            excl = free_vars
+        else:
+            excl |= free_vars
+
+        return self.apply(functools.partial(self._reset_dumms, excl=excl))
+
+    def _reset_dumms(self, terms: RDD, excl) -> RDD:
+        """Get terms with dummies reset.
+
+        Note that this function does not automatically add the free variables in
+        the terms to the excluded symbols.
+        """
 
         dumms = self._drudge.dumms
         res_terms = terms.map(
@@ -513,7 +523,8 @@ class Tensor:
         #
         # TODO: Find a design to skip repartition in most cases.
 
-        terms = self._reset_dumms(terms)
+        free_vars = self._get_free_vars(terms)
+        terms = self._reset_dumms(terms, excl=free_vars)
         terms = self._merge(terms)
 
         # Finally simplify the merged amplitude again.
