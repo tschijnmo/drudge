@@ -111,11 +111,13 @@ class Tensor:
     def n_terms(self) -> int:
         """Get the number of terms.
 
-        A zero number of terms signatures a zero tensor.
+        A zero number of terms signatures a zero tensor.  Accessing this
+        property will make the tensor to be cached automatically.
         """
         if self._local_terms is not None:
             return len(self._local_terms)
         else:
+            self.cache()  # We never get a tensor just to count its terms.
             return self._terms.count()
 
     def cache(self):
@@ -157,12 +159,13 @@ class Tensor:
 
     @property
     def is_scalar(self):
-        """Query if the tensor is a scalar.
+        """If the tensor is a scalar.
 
         A tensor is considered a scalar when none of its terms has a vector
-        part.
+        part.  This property will make the tensor automatically cached.
         """
 
+        self.cache()
         return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
     @property
