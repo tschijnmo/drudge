@@ -67,7 +67,8 @@ class Range:
     ]
 
     def __init__(self, label, lower=None, upper=None):
-        """Initialize the symbolic range."""
+        """Initialize the symbolic range.
+        """
         self._label = label
         self._lower = (
             ensure_expr(lower, 'lower bound') if lower is not None else lower
@@ -86,27 +87,27 @@ class Range:
 
     @property
     def label(self):
-        """Get the label of the range."""
+        """The label of the range."""
         return self._label
 
     @property
     def lower(self):
-        """Get the lower bound of the range."""
+        """The lower bound of the range."""
         return self._lower
 
     @property
     def upper(self):
-        """Get the upper bound of the range."""
+        """The upper bound of the range."""
         return self._upper
 
     @property
     def bounded(self):
-        """Test if the range is explicitly bounded."""
+        """If the range is explicitly bounded."""
         return self._lower is not None
 
     @property
     def args(self):
-        """Get the arguments for range creation.
+        """The arguments for range creation.
 
         When the bounds are present, we have a triple, or we have a singleton
         tuple of only the label.
@@ -118,28 +119,32 @@ class Range:
             return self._label,
 
     def __hash__(self):
-        """Hash the symbolic range."""
+        """Hash the symbolic range.
+        """
         return hash(self.args)
 
     def __eq__(self, other):
-        """Compare equality of two ranges."""
+        """Compare equality of two ranges.
+        """
         return isinstance(other, type(self)) and (
             self.args == other.args
         )
 
     def __repr__(self):
-        """Form the representative string."""
+        """Form the representative string.
+        """
         return ''.join([
             'Range(', ', '.join(repr(i) for i in self.args), ')'
         ])
 
     def __str__(self):
-        """Form readable string representation."""
+        """Form readable string representation.
+        """
         return str(self._label)
 
     @property
     def sort_key(self):
-        """Get the sort key for the range."""
+        """The sort key for the range."""
         key = [self._label]
         if self.bounded:
             key.extend(sympy_key(i) for i in [self._lower, self._upper])
