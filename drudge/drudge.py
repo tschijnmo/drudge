@@ -181,17 +181,24 @@ class Tensor:
 
     @property
     def free_vars(self):
-        """The free variables in the tensor."""
+        """The free variables in the tensor.
+        """
         if self._free_vars is None:
-            # The terms are definitely going to be used for other purposes.
-            self.terms.cache()
-
-            self._free_vars = self.terms.map(
-                lambda term: term.free_vars
-            ).aggregate(set(), _union, _union)
-            # TODO: investigate performance characteristic with treeAggregate.
+            self._free_vars = self._get_free_vars(self._terms)
 
         return self._free_vars
+
+    @staticmethod
+    def _get_free_vars(terms) -> typing.Set[Symbol]:
+        """Get the free variables in the given terms."""
+
+        # The terms are definitely going to be used for other purposes.
+        terms.cache()
+
+        return terms.map(
+            lambda term: term.free_vars
+        ).aggregate(set(), _union, _union)
+        # TODO: investigate performance characteristic with treeAggregate.
 
     @property
     def expanded(self):
