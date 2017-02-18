@@ -187,7 +187,7 @@ class ATerms(abc.ABC):
 
     @staticmethod
     def _mul(left_terms, right_terms):
-        """Multiplies the left terms with the right terms.
+        """Multiply the left terms with the right terms.
 
         Note that the terms should not have any conflict in dummies.  Actually,
         by the common scheme in user input by drudge, the terms should normally
@@ -283,7 +283,7 @@ class Terms(ATerms):
 
 
 def parse_terms(obj) -> typing.List['Term']:
-    """Parse the object into a iterable of terms."""
+    """Parse the object into a list of terms."""
 
     if isinstance(obj, ATerms):
         return obj.terms
@@ -329,12 +329,13 @@ class Vec(ATerms, CantSympify):
 
     @property
     def label(self):
-        """Get the label for the base of the vector."""
+        """The label for the base of the vector.
+        """
         return self._label
 
     @property
     def base(self):
-        """Get the base of the vector.
+        """The base of the vector.
 
         This base can be subscribed to get other vectors.
         """
@@ -342,7 +343,8 @@ class Vec(ATerms, CantSympify):
 
     @property
     def indices(self):
-        """Get the indices of the vector."""
+        """The indices to the vector.
+        """
         return self._indices
 
     def __getitem__(self, item):
@@ -392,7 +394,7 @@ class Vec(ATerms, CantSympify):
 
     @property
     def sort_key(self):
-        """Get sort key for the vector.
+        """The sort key for the vector.
 
         This is a generic sort key for vectors.  Note that this is only useful
         for sorting the simplified terms and should not be used in the
@@ -456,6 +458,7 @@ class Term(ATerms):
 
         Also, it is important that the free variables and dummies dictionary be
         given only when they really satisfy what we got for them.
+
         """
 
         # For performance reason, no checking is done.
