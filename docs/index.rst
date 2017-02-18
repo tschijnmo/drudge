@@ -3,7 +3,7 @@ Drudge, for symbolic noncommutative and tensor algebra
 ======================================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    intro
