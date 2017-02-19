@@ -644,7 +644,7 @@ class Term(ATerms):
         else:
             all_factors = (amp,)
 
-        dumms = {i[0] for i in self._sums}
+        dumms = self.dumms
 
         factors = []
         coeff = _UNITY
