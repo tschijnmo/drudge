@@ -1145,22 +1145,8 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 
     This method is meant for easy creation of tensor terms.  The arguments
     should start with summations and ends with the expression that is summed.
-
-    The summations should be given as sequences, all with the first field being
-    a SymPy symbol for the summation dummy.  Then comes description of the
-    summation, which can be a symbolic range, SymPy expression, or iterable over
-    them.
-
-    The last argument should give the actual things to be summed, which can be
-    something that can be interpreted as a collection of terms, or a callable
-    that is going to return the summand when given a dictionary giving the
-    action on each of the dummies.
-
-    The predicate can be a callable going to return a boolean when called with
-    same dictionary.  False values can be used the skip some terms.
-
-    This core function is designed to be wrapped in functions working with
-    full symbolic tensors.
+    This core function is designed to be wrapped in functions working with full
+    symbolic tensors.
 
     """
 
@@ -1195,11 +1181,13 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
                 continue
 
             if inp_terms is not None:
-                curr_terms = [i.subst(
-                    subst_dict, sums=_cat_sums(i.sums, sum_i)
-                ) for i in inp_terms]
+                curr_inp_terms = inp_terms
             else:
-                curr_terms = parse_terms(inp_func(call_seq))
+                curr_inp_terms = parse_terms(inp_func(call_seq))
+
+            curr_terms = [i.subst(
+                subst_dict, sums=_cat_sums(i.sums, sum_i)
+            ) for i in curr_inp_terms]
 
             res.extend(curr_terms)
 

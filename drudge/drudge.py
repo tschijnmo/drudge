@@ -1371,11 +1371,32 @@ class Drudge:
     def sum(self, *args, predicate=None) -> Tensor:
         """Create a tensor for the given summation.
 
-        This is the core function for creating tensors from scratch.  The last
-        argument will be interpreted as the quantity that is summed over.
-        Terms, vectors, or SymPy expressions are supported.  Earlier argument,
-        if there is any, should be dummy/range pairs giving the symbolic
-        summations to be carried out.
+        This is the core function for creating tensors from scratch.  The
+        arguments should start with the summations, each of which should be
+        given as a sequence, normally a tuple, starting with a SymPy symbol for
+        the summation dummy in the first entry.  Then comes possibly multiple
+        domains that the dummy is going to be summed over, which can be symbolic
+        range, SymPy expression, or iterable over them.  When symbolic ranges
+        are given as :py:class:`Range` objects, the given dummy will be set to
+        be summed over the ranges symbolically.  When SymPy expressions are
+        given, the given values will substitute all appearances of the dummy in
+        the summand.  When we have multiple summations, terms in the result are
+        generated from the Cartesian product of them.
+
+        The last argument should give the actual thing to be summed, which can
+        be something that can be interpreted as a collection of terms, or a
+        callable that is going to return the summand when given a dictionary
+        giving the action on each of the dummies.  The dictionary has an entry
+        for all the dummies.  Dummies summed over symbolic ranges will have the
+        actual range as its value, or the actual SymPy expression when it is
+        given a concrete range.  In the returned summand, if dummies still
+        exist, they are going to be treated in the same way as statically-given
+        summands.
+
+        The predicate can be a callable going to return a boolean when called
+        with same dictionary.  False values can be used the skip some terms.  It
+        is guaranteed that the same dictionary will be used for both predicate
+        and the summand when they are given as callables.
         """
         return self.create_tensor(sum_term(*args, predicate=predicate))
 
