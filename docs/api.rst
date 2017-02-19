@@ -31,13 +31,30 @@ Building blocks of the basic drudge data structure
 Canonicalization of indexed quantities with symmetry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Some actions are supported to accompany the permutation of indices to indexed
+quantities.  All of these accompanied action can be composed by using the
+bitwise or operator ``|``.
+
+.. data:: IDENT
+
+    The identitiy action.  Nothing is performed for the permutation.
+
+.. data:: NEG
+
+    Negation.  When the given permutation is performed, the indexed quantity
+    needs to be negated.  For instance, in anti-symmetric matrix.
+
+.. data:: CONJ
+
+    Conjugation.  When the given permutation is performed, the indexed quantity
+    needs to be taken it complex conjugate.  Note that this action can only be
+    used in the symmetry of scalar indexed quantities.
+
 .. autoclass:: Perm
     :members:
-    :special-members:
 
 .. autoclass:: Group
     :members:
-    :special-members:
 
 
 Primary interface
