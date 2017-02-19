@@ -391,8 +391,13 @@ class TimeStamper:
     def __init__(self, print_cb=print):
         """Initialize the time stamper.
 
-        The given function will be called with the formatted time-stamp.  By
-        default, it will just be written to stdout.
+        Parameters
+        ----------
+
+        print_cb
+            The function will be called with the formatted time-stamp.  By
+            default, it will just be written to stdout.
+
         """
         self._prev = time.time()
         self._print = print_cb
@@ -400,11 +405,20 @@ class TimeStamper:
     def stamp(self, label, tensor=None):
         """Make a timestamp.
 
-        A formatted timestamp will be returned as a string.  When a tensor is
-        given, it will be cached, counted its number of terms.  This method has
-        this parameter since if no reduction is performed on the tensor, it
-        might remain unevaluated inside Spark and give misleading timing
-        information.
+        The formatted timestamp will be given to the callback of the current
+        stamper.
+
+        Parameters
+        ----------
+
+        label
+            The label for the current step.
+
+        tensor
+            When a tensor is given, it will be cached, counted its number of
+            terms.  This method has this parameter since if no reduction is
+            performed on the tensor, it might remain unevaluated inside Spark
+            and give misleading timing information.
 
         """
 
