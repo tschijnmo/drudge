@@ -26,6 +26,9 @@ class WickDrudge(Drudge, abc.ABC):
     attempt to put the vectors into normal order based on the given comparator
     and contractor by Wick theorem.
 
+    Normally, subclasses need to override the properties :py:attr:`phase`,
+    :py:attr:`contractor`, and :py:attr:`comparator` with domain-specific
+    knowledge.
     """
 
     def __init__(self, *args, wick_parallel=0, **kwargs):

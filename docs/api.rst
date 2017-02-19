@@ -98,9 +98,32 @@ algebraic systems that is already built in.
     :members:
     :special-members:
 
+.. data:: CR
+
+    The label for creation operators.
+
+.. data:: AN
+
+    The label for annihilation operators.
+
+.. data:: FERMI
+
+    The label for fermion exchange symmetry.
+
+.. data:: BOSE
+
+    The label for boson exchange symmetry.
+
+
+Direct support of different problems
+------------------------------------
 
 In addition to the algebraic rules, more domain specific knowledge can be added
-to drudge subclasses for the convenience of working on specific problems.
+to drudge subclasses for the convenience of working on specific problems.  In
+these :py:class:`Drudge` subclasses, we have not only the general mathematical
+knowledge like commutation rules, but more detailed information about the
+problem as well, like some commonly used ranges, dummies.
+
 
 .. autoclass:: GenMBDrudge
     :members:
@@ -109,6 +132,14 @@ to drudge subclasses for the convenience of working on specific problems.
 .. autoclass:: PartHoleDrudge
     :members:
     :special-members:
+
+.. data:: UP
+
+    The symbol for spin up.
+
+.. data:: DOWN
+
+    The symbolic value for spin down.
 
 .. autoclass:: SpinOneHalfGenDrudge
     :members:

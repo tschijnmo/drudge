@@ -53,10 +53,12 @@ class FockDrudge(WickDrudge):
     This is the general base class for drudges working on fermion/boson operator
     algebras.  Here general methods are defined for working on these algebraic
     systems, but no problem specific information, like ranges or operator base,
-    is defined.
+    is defined.  Generally, operators for Fock space problems has either
+    :py:data:`CR` or :py:data:`AN` as the first index to give their creation or
+    annihilation character.
 
-    To customize the details of the commutation rules, properties ``op_parser``
-    and ``ancr_contractor`` can be overridden.
+    To customize the details of the commutation rules, properties
+    :py:attr:`op_parser` and :py:attr:`ancr_contractor` can be overridden.
 
     """
 
@@ -68,8 +70,8 @@ class FockDrudge(WickDrudge):
 
         exch : {1, -1}
 
-            The exchange symmetry for the Fock space.  Constants ``FERMI`` and
-            ``BOSE`` can be used.
+            The exchange symmetry for the Fock space.  Constants
+            :py:data:`FERMI` and :py:data:`BOSE` can be used.
 
         """
 
@@ -86,7 +88,7 @@ class FockDrudge(WickDrudge):
     def contractor(self):
         """Get the contractor for the algebra.
 
-        The operations are read here on-the-fly so that possibly custemized
+        The operations are read here on-the-fly so that possibly customized
         behaviour from the subclasses can be read.
         """
 
@@ -186,7 +188,7 @@ class FockDrudge(WickDrudge):
 
         """
 
-        # No symmtry going to be added for less than two body.
+        # No symmetry going to be added for less than two body.
         if n_body < 2:
             return
 
