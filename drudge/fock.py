@@ -82,7 +82,7 @@ class FockDrudge(WickDrudge):
             raise ValueError('Invalid exchange', exch, 'expecting plus/minus 1')
 
         self.set_tensor_method('eval_vev', self.eval_vev)
-        self.set_tensor_method('eval_phys_vec', self.eval_phys_vev)
+        self.set_tensor_method('eval_phys_vev', self.eval_phys_vev)
 
     @property
     def contractor(self):
@@ -162,6 +162,7 @@ class FockDrudge(WickDrudge):
         """Evaluate vacuum expectation value.
 
         The contractor needs to be given as a callable accepting two operators.
+        And this function is also set as a tensor method by the same name.
         """
 
         return Tensor(self, self.normal_order(
@@ -171,7 +172,8 @@ class FockDrudge(WickDrudge):
     def eval_phys_vev(self, tensor: Tensor):
         """Evaluate expectation value with respect to the physical vacuum.
 
-        Here the contractor from normal-ordering will be used.
+        Here the contractor from normal-ordering will be used.  And this
+        function is also set as a tensor method by the same name.
         """
 
         return Tensor(
@@ -726,7 +728,7 @@ class PartHoleDrudge(GenMBDrudge):
 
         This is just an alias to the actual :py:meth:`FockDrudge.eval_phys_vev`
         method to avoid confusion about the terminology in particle-hole
-        problems.
+        problems.  And it is set as a tensor method by the same name.
         """
         return self.eval_phys_vev(tensor)
 
