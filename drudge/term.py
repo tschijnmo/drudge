@@ -449,9 +449,9 @@ class Term(ATerms):
     ):
         """Initialize the tensor term.
 
-        Users seldom have the need to create terms directly by thi function.  So
-        this constructor is mostly a developer function, no sanity checking is
-        performed on the input for performance.  Most importantly, this
+        Users seldom have the need to create terms directly by this function.
+        So this constructor is mostly a developer function, no sanity checking
+        is performed on the input for performance.  Most importantly, this
         constructor does **not** copy either the summations or the vectors and
         directly expect them to be tuples (for hashability).  And the amplitude
         is **not** simpyfied.
@@ -480,22 +480,22 @@ class Term(ATerms):
 
     @property
     def sums(self):
-        """Get the summations of the term."""
+        """The summations of the term."""
         return self._sums
 
     @property
     def amp(self) -> Expr:
-        """Get the amplitude expression."""
+        """The amplitude expression."""
         return self._amp
 
     @property
     def vecs(self):
-        """Gets the vectors in the term."""
+        """The vectors in the term."""
         return self._vecs
 
     @property
     def is_scalar(self):
-        """Query if the term is a scalar."""
+        """If the term is a scalar."""
         return len(self._vecs) == 0
 
     @property
@@ -532,7 +532,7 @@ class Term(ATerms):
 
     @property
     def sort_key(self):
-        """Get the sort key for a term.
+        """The sort key for a term.
 
         This key attempts to sort the terms by complexity, with simpler terms
         coming earlier.  This capability of sorting the terms will make the
@@ -554,7 +554,7 @@ class Term(ATerms):
 
     @property
     def terms(self):
-        """Get the singleton list of the current term.
+        """The singleton list of the current term.
 
         This property is for the rare cases where direct construction of tensor
         inputs from SymPy expressions and vectors are not sufficient.
@@ -562,18 +562,27 @@ class Term(ATerms):
         return [self]
 
     def scale(self, factor):
-        """Scale the term by a factor."""
+        """Scale the term by a factor.
+        """
         return Term(self._sums, self._amp * factor, self._vecs)
 
     def mul_term(self, other, dumms=None, excl=None):
-        """Multiply with another tensor term."""
+        """Multiply with another tensor term.
+
+        Note that by this function, the free symbols in the two operands are not
+        automatically excluded.
+        """
         lhs, rhs = self.reconcile_dumms(other, dumms, excl)
         return Term(
             lhs.sums + rhs.sums, lhs.amp * rhs.amp, lhs.vecs + rhs.vecs
         )
 
     def comm_term(self, other, dumms=None, excl=None):
-        """Commute with another tensor term."""
+        """Commute with another tensor term.
+
+        In ths same way as the multiplication operation, here the free symbols
+        in the operands are not automatically excluded.
+        """
         lhs, rhs = self.reconcile_dumms(other, dumms, excl)
         sums = lhs.sums + rhs.sums
         amp0 = lhs.amp * rhs.amp
@@ -605,7 +614,7 @@ class Term(ATerms):
 
     @property
     def free_vars(self):
-        """Get the free symbols used in the term.
+        """The free symbols used in the term.
         """
 
         if self._free_vars is None:
@@ -627,7 +636,7 @@ class Term(ATerms):
 
     @property
     def amp_factors(self):
-        """Get the factors in the amplitude expression.
+        """The factors in the amplitude expression.
 
         The indexed factors and factors involving dummies will be returned as a
         list, with the rest returned as a single SymPy expression.
@@ -681,7 +690,7 @@ class Term(ATerms):
         )
 
     def subst(self, substs, sums=None, amp=None, vecs=None, purge_sums=False):
-        """Perform substitution on the SymPy expressions.
+        """Perform symbol substitution on the SymPy expressions.
 
         After the replacement of the fields given, the given substitutions are
         going to be performed using SymPy ``xreplace`` method simultaneously.
@@ -703,9 +712,9 @@ class Term(ATerms):
     def reset_dumms(self, dumms, dummbegs=None, excl=None):
         """Reset the dummies in the term.
 
-        The term with dummies will be returned alongside with the new dummy
-        begins dictionary.  Note that the dummy begins dictionary will be
-        mutated.
+        The term with dummies reset will be returned alongside with the new
+        dummy begins dictionary.  Note that the dummy begins dictionary will be
+        mutated if one is given.
 
         ValueError will be raised when no more dummies are available.
         """
