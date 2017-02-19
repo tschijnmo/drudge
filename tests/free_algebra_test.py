@@ -317,7 +317,7 @@ def test_tensors_can_be_differentiated(free_alg):
 
 
 def test_tensors_can_be_substituted_scalars(free_alg):
-    """Test vector substitution facility for tensors."""
+    """Test scalar substitution facility for tensors."""
 
     dr = free_alg
     p = dr.names
@@ -339,6 +339,30 @@ def test_tensors_can_be_substituted_scalars(free_alg):
 
     for res in [orig.subst(x[i], x_def), x_def.act(x[i], orig)]:
         assert res.simplify() == expected.simplify()
+
+
+def test_tensors_can_be_substituted_vectors(free_alg):
+    """Test vector substitution facility for tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    t = IndexedBase('t')
+    u = IndexedBase('u')
+    i, j = p.i, p.j
+    v = p.v
+    w = Vec('w')
+
+    orig = dr.einst(x[i] * v[i])
+    v_def = dr.einst(t[i, j] * w[j] + u[i, j] * w[j])
+
+    res = orig.subst(v[i], v_def).simplify()
+
+    expected = dr.einst(
+        x[i] * t[i, j] * w[j] + x[i] * u[i, j] * w[j]
+    ).simplify()
+    assert res == expected
 
 
 def test_tensor_method(free_alg):
