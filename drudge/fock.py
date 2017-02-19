@@ -432,6 +432,34 @@ class GenMBDrudge(FockDrudge):
     one-body and two-body interaction, both of them are assumed to be spin
     conserving.
 
+    .. attribute:: op
+
+        The vector base for the field operators.
+
+    .. attribute:: cr
+
+        The base for the creation operator.
+
+    .. attribute:: an
+
+        The base for the annihilation operator.
+
+    .. attribute:: orb_ranges
+
+        A list of all the ranges for the orbital quantum number.
+
+    .. attribute::  spin_vals
+
+        A list of all the explicit spin values.
+
+    .. attribute:: orig_ham
+
+        The original form of the Hamiltonian without any simplification.
+
+    .. attribute:: ham
+
+        The simplified form of the Hamiltonian.
+
     """
 
     def __init__(self, *args, exch=FERMI, op_label='c',
@@ -440,7 +468,38 @@ class GenMBDrudge(FockDrudge):
                  dbbar=False, **kwargs):
         """Initialize the drudge object.
 
-        TODO: Add details documentation here.
+        Parameters
+        ----------
+
+        exch
+            The exchange symmetry of the identical particle.
+
+        op_label
+            The label for the field operators.  The creation operator will be
+            registered in the names archive by name of this label with ``_dag``
+            appended.  And the annihilation operator will be registered with a
+            single trailing underscore.
+
+        orb
+            An iterable of range and dummies pairs for the orbital quantum
+            number, which is considered to be over the **direct sum** of all the
+            ranges given.  All the ranges and dummies will be registered to the
+            names archive by :py:meth:`Drudge.set_dumms`.
+
+        spin
+            The values for the explicit spin quantum number.
+
+        one_body
+            The indexed base for the amplitude in the one-body part of the
+            Hamiltonian.  It will also be added to the name archive.
+
+        two_body
+            The indexed base for the two-body part of the Hamiltonian.  It will
+            also be added to the name archive.
+
+        dbbar : bool
+            If the two-body part of the Hamiltonian is double-bared.
+
         """
 
         super().__init__(*args, exch=exch, **kwargs)
@@ -455,8 +514,9 @@ class GenMBDrudge(FockDrudge):
         self.op = op
         self.cr = cr
         self.an = an
-        # Register the name of the operator later to avoid being shallowed by
-        # dummies.
+
+        self.set_name(an, str(op) + '_')
+        self.set_name(cr, str(op) + '_dag')
 
         #
         # Hamiltonian creation
@@ -471,10 +531,6 @@ class GenMBDrudge(FockDrudge):
             continue
         self.orb_ranges = orb_ranges
         self.add_resolver_for_dumms()
-
-        # Register core field operator name.
-        self.set_name(an, str(op) + '_')
-        self.set_name(cr, str(op) + '_dag')
 
         spin_vals = []
         for i in spin:
@@ -557,29 +613,30 @@ class GenMBDrudge(FockDrudge):
 class PartHoleDrudge(GenMBDrudge):
     """Drudge for the particle-hole problems.
 
-    This model contains different forms of the Hamiltonian.
+    This is a shallow subclass of :py:class:`GenMBDrudge` for the particle-hole
+    problems.  It contains different forms of the Hamiltonian.
 
-    orig_ham
+    .. attribute:: orig_ham
 
         The original form of the Hamiltonian, written in terms of bare one-body
         and two-body interaction tensors without normal-ordering with respect to
         the Fermion vacuum.
 
-    full_ham
+    .. attribute:: full_ham
 
         The full form of the Hamiltonian in terms of the bare interaction
         tensors, normal-ordered with respect to the Fermi vacuum.
 
-    ham_energy
+    .. attribute:: ham_energy
 
         The zero energy inside the full Hamiltonian.
 
-    one_body_ham
+    .. attribute:: one_body_ham
 
         The one-body part of the full Hamiltonian, written in terms of the bare
         interaction tensors.
 
-    ham
+    .. attribute:: ham
 
         The most frequently used form of the Hamiltonian, written in terms of
         Fock matrix and the two-body interaction tensor.
@@ -667,8 +724,9 @@ class PartHoleDrudge(GenMBDrudge):
     def eval_fermi_vev(self, tensor: Tensor):
         """Evaluate expectation value with respect to Fermi vacuum.
 
-        This is just an alias to the actual `eval_phys_vev` method to avoid
-        confusion about the terminology in particle-hole problems.
+        This is just an alias to the actual :py:meth:`FockDrudge.eval_phys_vev`
+        method to avoid confusion about the terminology in particle-hole
+        problems.
         """
         return self.eval_phys_vev(tensor)
 
@@ -735,8 +793,8 @@ class SpinOneHalfGenDrudge(GenMBDrudge):
     """Drudge for many-body problems of particles with explicit 1/2 spin.
 
     This is just a shallow subclass of the drudge for general many-body
-    problems, with exchange set to fermi and has explicit spin values of up and
-    down.
+    problems, with exchange set to fermi and has explicit spin values of
+    :py:data:`UP` and :py:data:`DOWN`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -750,9 +808,9 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
     """Drudge for the particle-hole problems with explicit one-half spin.
 
     This is a shallow subclass over the general particle-hole drudge without
-    explicit spin.  The spin values are given explicitly to be up and down and
-    the double-bar of the two-body interaction is disabled.  And some additional
-    dummies traditional in the field are also added.
+    explicit spin.  The spin values are given explicitly to be :py:data:`UP` and
+    :py:data:`DOWN` and the double-bar of the two-body interaction is disabled.
+    And some additional dummies traditional in the field are also added.
 
     """
 
