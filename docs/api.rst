@@ -115,6 +115,8 @@ algebraic systems that is already built in.
     The label for boson exchange symmetry.
 
 
+.. _problem_drudges:
+
 Direct support of different problems
 ------------------------------------
 
