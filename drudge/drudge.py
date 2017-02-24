@@ -1027,6 +1027,11 @@ class TensorDef:
         else:
             return self._base[tuple(i[0] for i in self._exts)]
 
+    @property
+    def exts(self):
+        """The external indices."""
+        return self._exts
+
 
 class Drudge:
     """The main drudge class.
