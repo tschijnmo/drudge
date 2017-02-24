@@ -7,7 +7,7 @@ Drudge, a symbolic system for non-commutative and tensor algebra
 from .canonpy import Perm, Group
 from .term import Range, Vec, Term
 from .canon import IDENT, NEG, CONJ
-from .drudge import Tensor, Drudge
+from .drudge import Tensor, TensorDef, Drudge
 from .wick import WickDrudge
 from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
@@ -34,6 +34,7 @@ __all__ = [
 
     # Drudge.
     'Tensor',
+    'TensorDef',
     'Drudge',
 
     # Different problem-specific drudges.
