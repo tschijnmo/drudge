@@ -80,6 +80,11 @@ class Tensor:
     #
 
     @property
+    def drudge(self):
+        """The drudge created the tensor."""
+        return self._drudge
+
+    @property
     def terms(self):
         """The terms in the tensor, as an RDD object.
 
