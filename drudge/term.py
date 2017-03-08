@@ -171,6 +171,18 @@ class Range:
 
         return Range(new_label, self._lower, self._upper)
 
+    def __lt__(self, other):
+        """Compare two ranges.
+
+        This method is meant to skip explicit calling of the sort key when it is
+        not convenient.
+        """
+
+        if not isinstance(other, Range):
+            raise TypeError('Invalid range to compare', other)
+
+        return self.sort_key < other.sort_key
+
 
 class ATerms(abc.ABC):
     """Abstract base class for terms.
