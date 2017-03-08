@@ -16,7 +16,7 @@ from .canonpy import Perm, Group
 from .report import Report
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
-    subst_vec_in_term, parse_terms, einst_term, diff_term
+    subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_
 
@@ -974,42 +974,37 @@ class TensorDef:
         '_is_scalar'
     ]
 
-    def __init__(self, *args):
+    def __init__(self, base, exts, tensor: Tensor):
         """Initialize the tensor definition.
 
-        The first argument should be the base, while the last have to be a
-        tensor instance, with the arguments in the middle being the dummy and
-        range pairs for the external indices.
+        In the same way as the initializer for the :py:class:`Tensor` class,
+        this initializer is also unlikely to be used directly in user code.
+        Drudge methods :py:meth:`Drudge.define` and
+        :py:meth:`Drudge.define_einst` can be more convenient.
         """
 
-        if len(args) < 2:
-            raise TypeError(
-                'Invalid tensor definition', args,
-                'expecting base, external indices, and tensor'
-            )
-
-        if isinstance(args[0], Vec):
-            self._base = args[0]
+        if isinstance(base, Vec):
+            self._base = base
             self._is_scalar = False
-        elif isinstance(args[0], (IndexedBase, Symbol)):
-            self._base = args[0]
+        elif isinstance(base, (IndexedBase, Symbol)):
+            self._base = base
             self._is_scalar = True
         else:
             raise TypeError(
-                'Invalid base for tensor definition', args[0],
+                'Invalid base for tensor definition', base,
                 'expecting vector or scalar base'
             )
 
-        if isinstance(args[-1], Tensor):
-            self._tensor = args[-1]
+        if isinstance(tensor, Tensor):
+            self._tensor = tensor
         else:
             raise TypeError(
-                'Invalid LHS for tensor definition', args[-1],
+                'Invalid LHS for tensor definition', tensor,
                 'expecting a tensor instance'
             )
 
         self._exts = []
-        for i in args[1:-1]:
+        for i in exts:
             valid_ext = (
                 isinstance(i, Sequence) and len(i) == 2 and
                 isinstance(i[0], Symbol) and isinstance(i[1], Range)
@@ -1495,6 +1490,83 @@ class Drudge:
         should not be necessary in user code.
         """
         return Tensor(self, self._ctx.parallelize(terms))
+
+    #
+    # Tensor definition creation.
+    #
+
+    def define(self, *args) -> TensorDef:
+        """Make a tensor definition.
+
+        This is a helper method for the creation of :py:class:`TensorDef`
+        instances.
+
+        Parameters
+        ----------
+
+        initial arguments
+            The left-hand side of the definition.  It can be given as an indexed
+            quantity, either SymPy Indexed instances or an indexed vector, with
+            all the indices being plain symbols whose range is able to be
+            resolved.  Or a base can be given, followed by the symbol/range
+            pairs for the external indices.
+
+        final argument
+            The definition of the LHS, can be tensor instances, or anything
+            capable of being interpreted as such.  Note that no summation is
+            going to be automatically added.
+
+        """
+        if len(args) == 0:
+            raise ValueError('Expecting arguments for definition.')
+
+        base, exts = self._parse_def_lhs(args[:-1])
+        content = args[-1]
+        tensor = content if isinstance(content, Tensor) else self.sum(content)
+        return TensorDef(base, exts, tensor)
+
+    def define_einst(self, *args) -> TensorDef:
+        """Make a tensor definition based on Einstein summation convention.
+
+        Basically the same function as the :py:meth:`define`, just the content
+        will be interpreted according to the Einstein summation convention.
+        """
+
+        if len(args) == 0:
+            raise ValueError('Expecting arguments for definition.')
+
+        base, exts = self._parse_def_lhs(args[:-1])
+        tensor = self.einst(args[-1])
+        return TensorDef(base, exts, tensor)
+
+    def _parse_def_lhs(self, args):
+        """Parse the user-given LHS of tensor definitions.
+
+        Here, very shallow checking is performed.  Detailed sanitation are to be
+        performed in the tensor definition initializer.
+        """
+
+        if len(args) == 0:
+            raise ValueError('No LHS given for tensor definition.')
+        elif len(args) == 1:
+            arg = args[0]
+            if isinstance(arg, (Indexed, Vec)):
+                base = arg.base
+                exts = []
+                for i in arg.indices:
+                    range_ = try_resolve_range(i, {}, self.resolvers.value)
+                    if range_ is None:
+                        raise ValueError(
+                            'Invalid index', i, 'in', args,
+                            'range cannot be resolved'
+                        )
+                    exts.append((i, range_))
+                    continue
+                return base, exts
+            else:
+                return arg, ()
+        else:
+            return args[0], args[1:]
 
     #
     # Printing
