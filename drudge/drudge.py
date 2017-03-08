@@ -1057,6 +1057,11 @@ class TensorDef:
             return self._base[tuple(i[0] for i in self._exts)]
 
     @property
+    def base(self):
+        """The base of the tensor definition."""
+        return self._base
+
+    @property
     def exts(self):
         """The external indices."""
         return self._exts
