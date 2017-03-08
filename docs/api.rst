@@ -68,6 +68,10 @@ Primary interface
     :members:
     :special-members:
 
+.. autoclass:: TensorDef
+    :members:
+    :special-members:
+
 
 Miscellaneous utilities
 ~~~~~~~~~~~~~~~~~~~~~~~
