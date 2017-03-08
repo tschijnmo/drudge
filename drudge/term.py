@@ -163,6 +163,14 @@ class Range:
             key.extend(sympy_key(i) for i in [self._lower, self._upper])
         return key
 
+    def replace_label(self, new_label):
+        """Replace the label of a given range.
+
+        The bounds will be the same as the original range.
+        """
+
+        return Range(new_label, self._lower, self._upper)
+
 
 class ATerms(abc.ABC):
     """Abstract base class for terms.
