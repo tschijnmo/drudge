@@ -1066,6 +1066,17 @@ class TensorDef:
         """The external indices."""
         return self._exts
 
+    def simplify(self):
+        """Simplify the tensor in the definition.
+
+        Due to the scarcity of the usefulness of keeping both the unsimplified
+        and the simplified tensor definition, this method will mutate the tensor
+        with its simplified form.
+        """
+
+        self._tensor = self._tensor.simplify()
+        return self
+
     def __eq__(self, other):
         """Compare two tensor definitions for equality.
 
