@@ -94,6 +94,7 @@ def test_tensor_has_basic_operations(free_alg):
         4. Dummy reset.
         5. Equality comparison.
         6. Expansion
+        7. Mapping to scalars.
     """
 
     dr = free_alg
@@ -142,6 +143,15 @@ def test_tensor_has_basic_operations(free_alg):
         (i, r), (j, [c, d]), x[i] * j * v[i]
     )
     assert set(expected.local_terms) == set(expected.local_terms)
+
+    # Test mapping to scalars.
+    tensor = dr.sum((i, r), x[i] * v[i, j])
+    y = IndexedBase('y')
+    substs = {x: y, j: c}
+    res = tensor.map2scalars(lambda x: x.xreplace(substs))
+    assert res == dr.sum((i, r), y[i] * v[i, c])
+    res = tensor.map2scalars(lambda x: x.xreplace(substs), skip_vecs=True)
+    assert res == dr.sum((i, r), y[i] * v[i, j])
 
 
 def test_tensor_can_be_simplified_amp(free_alg):

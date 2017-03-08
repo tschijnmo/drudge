@@ -916,6 +916,35 @@ class Tensor:
         )
 
     #
+    # Advanced manipulations.
+    #
+
+    def map2scalars(self, action, skip_vecs=False):
+        """Map the given action to the scalars in the tensor.
+
+        The given action should return SymPy expressions for SymPy expressions,
+        the amplitude for each terms and the indices to the vectors, in the
+        tensor.  Note that this function does not change the summations in the
+        terms and the dummies.
+
+        Parameters
+        ----------
+
+        action
+            The callable to be applied to the scalars inside the tensor.
+
+        skip_vecs
+            When it is set, the callable will no longer be mapped to the indices
+            to the vectors.  It could be used to boost the performance when we
+            know that the action need no application on the indices.
+
+        """
+
+        return Tensor(self._drudge, self._terms.map(
+            lambda x: x.map(action, skip_vecs=skip_vecs)
+        ))
+
+    #
     # Operations from the drudge
     #
 
