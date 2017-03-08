@@ -385,6 +385,35 @@ def test_tensor_method(free_alg):
         tensor.get_two()
 
 
+def test_tensor_def_creation_and_basic_properties(free_alg):
+    """Test basic tensor definition creation and properties.
+
+    Since tensor definitions are more frequently used for scalars, here we
+    concentrate more on the scalar quantities than on vectors.
+    """
+
+    dr = free_alg
+    p = dr.names
+    i, j, k = p.R_dumms[:3]
+
+    x = IndexedBase('x')
+    o = IndexedBase('o')
+    y = IndexedBase('y')
+
+    y_def = dr.define(y, (i, p.R), dr.sum((j, p.R), o[i, j] * x[j]))
+
+    assert y_def.is_scalar
+    assert y_def.rhs == dr.einst(o[i, j] * x[j])
+    assert y_def.lhs == y[i]
+    assert y_def.base == y
+    assert y_def.exts == [(i, p.R)]
+
+    y_def1 = dr.define(y[i], dr.sum((j, p.R), o[i, j] * x[j]))
+    y_def2 = dr.define_einst(y[i], o[i, j] * x[j])
+    assert y_def1 == y_def
+    assert y_def2 == y_def
+
+
 def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
     """Test the string and LaTeX form representation of tensors."""
 
