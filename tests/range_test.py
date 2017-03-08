@@ -28,6 +28,7 @@ def test_range_has_basic_operations():
     assert bound0.lower == a_symb
     assert bound0.upper == b_symb
     assert bound0.args == (bound1.label, bound1.lower, bound1.upper)
+    assert bound0.size == b_symb - a_symb
 
     assert symb0.label == 'S'
     assert symb0.lower is None

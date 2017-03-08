@@ -101,6 +101,19 @@ class Range:
         return self._upper
 
     @property
+    def size(self):
+        """The size of the range.
+
+        This property given None for unbounded ranges.  For bounded ranges, it
+        is the difference between the lower and upper bound.  Note that this
+        contradicts the deeply entrenched mathematical convention of including
+        other ends for a range.  But it does gives a lot of convenience and
+        elegance.
+        """
+
+        return self._upper - self._lower if self.bounded else None
+
+    @property
     def bounded(self):
         """If the range is explicitly bounded."""
         return self._lower is not None
