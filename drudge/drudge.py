@@ -1066,6 +1066,18 @@ class TensorDef:
         """The external indices."""
         return self._exts
 
+    def __eq__(self, other):
+        """Compare two tensor definitions for equality.
+
+        Note that similar to the equality comparison of tensors, here we only
+        compare the syntactic equality rather than the mathematical equality.
+        """
+
+        if not isinstance(other, TensorDef):
+            return False
+
+        return self.lhs == other.lhs and self.rhs == other.rhs
+
 
 class Drudge:
     """The main drudge class.
