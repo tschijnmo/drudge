@@ -416,6 +416,9 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def1 == y_def
     assert y_def2 == y_def
 
+    # This tests the `act` method as well.
+    assert y_def[1].simplify() == dr.einst(o[1, j] * x[j]).simplify()
+
 
 def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
     """Test the string and LaTeX form representation of tensors."""
