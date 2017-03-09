@@ -809,6 +809,29 @@ class Tensor:
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
+    def subst_all(self, defs):
+        """Substitute all given definitions serially.
+
+        The definitions should be given as an iterable of either
+        :py:class:`TensorDef` instances or pairs of left-hand side and
+        right-hand side of the substitutions.  Note that the substitutions are
+        going to be performed **according to the given order** one-by-one,
+        rather than simultaneously.
+        """
+
+        res = self
+        for i in defs:
+            if isinstance(i, TensorDef):
+                res = i.act(res)
+            elif isinstance(i, Sequence) and len(i) == 2:
+                res = res.subst(i[0], i[1])
+            else:
+                raise TypeError(
+                    'Invalid substitution', i,
+                    'expecting definition or LHS/RHS pair'
+                )
+
+        return res
 
     #
     # Analytic gradient
