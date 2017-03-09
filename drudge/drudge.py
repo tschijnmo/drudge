@@ -1084,6 +1084,35 @@ class TensorDef:
 
         return self.lhs == other.lhs and self.rhs == other.rhs
 
+    def __str__(self):
+        """Form simple readable string for a definition.
+        """
+
+        return ' = '.join([str(self.lhs), str(self.rhs)])
+
+    def latex(self, sep_lines=False):
+        r"""Get the latex form for the tensor definition.
+
+        The result will just be the form from :py:meth:`Tensor.latex` with the
+        RHS prepended.
+
+        Parameters
+        ----------
+
+        sep_lines : bool
+            If terms should be put into separate lines by separating them with
+            ``\\``.
+
+        """
+        return self._tensor.drudge.format_latex(
+            self, sep_lines=sep_lines
+        )
+
+    def display(self, sep_lines=False):
+        """Display the tensor definition in interactive notebook sessions.
+        """
+        return Math(self.latex(sep_lines=sep_lines))
+
 
 class Drudge:
     """The main drudge class.
@@ -1572,8 +1601,8 @@ class Drudge:
     # Printing
     #
 
-    def format_latex(self, tensor, sep_lines=False):
-        """Get the LaTeX form of a given tensor.
+    def format_latex(self, inp, sep_lines=False):
+        """Get the LaTeX form of a given tensor or tensor definition.
 
         Subclasses should fine-tune the appearance of the resulted LaTeX form by
         overriding methods ``_latex_sympy``, ``_latex_vec``, and
@@ -1581,11 +1610,29 @@ class Drudge:
 
         """
 
-        if tensor.n_terms == 0:
-            return '0'
+        if isinstance(inp, Tensor):
+
+            n_terms = inp.n_terms
+            inp_terms = inp.local_terms
+            prefix = ''
+
+        elif isinstance(inp, TensorDef):
+
+            n_terms = inp.rhs.n_terms
+            inp_terms = inp.rhs_terms
+            prefix = (
+                         self._latex_sympy(inp.lhs) if inp.is_scalar else
+                         self._latex_vec(inp.lhs)
+                     ) + ' = '
+
+        else:
+            raise TypeError('Invalid object to form into LaTeX.')
+
+        if n_terms == 0:
+            return prefix + '0'
 
         terms = []
-        for i, v in enumerate(tensor.local_terms):
+        for i, v in enumerate(inp_terms):
             term = self._latex_term(v)
             if i != 0 and term[0] not in {'+', '-'}:
                 term = ' + ' + term
@@ -1594,7 +1641,7 @@ class Drudge:
 
         term_sep = r' \\ ' if sep_lines else ' '
 
-        return term_sep.join(terms)
+        return prefix + term_sep.join(terms)
 
     def _latex_term(self, term):
         """Format a term into LaTeX form.
