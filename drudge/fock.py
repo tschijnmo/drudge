@@ -517,8 +517,10 @@ class GenMBDrudge(FockDrudge):
         self.cr = cr
         self.an = an
 
-        self.set_name(an, str(op) + '_')
-        self.set_name(cr, str(op) + '_dag')
+        self.set_name(**{
+            str(op) + '_': an,
+            str(op) + '_dag': cr
+        })
 
         #
         # Hamiltonian creation

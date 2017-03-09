@@ -6,6 +6,7 @@ import inspect
 import operator
 import types
 import typing
+import itertools
 from collections.abc import Iterable, Sequence
 
 from IPython.display import Math
@@ -1304,16 +1305,22 @@ class Drudge:
     # Name archive utilities.
     #
 
-    def set_name(self, obj: typing.Any, label: typing.Any = None):
+    def set_name(self, *args, **kwargs):
         """Set the object into the name archive of the drudge.
 
-        The str form of the given label is going to be used for the name of the
-        object when given, or the str form of the object itself will be used.
+        For positional arguments, the str form of the given label is going to be
+        used for the name of the object.  For keyword arguments, the keyword
+        will be used for the name.
         """
 
-        if label is None:
-            label = obj
-        setattr(self._names, str(label), obj)
+        to_set = itertools.chain(
+            ((str(i), i) for i in args), kwargs.items()
+        )
+
+        for label, obj in to_set:
+            setattr(self._names, label, obj)
+            continue
+
         return
 
     @property
@@ -1372,7 +1379,7 @@ class Drudge:
         if set_range_name:
             self.set_name(range_)
         if dumms_suffix:
-            self.set_name(new_dumms, str(range_) + dumms_suffix)
+            self.set_name(**{str(range_) + dumms_suffix: new_dumms})
         if set_dumm_names:
             for i in new_dumms:
                 self.set_name(i)
@@ -1408,7 +1415,7 @@ class Drudge:
         self._symms.var[base] = group
 
         if set_base_name:
-            self.set_name(base, label=base.label)
+            self.set_name(**{str(base.label): base})
 
         return group
 

@@ -13,7 +13,7 @@ def test_drudge_injects_names():
 
     string_name = 'string_name'
     dr.set_name(string_name)
-    dr.set_name(1, 'one')
+    dr.set_name(one=1)
 
     dr.inject_names(suffix='_')
 
