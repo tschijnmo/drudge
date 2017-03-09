@@ -1028,6 +1028,10 @@ class TensorDef:
             if len(self._exts) == 0 and isinstance(self._base, IndexedBase):
                 self._base = self._base.label
 
+    #
+    # Basic properties.
+    #
+
     @property
     def is_scalar(self):
         """If the tensor defined is a scalar."""
@@ -1061,6 +1065,10 @@ class TensorDef:
         """The external indices."""
         return self._exts
 
+    #
+    # Simple operations.
+    #
+
     def simplify(self):
         """Simplify the tensor in the definition.
 
@@ -1083,6 +1091,10 @@ class TensorDef:
             return False
 
         return self.lhs == other.lhs and self.rhs == other.rhs
+
+    #
+    # Representations.
+    #
 
     def __str__(self):
         """Form simple readable string for a definition.
