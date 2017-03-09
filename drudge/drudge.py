@@ -1125,6 +1125,40 @@ class TensorDef:
         """
         return Math(self.latex(sep_lines=sep_lines))
 
+    #
+    # Substitution.
+    #
+
+
+    def act(self, tensor, wilds=None):
+        """Act the definition on a tensor.
+
+        This method is the active voice version of the :py:meth:`Tensor.subst`
+        function.  All appearances of the defined object in the tensor will be
+        substituted.
+
+        """
+
+        if not isinstance(tensor, Tensor):
+            tensor = self.rhs.drudge.sum(tensor)
+
+        return tensor.subst(self.lhs, self.rhs, wilds=wilds)
+
+    def __getitem__(self, item):
+        """Get the tensor when the definition is indexed.
+        """
+
+        if not isinstance(item, Sequence):
+            item = (item,)
+
+        n_exts = len(self._exts)
+        if len(item) != n_exts:
+            raise ValueError(
+                'Invalid subscripts', item, 'expecting', n_exts
+            )
+
+        return self.act(self._base[item])
+
 
 class Drudge:
     """The main drudge class.
