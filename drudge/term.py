@@ -1173,7 +1173,7 @@ def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):
 #
 
 
-def sum_term(*args, predicate=None) -> typing.List[Term]:
+def sum_term(sum_args, summand, predicate=None) -> typing.List[Term]:
     """Sum the given expression.
 
     This method is meant for easy creation of tensor terms.  The arguments
@@ -1183,10 +1183,6 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
 
     """
 
-    if len(args) == 0:
-        return []
-
-    summand = args[-1]
     # Too many SymPy stuff are callable.
     if isinstance(summand, Callable) and not isinstance(summand, Basic):
         inp_terms = None
@@ -1194,10 +1190,10 @@ def sum_term(*args, predicate=None) -> typing.List[Term]:
     else:
         inp_terms = parse_terms(summand)
         inp_func = None
-        if len(args) == 1:
+        if len(sum_args) == 0:
             return list(inp_terms)
 
-    sums, substs = _parse_sums(args[:-1])
+    sums, substs = _parse_sums(sum_args)
 
     res = []
     for sum_i in itertools.product(*sums):

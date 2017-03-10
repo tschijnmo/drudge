@@ -25,7 +25,10 @@ def mprod():
     b = IndexedBase('b', shape=(n, n))
     v = Vec('v')
 
-    prod = sum_term((i, l), (j, l), (k, l), a[i, j] * b[j, k] * v[i] * v[k])
+    prod = sum_term(
+        [(i, l), (j, l), (k, l)],
+        a[i, j] * b[j, k] * v[i] * v[k]
+    )
 
     assert len(prod) == 1
     return prod[0], types.SimpleNamespace(i=i, j=j, k=k, l=l, a=a, b=b, v=v,
@@ -122,8 +125,10 @@ def test_terms_can_be_reset_dummies(mprod):
 
     dumms = {p.l: [p.k, p.j, p.i]}
     res, dummbegs = prod.reset_dumms(dumms)
-    expected = sum_term((p.k, p.l), (p.j, p.l), (p.i, p.l),
-                        p.a[p.k, p.j] * p.b[p.j, p.i] * p.v[p.k] * p.v[p.i])[0]
+    expected = sum_term(
+        [(p.k, p.l), (p.j, p.l), (p.i, p.l)],
+        p.a[p.k, p.j] * p.b[p.j, p.i] * p.v[p.k] * p.v[p.i]
+    )[0]
     assert res == expected
     assert len(dummbegs) == 1
     assert p.l in dummbegs
@@ -138,20 +143,22 @@ def test_delta_can_be_simplified(mprod):
     l = p.l
     dumms = {l: [i, j, k]}
 
-    term = sum_term((i, l), (j, l),
-                    KroneckerDelta(i, j) * KroneckerDelta(j, k) * p.v[i])[0]
+    term = sum_term(
+        [(i, l), (j, l)],
+        KroneckerDelta(i, j) * KroneckerDelta(j, k) * p.v[i]
+    )[0]
 
     # If we do not tell which range k belongs, a delta should be kept.
     #
     # Here either i or j could be removed.
     res = term.simplify_deltas([]).reset_dumms(dumms)
     assert res == (
-        sum_term((j, l), KroneckerDelta(j, k) * p.v[j])[0]
+        sum_term([(j, l)], KroneckerDelta(j, k) * p.v[j])[0]
     ).reset_dumms(dumms)
 
     # When the range for k is given, more simplification comes.
     res = term.simplify_deltas([lambda x: p.l])
-    assert res == sum_term(p.v[k])[0]
+    assert res == sum_term([], p.v[k])[0]
 
 
 def test_simple_terms_can_be_canonicalized():
@@ -168,14 +175,14 @@ def test_simple_terms_can_be_canonicalized():
     i, j = sympify('i, j')
 
     # A term without the vector part, canonicalization without symmetry.
-    term = sum_term((j, l), (i, l), x[i, j])[0]
+    term = sum_term([(j, l), (i, l)], x[i, j])[0]
     res = term.canon()
-    expected = sum_term((i, l), (j, l), x[i, j])[0]
+    expected = sum_term([(i, l), (j, l)], x[i, j])[0]
     assert res == expected
 
     # A term without the vector part, canonicalization with symmetry.
     m = Range('M')
-    term = sum_term((j, m), (i, l), x[j, i])[0]
+    term = sum_term([(j, m), (i, l)], x[j, i])[0]
     for neg, conj in itertools.product([IDENT, NEG], [IDENT, CONJ]):
         acc = neg | conj
         group = Group([Perm([1, 0], acc)])
@@ -185,25 +192,25 @@ def test_simple_terms_can_be_canonicalized():
             expected_amp *= -1
         if conj == CONJ:
             expected_amp = conjugate(expected_amp)
-        expected = sum_term((i, l), (j, m), expected_amp)[0]
+        expected = sum_term([(i, l), (j, m)], expected_amp)[0]
         assert res == expected
         continue
 
     # In the absence of symmetry, the two indices should not be permuted.
     res = term.canon()
-    expected = sum_term((i, l), (j, m), x[j, i])[0]
+    expected = sum_term([(i, l), (j, m)], x[j, i])[0]
     assert res == expected
 
     # Now we add vectors to the terms.
     v = Vec('v')
-    term = sum_term((i, l), (j, l), v[i] * v[j])[0]
+    term = sum_term([(i, l), (j, l)], v[i] * v[j])[0]
 
     # Without anything added, it should already be in the canonical form.
     assert term.canon() == term
 
     # When we flip the colour of the vectors, we should get something different.
     res = term.canon(vec_colour=lambda idx, vec, term: -idx)
-    expected = sum_term((j, l), (i, l), v[i] * v[j])[0]
+    expected = sum_term([(j, l), (i, l)], v[i] * v[j])[0]
     assert res == expected
 
 

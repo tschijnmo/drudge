@@ -1552,8 +1552,22 @@ class Drudge:
         with same dictionary.  False values can be used the skip some terms.  It
         is guaranteed that the same dictionary will be used for both predicate
         and the summand when they are given as callables.
+
+        Note that this function can also be called on existing tensor objects
+        with the same semantics on the terms.  Existing summations are not
+        touched by it.
+
         """
-        return self.create_tensor(sum_term(*args, predicate=predicate))
+
+        if len(args) == 0:
+            raise ValueError('Expecing summand!')
+
+        summand = args[-1]
+        sum_args = args[:-1]
+
+        return self.create_tensor(sum_term(
+            sum_args, summand, predicate=predicate
+        ))
 
     def einst(self, summand) -> Tensor:
         """Create a tensor from Einstein summation convention.
