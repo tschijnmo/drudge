@@ -752,11 +752,18 @@ class Tensor:
 
         """
 
-        if not isinstance(lhs, (Vec, Symbol, Indexed)):
+        if isinstance(lhs, (Vec, Indexed)):
+            base = lhs.base
+        elif isinstance(lhs, Symbol):
+            base = lhs
+        else:
             raise TypeError(
                 'Invalid LHS for substitution', lhs,
                 'expecting vector, indexed, or symbol'
             )
+
+        if not self.has_base(base):
+            return self
 
         # We need to gather, and later broadcast all the terms.  The rational is
         # that the RHS is usually small in real problems.
