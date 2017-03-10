@@ -80,7 +80,7 @@ Miscellaneous utilities
 
 .. autofunction:: prod_
 
-.. autoclass:: TimeStamper
+.. autoclass:: Stopwatch
     :members:
     :special-members:
 

@@ -379,7 +379,7 @@ def prod_(obj):
         return functools.reduce(operator.mul, i, init)
 
 
-class TimeStamper:
+class Stopwatch:
     """Utility class for printing timing information.
 
     This class helps to timing the progression of batch jobs.  It is capable of
@@ -389,7 +389,7 @@ class TimeStamper:
     """
 
     def __init__(self, print_cb=print):
-        """Initialize the time stamper.
+        """Initialize the stopwatch.
 
         Parameters
         ----------
@@ -399,10 +399,14 @@ class TimeStamper:
             default, it will just be written to stdout.
 
         """
-        self._prev = time.time()
         self._print = print_cb
+        self.tick()
 
-    def stamp(self, label, tensor=None):
+    def tick(self):
+        """Reset the timer."""
+        self._prev = time.time()
+
+    def tock(self, label, tensor=None):
         """Make a timestamp.
 
         The formatted timestamp will be given to the callback of the current

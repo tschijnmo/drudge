@@ -4,7 +4,7 @@ import time
 import types
 from unittest.mock import MagicMock
 
-from drudge import Vec, sum_, prod_, TimeStamper
+from drudge import Vec, sum_, prod_, Stopwatch
 from drudge.term import parse_terms
 
 
@@ -23,8 +23,8 @@ def test_sum_prod_utility():
     assert prod_([]) == 1
 
 
-def test_time_stamper():
-    """Test the time stamper utility."""
+def test_stopwatch():
+    """Test the stopwatch utility."""
 
     tensor = types.SimpleNamespace(n_terms=2, cache=MagicMock())
     res_holder = [None]
@@ -32,15 +32,15 @@ def test_time_stamper():
     def print_cb(stamp):
         res_holder[0] = stamp
 
-    stamper = TimeStamper(print_cb)
+    stamper = Stopwatch(print_cb)
     time.sleep(0.5)
-    stamper.stamp('Nothing')
+    stamper.tock('Nothing')
     res = res_holder[0]
     assert res.startswith('Nothing done')
     assert float(res.split()[-2]) - 0.5 < 0.1
 
     time.sleep(0.5)
-    stamper.stamp('Tensor', tensor)
+    stamper.tock('Tensor', tensor)
     res = res_holder[0]
     assert res.startswith('Tensor done, 2 terms')
     assert float(res.split()[-2]) - 0.5 < 0.1

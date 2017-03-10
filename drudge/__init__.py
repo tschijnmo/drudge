@@ -13,7 +13,7 @@ from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
     UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge
 )
-from .utils import sum_, prod_, TimeStamper
+from .utils import sum_, prod_, Stopwatch
 
 __all__ = [
     # Canonpy.
@@ -52,5 +52,5 @@ __all__ = [
     # Small user utilities.
     'sum_',
     'prod_',
-    'TimeStamper'
+    'Stopwatch'
 ]
