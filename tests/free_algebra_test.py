@@ -95,6 +95,7 @@ def test_tensor_has_basic_operations(free_alg):
         5. Equality comparison.
         6. Expansion
         7. Mapping to scalars.
+        8. Base presence testing.
     """
 
     dr = free_alg
@@ -152,6 +153,13 @@ def test_tensor_has_basic_operations(free_alg):
     assert res == dr.sum((i, r), y[i] * v[i, c])
     res = tensor.map2scalars(lambda x: x.xreplace(substs), skip_vecs=True)
     assert res == dr.sum((i, r), y[i] * v[i, j])
+
+    # Test base presence.
+    tensor = dr.einst(x[i] * v[i])
+    assert tensor.has_base(x)
+    assert tensor.has_base(v)
+    assert not tensor.has_base(IndexedBase('y'))
+    assert not tensor.has_base(Vec('w'))
 
 
 def test_tensor_can_be_simplified_amp(free_alg):
