@@ -9,7 +9,7 @@ Scuseria et al, J Chem Phys 89 (1988) 7382 (10.1063/1.455269).
 from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational, symbols
 
-from drudge import SpinOneHalfPartHoleDrudge, Vec, UP, DOWN, TimeStamper
+from drudge import SpinOneHalfPartHoleDrudge, Vec, UP, DOWN, Stopwatch
 
 # Environment setting up.
 
@@ -32,19 +32,17 @@ i, j, k, l = p.O_dumms[:4]
 # operator definition.
 #
 
-t1 = IndexedBase('t^1')
-t2 = IndexedBase('t^2')
-e_ = Vec('E')
-
-cluster_e = dr.einst(
-    t1[a, i] * e_[a, i] +
-    Rational(1, 2) * t2[a, b, i, j] * e_[a, i] * e_[b, j]
+t = IndexedBase('t')
+e_ = dr.define(
+    Vec('E')[a, i], c_dag[a, UP] * c_[i, UP] + c_dag[a, DOWN] * c_[i, DOWN]
 )
 
-cluster = cluster_e.subst(
-    e_[a, i], c_dag[a, UP] * c_[i, UP] + c_dag[a, DOWN] * c_[i, DOWN]
+cluster = dr.einst(
+    t[a, i] * e_[a, i] +
+    Rational(1, 2) * t[a, b, i, j] * e_[a, i] * e_[b, j]
 )
-dr.set_n_body_base(t2, 2)
+
+dr.set_n_body_base(t, 2)
 cluster = cluster.simplify()
 cluster.cache()
 
@@ -52,33 +50,35 @@ cluster.cache()
 # Similarity transform of the Hamiltonian
 # 
 
-stamper = TimeStamper()
+stopwatch = Stopwatch()
 
 curr = dr.ham
 h_bar = dr.ham
 for order in range(4):
     curr = (curr | cluster).simplify() * Rational(1, order + 1)
-    stamper.stamp('Commutator order {}'.format(order + 1), curr)
+    stopwatch.tock('Commutator order {}'.format(order + 1), curr)
     h_bar += curr
     continue
 
 h_bar = h_bar.simplify()
 h_bar.repartition(cache=True)
-stamper.stamp('H-bar assembly', h_bar)
+stopwatch.tock('H-bar assembly', h_bar)
 
 en_eqn = h_bar.eval_fermi_vev().simplify()
-stamper.stamp('Energy equation', en_eqn)
+stopwatch.tock('Energy equation', en_eqn)
 
 dr.wick_parallel = 1
 
-e_dag = Vec(r'E^\dagger')
 beta, gamma, u, v = symbols('beta gamma u v')
 spin = symbols('spin')
-e_dag_def = dr.sum((spin, UP, DOWN), c_dag[i, spin] * c_[a, spin])
-projs = [e_dag_def.act(e_dag[a, i], p) for p in [
+e_dag = dr.define(
+    Vec(r'E^\dagger')[a, i],
+    dr.sum((spin, UP, DOWN), c_dag[i, spin] * c_[a, spin])
+)
+projs = [
     e_dag[beta, u],
     e_dag[beta, u] * e_dag[gamma, v]
-]]
+]
 
 #
 # Dump the result to a simple report.
@@ -87,7 +87,7 @@ projs = [e_dag_def.act(e_dag[a, i], p) for p in [
 amp_eqns = []
 for order, proj in enumerate(projs):
     eqn = (proj * h_bar).eval_fermi_vev().simplify()
-    stamper.stamp('T{} equation'.format(order + 1), eqn)
+    stopwatch.tock('T{} equation'.format(order + 1), eqn)
     amp_eqns.append(eqn)
     continue
 
