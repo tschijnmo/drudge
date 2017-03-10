@@ -186,7 +186,8 @@ class FockDrudge(WickDrudge):
         The symmetry of an n-body interaction has full permutation symmetry
         among the corresponding slots in the first and second half.
 
-        When the body count if less than two, no symmetry is added.
+        When the body count if less than two, no symmetry is added.  And the
+        added symmetry is for the given valence only.
 
         """
 
@@ -206,7 +207,7 @@ class FockDrudge(WickDrudge):
             self._form_transp(begin1, end1) + self._form_transp(begin2, end2)
         )
 
-        self.set_symm(base, cycl, transp)
+        self.set_symm(base, cycl, transp, valence=2 * n_body)
 
         return
 
@@ -256,7 +257,7 @@ class FockDrudge(WickDrudge):
                 first_half + self._form_transp(n_body, n_slots), transp_acc
             ))
 
-        self.set_symm(base, gens)
+        self.set_symm(base, gens, valence=n_slots)
 
         return
 
