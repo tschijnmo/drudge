@@ -810,7 +810,7 @@ class Tensor:
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
-    def subst_all(self, defs):
+    def subst_all(self, defs, simplify=False):
         """Substitute all given definitions serially.
 
         The definitions should be given as an iterable of either
@@ -831,6 +831,8 @@ class Tensor:
                     'Invalid substitution', i,
                     'expecting definition or LHS/RHS pair'
                 )
+            if simplify:
+                res = res.simplify().repartition()
 
         return res
 
