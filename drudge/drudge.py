@@ -216,6 +216,20 @@ class Tensor:
         """If the terms in the tensor is already repartitioned."""
         return self._repartitioned
 
+    def has_base(self, base: typing.Union[IndexedBase, Symbol, Vec]) -> bool:
+        """Find if the tensor has the given scalar or vector base.
+
+        Parameters
+        ----------
+
+        base
+            The base whose presence is to be queried.  When it is indexed base
+            or a plain symbol, its presence in the amplitude part is tested.
+            When it is a vector, its presence in the vector part is tested.
+
+        """
+        return self._terms.map(lambda x: x.has_base(base)).reduce(operator.or_)
+
     #
     # Printing support
     #

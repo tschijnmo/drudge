@@ -952,6 +952,19 @@ class Term(ATerms):
 
         return Term(tuple(res_sums), res_amp, tuple(res_vecs))
 
+    def has_base(self, base):
+        """Test if the given base is present in the current term."""
+
+        if isinstance(base, (IndexedBase, Symbol)):
+            return self._amp.has(base)
+        elif isinstance(base, Vec):
+            label = base.label
+            return any(
+                i.label == label for i in self._vecs
+            )
+        else:
+            raise TypeError('Invalid base to test presence', base)
+
 
 _WRAPPER_BASE = IndexedBase(
     'internalWrapper', shape=('internalShape',)
