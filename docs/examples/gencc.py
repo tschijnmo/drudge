@@ -13,7 +13,7 @@ import urllib.request
 from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational, factorial
 
-from drudge import PartHoleDrudge, sum_, prod_, TimeStamper
+from drudge import PartHoleDrudge, sum_, prod_, Stopwatch
 
 #
 # Job preparation
@@ -71,13 +71,13 @@ print('Problem setting up done.')
 # Similarity transform the Hamiltonian
 #
 
-stamper = TimeStamper()
+stopwatch = Stopwatch()
 
 curr = dr.ham
 h_bar = dr.ham
 for i in range(4):
     curr = (curr | corr).simplify() * Rational(1, i + 1)
-    stamper.stamp('Commutator order {}'.format(i + 1), curr)
+    stopwatch.tock('Commutator order {}'.format(i + 1), curr)
     h_bar += curr
     continue
 
@@ -85,10 +85,10 @@ h_bar = h_bar.simplify()
 h_bar.repartition(cache=True)
 n_terms = h_bar.n_terms
 
-stamper.stamp('H-bar assembly', h_bar)
+stopwatch.tock('H-bar assembly', h_bar)
 
 en_eqn = h_bar.eval_fermi_vev().simplify()
-stamper.stamp('Energy equation', en_eqn)
+stopwatch.tock('Energy equation', en_eqn)
 
 dr.wick_parallel = 1
 
@@ -101,7 +101,7 @@ for order in cluster_bases.keys():
     )
 
     eqn = (proj * h_bar).eval_fermi_vev().simplify()
-    stamper.stamp('T{} equation'.format(order), eqn)
+    stopwatch.tock('T{} equation'.format(order), eqn)
     amp_eqns[order] = eqn
 
     continue
