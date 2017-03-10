@@ -1565,9 +1565,14 @@ class Drudge:
         summand = args[-1]
         sum_args = args[:-1]
 
-        return self.create_tensor(sum_term(
-            sum_args, summand, predicate=predicate
-        ))
+        if isinstance(summand, Tensor):
+            return Tensor(self, summand.terms.flatMap(
+                lambda x: sum_term(sum_args, x, predicate=predicate)
+            ))
+        else:
+            return self.create_tensor(sum_term(
+                sum_args, summand, predicate=predicate
+            ))
 
     def einst(self, summand) -> Tensor:
         """Create a tensor from Einstein summation convention.
