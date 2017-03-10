@@ -3,10 +3,10 @@
 import contextlib
 import functools
 import inspect
+import itertools
 import operator
 import types
 import typing
-import itertools
 from collections.abc import Iterable, Sequence
 
 from IPython.display import Math
@@ -1565,16 +1565,27 @@ class Drudge:
         resolved.  When a symbol is suspiciously an Einstein summation dummy but
         does not satisfy the requirement precisely, it will **not** be added as
         a summation, but a warning will also be given for reference.
+
+        Note that in addition to creating tensors from scratch, this method can
+        also be called on an existing tensor to add new summations.  In that
+        case, no existing summations will be touched.
         """
 
-        # We need to expand the possibly parenthesized user input.
-        summand_terms = []
-        for i in parse_terms(summand):
-            summand_terms.extend(i.expand())
+        resolvers = self.resolvers
+        if isinstance(summand, Tensor):
+            summand_terms = summand.expand().terms
+            return Tensor(self, summand_terms.map(
+                lambda x: einst_term(x, resolvers.value)
+            ), expanded=True)
+        else:
+            # We need to expand the possibly parenthesized user input.
+            summand_terms = []
+            for i in parse_terms(summand):
+                summand_terms.extend(i.expand())
 
-        return self.create_tensor(
-            [einst_term(i, self.resolvers.value) for i in summand_terms]
-        )
+            return self.create_tensor(
+                [einst_term(i, resolvers.value) for i in summand_terms]
+            )
 
     def create_tensor(self, terms):
         """Create a tensor with the terms given in the argument.
