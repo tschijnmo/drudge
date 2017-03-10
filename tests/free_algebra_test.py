@@ -474,3 +474,21 @@ def test_drudge_has_default_properties(free_alg):
     assert isinstance(free_alg.num_partitions, int)
     assert free_alg.full_simplify
     assert not free_alg.simple_merge
+
+
+def test_tensor_can_be_added_summation(free_alg):
+    """Test addition of new summations for existing tensors."""
+
+    dr = free_alg
+    p = dr.names
+    i, j = p.R_dumms[:2]
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+
+    tensor = dr.sum((i, p.R), x[i, j] * y[j, i])
+
+    for res in [
+        dr.einst(tensor),
+        dr.sum((j, p.R), tensor)
+    ]:
+        assert res == dr.einst(x[i, j] * y[j, i])
