@@ -1394,27 +1394,62 @@ class Drudge:
         """
         return self._dumms.bcast
 
-    def set_symm(self, base, *symms, set_base_name=True):
+    def set_symm(self, base, *symms, valence=None, set_base_name=True):
         """Set the symmetry for a given base.
 
         Permutation objects in the arguments are interpreted as single
         generators, other values will be attempted to be iterated over to get
         their entries, which should all be permutations.
+
+        Parameters
+        ----------
+
+        base
+            The SymPy indexed base object or vectors whose symmetry is to be
+            set.
+
+        symms
+            The generators of the symmetry.  It can be a single None to remove
+            the symmetry of the given base.
+
+        valence : int
+            When it is set, only the indexed quantity of the base with the given
+            valence will have the given symmetry.
+
+        set_base_name
+            If the base name is to be added to the name archive of the drudge.
+
         """
 
-        gens = []
-        for i in symms:
-            if isinstance(i, Perm):
-                gens.append(i)
-            elif isinstance(i, Iterable):
-                gens.extend(i)
-            else:
-                raise TypeError('Invalid generator: ', i,
-                                'expecting Perm or iterable of Perms')
-            continue
+        if len(symms) == 0:
+            raise ValueError('Invalid empty symmetry, expecting generators!')
+        elif len(symms) == 1 and symms[0] is None:
+            group = None
+        else:
+            gens = []
+            for i in symms:
+                if isinstance(i, Perm):
+                    gens.append(i)
+                elif isinstance(i, Iterable):
+                    gens.extend(i)
+                else:
+                    raise TypeError('Invalid generator: ', i,
+                                    'expecting Perm or iterable of Perms')
+                continue
 
-        group = Group(gens)
-        self._symms.var[base] = group
+            group = Group(gens)
+
+        valid_valence = (valence is None or (
+            isinstance(valence, int) and valence > 1
+        ))
+        if not valid_valence:
+            raise ValueError(
+                'Invalid valence', valence, 'expecting positive integer'
+            )
+
+        self._symms.var[
+            base if valence is None else (base, valence)
+        ] = group
 
         if set_base_name:
             self.set_name(**{str(base.label): base})

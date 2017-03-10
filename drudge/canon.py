@@ -189,12 +189,20 @@ def _build_eldag(sums, factors, symms):
     for factor, colour in factors:
         base = factor.base
         indices = factor.indices
+        n_indices = len(indices)
+
+        if n_indices < 2:
+            factor_symms = None
+        elif (base, n_indices) in symms:
+            factor_symms = symms[base, n_indices]
+        elif base in symms:
+            factor_symms = symms[base]
+        else:
+            factor_symms = None
 
         index_nodes = _proc_indices(indices, dumms, eldag)
         idx = eldag.add_node(
-            index_nodes,
-            None if len(indices) < 2 or base not in symms else symms[base],
-            (_FACTOR, colour)
+            index_nodes, factor_symms, (_FACTOR, colour)
         )
 
         factor_idxes.append(idx)
