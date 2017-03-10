@@ -656,8 +656,8 @@ class PartHoleDrudge(GenMBDrudge):
     )
 
     def __init__(self, *args, op_label='c',
-                 part_orb=(Range('V'), DEFAULT_PART_DUMMS),
-                 hole_orb=(Range('O'), DEFAULT_HOLE_DUMMS),
+                 part_orb=(Range('V', 0, Symbol('nv')), DEFAULT_PART_DUMMS),
+                 hole_orb=(Range('O', 0, Symbol('no')), DEFAULT_HOLE_DUMMS),
                  spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
                  fock=IndexedBase('f'),
@@ -697,6 +697,9 @@ class PartHoleDrudge(GenMBDrudge):
         self.ham = ham
 
         self.set_tensor_method('eval_fermi_vev', self.eval_fermi_vev)
+
+        self.set_name(no=self.hole_range.size)
+        self.set_name(nv=self.part_range.size)
 
     @property
     def op_parser(self):
