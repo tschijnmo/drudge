@@ -9,7 +9,7 @@ import types
 import typing
 from collections.abc import Iterable, Sequence
 
-from IPython.display import Math
+from IPython.display import Math, display
 from pyspark import RDD, SparkContext
 from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex
 
@@ -261,10 +261,28 @@ class Tensor:
         """
         return self._drudge.format_latex(self, sep_lines=sep_lines)
 
-    def display(self, sep_lines=False):
+    def display(self, if_return=True, sep_lines=False):
         """Display the tensor in interactive IPython notebook sessions.
+
+        Parameters
+        ----------
+
+        if_return
+            If the resulted equation be returned rather than directly displayed.
+            It can be disabled for displaying equation in the middle of a
+            Jupyter cell.
+
+        sep_lines
+            If terms should be written into separate lines.
+
         """
-        return Math(self.latex(sep_lines=sep_lines))
+
+        form = Math(self.latex(sep_lines=sep_lines))
+        if if_return:
+            return form
+        else:
+            display(form)
+            return
 
     #
     # Small manipulations
@@ -1155,10 +1173,19 @@ class TensorDef:
             self, sep_lines=sep_lines
         )
 
-    def display(self, sep_lines=False):
+    def display(self, if_return=True, sep_lines=False):
         """Display the tensor definition in interactive notebook sessions.
+
+        The parameters here all have the same meaning as in
+        :py:meth:`Tensor.display`.
         """
-        return Math(self.latex(sep_lines=sep_lines))
+
+        form = Math(self.latex(sep_lines=sep_lines))
+        if if_return:
+            return form
+        else:
+            display(form)
+            return
 
     #
     # Substitution.
