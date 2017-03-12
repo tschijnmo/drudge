@@ -49,20 +49,20 @@ o_dumms = p.O_dumms
 
 ORDER_OF = {'s': 1, 'd': 2, 't': 3, 'q': 4}
 
-cluster_bases = collections.OrderedDict()
+t = IndexedBase('t')
+orders = []
 for i in theory[2:]:
     order = ORDER_OF[i]
-    t = IndexedBase('t{}'.format(order))
+    orders.append(order)
     if order > 1:
         dr.set_dbbar_base(t, order)
-    cluster_bases[order] = t
 
 corr = dr.einst(sum_(
     Rational(1, factorial(i) ** 2) *
-    v[tuple(v_dumms[:i]) + tuple(o_dumms[:i])] *
+    t[tuple(v_dumms[:i]) + tuple(o_dumms[:i])] *
     prod_(c_dag[j] for j in v_dumms[:i]) *
     prod_(c_[j] for j in reversed(o_dumms[:i]))
-    for i, v in cluster_bases.items()
+    for i in orders
 ))
 
 print('Problem setting up done.')
@@ -93,7 +93,7 @@ stopwatch.tock('Energy equation', en_eqn)
 dr.wick_parallel = 1
 
 amp_eqns = collections.OrderedDict()
-for order in cluster_bases.keys():
+for order in orders:
     proj = prod_(
         c_dag[j] for j in o_dumms[:order]
     ) * prod_(
@@ -109,13 +109,13 @@ for order in cluster_bases.keys():
 # Check with the result from TCE.
 TCE_BASE_URL = 'http://www.scs.illinois.edu/~sohirata/'
 tce_labels = ['e']
-tce_labels.extend('t{}'.format(i) for i in cluster_bases.keys())
+tce_labels.extend('t{}'.format(i) for i in orders)
 tce_files = ('{}_{}.out'.format(theory, i) for i in tce_labels)
 
 tce_res = [
     dr.parse_tce(
         urllib.request.urlopen(TCE_BASE_URL + i).read().decode(),
-        cluster_bases
+        {i: t for i in orders}
     ).simplify()
     for i in tce_files
     ]
