@@ -7,6 +7,7 @@ import itertools
 import operator
 import types
 import typing
+import warnings
 from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
@@ -186,7 +187,7 @@ class Tensor:
         return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
     @property
-    def free_vars(self):
+    def free_vars(self) -> typing.Set[Symbol]:
         """The free variables in the tensor.
         """
         if self._free_vars is None:
@@ -895,6 +896,13 @@ class Tensor:
             to be evaluated by another invocation with ``wittinger_conj`` set to
             true.
 
+        .. warning::
+
+            The differentiation algorithm currently does **not** take the
+            symmetry of the tensor to be differentiated with respect to into
+            account.  For differentiate with respect to symmetric tensor,
+            further symmetrization of the result might be needed.
+
 
         Parameters
         ----------
@@ -920,6 +928,17 @@ class Tensor:
             )
 
         if isinstance(variable, Indexed):
+
+            symms = self._drudge.symms.value
+            if_symm = (
+                variable.base in symms or
+                (variable.base, len(variable.indices)) in symms
+            )
+            if if_symm:
+                warnings.warn(
+                    'Gradient wrt to symmetric tensor {} '.format(variable) +
+                    'might need further symmetrization'
+                )
 
             # We need a copy.
             excl = set(self.free_vars)
@@ -1190,7 +1209,6 @@ class TensorDef:
     #
     # Substitution.
     #
-
 
     def act(self, tensor, wilds=None):
         """Act the definition on a tensor.
