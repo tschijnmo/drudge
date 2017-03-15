@@ -186,6 +186,55 @@ operations are also available, like symbolic differentiation by
 :py:meth:`Tensor.diff` and commutation by ``|`` operator
 :py:meth:`Tensor.__or__`.
 
+Tensors are purely mathematical expressions, while the utility class
+:py:class:`TensorDef` can be construed as tensor expressions with a left-hand
+side.  They can be easily created by :py:meth:`Drudge.define` and
+:py:meth:`Drudge.define_einst`.
+
+.. doctest::
+
+    >>> v_def = dr.define_einst(v[a], t[a, b] * w[b])
+    >>> str(v_def)
+    'v[a] = sum_{b} t[a, b] * w[b]'
+
+Their method :py:meth:`TensorDef.act` is like a active voice version of
+:py:meth:`Tensor.subst` and could come handy when we need to substitute the same
+definition in multiple inputs.
+
+.. doctest::
+
+    >>> res = v_def.act(tensor)
+    >>> str(res)
+    'sum_{a, b} x[a]*t[a, b] * w[b]'
+
+More importantly, the definitions can be indexed directly, and the result is
+designed to work well inside :py:meth:`Drudge.sum` or :py:meth:`Drudge.einst`.
+For instance, for the same result, we could have,
+
+.. doctest::
+
+    >>> res = dr.einst(x[a] * v_def[a])
+    >>> str(res)
+    'sum_{b, a} x[a]*t[a, b] * w[b]'
+
+When the only purpose of a vector or indexed base is to be substituted and we
+never intend to write tensor expressions directly in terms of them, we can just
+name the definition with a short name directly and put the actual base inside
+only.  For instance,
+
+.. doctest::
+
+    >>> c = sympy.Symbol('c')
+    >>> f = dr.define_einst(sympy.IndexedBase('f')[a, b], x[a, c] * y[c, b])
+    >>> str(f)
+    'f[a, b] = sum_{c} x[a, c]*y[c, b]'
+    >>> str(dr.einst(f[a, a]))
+    'sum_{b, a} x[a, b]*y[b, a]'
+
+which also demonstrates that the tensor definition facility can also be used for
+scalar quantities.  :py:class:`TensorDef` is also at the core of the code
+optimization and generation facility in the ``gristmill`` package.
+
 Usually for tensorial problems, full simplification requires the utilization of
 some symmetries present on the indexed quantities by permutations among their
 indices.  For instance, an anti-symmetric matrix entry changes sign when we
