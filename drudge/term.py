@@ -728,9 +728,10 @@ class Term(ATerms):
         return Term(
             self._sums if sums is None else sums,
             func(self._amp if amp is None else amp),
-            (tuple(
-                i.map(func) for i in (self._vecs if vecs is None else vecs)
-            ) if not skip_vecs else self._vecs)
+            tuple(
+                i.map(func) if not skip_vecs else i
+                for i in (self._vecs if vecs is None else vecs)
+            )
         )
 
     def subst(self, substs, sums=None, amp=None, vecs=None, purge_sums=False):
