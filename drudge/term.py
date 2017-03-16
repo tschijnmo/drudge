@@ -671,8 +671,18 @@ class Term(ATerms):
     def amp_factors(self):
         """The factors in the amplitude expression.
 
-        The indexed factors and factors involving dummies will be returned as a
-        list, with the rest returned as a single SymPy expression.
+        This is a convenience wrapper over :py:meth:`get_amp_factors` for the
+        case of no special additional symbols.
+        """
+
+        return self.get_amp_factors(set())
+
+    def get_amp_factors(self, special_symbs):
+        """Get the factors in the amplitude and the coefficient.
+
+        The indexed factors and factors involving dummies or the symbols in the
+        given special symbols set will be returned as a list, with the rest
+        returned as a single SymPy expression.
 
         Error will be raised if the amplitude is not a monomial.
         """
@@ -692,7 +702,8 @@ class Term(ATerms):
         coeff = _UNITY
         for factor in all_factors:
             need_treatment = any(
-                i in dumms for i in factor.atoms(Symbol)
+                (i in dumms or i in special_symbs)
+                for i in factor.atoms(Symbol)
             ) or isinstance(factor, Indexed)
             if need_treatment:
                 factors.append(factor)
