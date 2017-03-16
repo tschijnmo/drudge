@@ -9,7 +9,9 @@ import functools
 import typing
 import warnings
 
-from sympy import KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols
+from sympy import (
+    KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols, conjugate
+)
 
 from ._tceparser import parse_tce_out
 from .canon import NEG, IDENT
@@ -83,6 +85,7 @@ class FockDrudge(WickDrudge):
 
         self.set_tensor_method('eval_vev', self.eval_vev)
         self.set_tensor_method('eval_phys_vev', self.eval_phys_vev)
+        self.set_tensor_method('dagger', self.dagger)
 
     @property
     def contractor(self):
@@ -178,6 +181,28 @@ class FockDrudge(WickDrudge):
 
         return Tensor(
             self, self.normal_order(tensor.terms, comparator=None)
+        )
+
+    @staticmethod
+    def dagger(tensor: Tensor, real=False):
+        """Get the Hermitian adjoint of the given operator.
+
+        This method is also set to be a tensor method with the same name.
+
+        Parameter
+        ---------
+
+        tensor
+            The operator to take the Hermitian adjoint for.
+
+        real
+            If the amplitude is assumed to be real.  Note that this need not be
+            set if the amplitude is concrete real numbers.
+
+        """
+
+        return tensor.apply(
+            lambda terms: terms.map(functools.partial(_get_dagger, real=real))
         )
 
     def set_n_body_base(self, base: IndexedBase, n_body: int):
@@ -387,6 +412,33 @@ def _get_field_op_colour(idx, vec, term, op_parser: FockDrudge.OP_PARSER):
 
     _, char, _ = op_parser(vec, term)
     return char, idx if char == CR else -idx
+
+
+def _get_dagger(term: Term, real: bool):
+    """Take the dagger of a term."""
+
+    new_vecs = []
+    for vec in reversed(term.vecs):
+        base = vec.base
+        indices = vec.indices
+        if indices[0] == CR:
+            new_char = AN
+        elif indices[0] == AN:
+            new_char = CR
+        else:
+            raise ValueError(
+                'Invalid vector to take Hermitian adjoint', vec,
+                'expecting CR/AN character in first index'
+            )
+        new_vecs.append(
+            base[(new_char,) + indices[1:]]
+        )
+        continue
+
+    return term.map(
+        lambda x: x if real else conjugate(x),
+        vecs=tuple(new_vecs), skip_vecs=True
+    )
 
 
 #
