@@ -796,10 +796,14 @@ class Tensor:
         ):
             raise ValueError('Invalid RHS for substituting a scalar', rhs)
 
-        if wilds is None and isinstance(lhs, (Indexed, Vec)):
-            wilds = {
-                i: Wild(i.name) for i in lhs.indices if isinstance(i, Symbol)
-                }
+        if wilds is None:
+            if isinstance(lhs, (Indexed, Vec)):
+                wilds = {
+                    i: Wild(i.name) for i in lhs.indices if
+                    isinstance(i, Symbol)
+                    }
+            else:
+                wilds = {}
 
         if isinstance(lhs, Indexed):
             lhs = lhs.xreplace(wilds)
