@@ -1,7 +1,7 @@
 """Tests for the general many-body problem."""
 
 import pytest
-from sympy import IndexedBase
+from sympy import IndexedBase, conjugate
 
 from drudge import GenMBDrudge, CR, AN
 
@@ -134,3 +134,22 @@ def test_fock_drudge_prints_operators(genmb):
     assert tensor.latex() == (
         r'- \sum_{a \in L} \sum_{b \in L} x_{a,b} c^{\dagger}_{a} c^{}_{b}'
     )
+
+
+def test_dagger_of_field_operators(genmb):
+    """Test taking the Hermitian adjoint of field operators."""
+
+    dr = genmb
+    p = dr.names
+    x = IndexedBase('x')
+    c_dag = p.c_dag
+    c_ = p.c_
+    a, b = p.L_dumms[:2]
+
+    tensor = dr.einst(x[a, b] * c_dag[a] * c_[b])
+
+    real_dag = tensor.dagger(real=True)
+    assert real_dag == dr.einst(x[a, b] * c_dag[b] * c_[a])
+
+    compl_dag = tensor.dagger()
+    assert compl_dag == dr.einst(conjugate(x[a, b]) * c_dag[b] * c_[a])
