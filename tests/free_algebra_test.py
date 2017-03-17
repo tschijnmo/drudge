@@ -2,6 +2,7 @@
 
 import os
 import os.path
+import pickle
 
 import pytest
 from sympy import (
@@ -500,3 +501,23 @@ def test_tensor_can_be_added_summation(free_alg):
         dr.sum((j, p.R), tensor)
     ]:
         assert res == dr.einst(x[i, j] * y[j, i])
+
+
+def test_pickling_tensors(free_alg):
+    """Test tensors can be correctly pickled and unpickled."""
+
+    dr = free_alg
+    p = dr.names
+    x = IndexedBase('x')
+    v = Vec('v')
+
+    tensor = dr.einst(x[p.i] * v[p.i])
+    serialized = pickle.dumps(tensor)
+
+    with pytest.raises(ValueError):
+        pickle.loads(serialized)
+
+    with dr.pickle_env():
+        res = pickle.loads(serialized)
+
+    assert res == tensor
