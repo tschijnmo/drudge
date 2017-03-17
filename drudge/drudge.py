@@ -779,7 +779,7 @@ class Tensor:
     # Substitution
     #
 
-    def subst(self, lhs, rhs, wilds=None):
+    def subst(self, lhs, rhs, wilds=None, full_balance=False):
         """Substitute the all appearance of the defined tensor.
 
         When the given LHS is a plain SymPy symbol, all its appearances in the
@@ -844,9 +844,12 @@ class Tensor:
         rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
 
         expanded = self.expand()
-        return expanded._subst(lhs, rhs_terms)
+        return expanded._subst(lhs, rhs_terms, full_balance=full_balance)
 
-    def _subst(self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms):
+    def _subst(
+            self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms,
+            full_balance
+    ):
         """Core substitution function.
 
         This function assumes the self and the substituting terms are already
@@ -873,19 +876,19 @@ class Tensor:
             res = nest_bind(subs_states, lambda x: subst_factor_in_term(
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
-            ))
+            ), full_balance=full_balance)
         else:
             res = nest_bind(subs_states, lambda x: subst_vec_in_term(
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
-            ))
+            ), full_balance=full_balance)
 
         res_terms = res.map(operator.itemgetter(0))
         return Tensor(
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
-    def subst_all(self, defs, simplify=False):
+    def subst_all(self, defs, simplify=False, full_balance=False):
         """Substitute all given definitions serially.
 
         The definitions should be given as an iterable of either
@@ -898,14 +901,17 @@ class Tensor:
         res = self
         for i in defs:
             if isinstance(i, TensorDef):
-                res = i.act(res)
+                lhs = i.lhs
+                rhs = i.rhs
             elif isinstance(i, Sequence) and len(i) == 2:
-                res = res.subst(i[0], i[1])
+                lhs, rhs = i
             else:
                 raise TypeError(
                     'Invalid substitution', i,
                     'expecting definition or LHS/RHS pair'
                 )
+
+            res = res.subst(lhs, rhs, full_balance=full_balance)
             if simplify:
                 res = res.simplify().repartition()
 
@@ -1311,7 +1317,7 @@ class TensorDef:
     # Substitution.
     #
 
-    def act(self, tensor, wilds=None):
+    def act(self, tensor, wilds=None, full_balance=False):
         """Act the definition on a tensor.
 
         This method is the active voice version of the :py:meth:`Tensor.subst`
@@ -1323,7 +1329,9 @@ class TensorDef:
         if not isinstance(tensor, Tensor):
             tensor = self.rhs.drudge.sum(tensor)
 
-        return tensor.subst(self.lhs, self.rhs, wilds=wilds)
+        return tensor.subst(
+            self.lhs, self.rhs, wilds=wilds, full_balance=full_balance
+        )
 
     def __getitem__(self, item):
         """Get the tensor when the definition is indexed.
