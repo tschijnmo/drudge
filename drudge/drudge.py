@@ -858,6 +858,7 @@ class Tensor:
         )
         free_vars = self._drudge.ctx.broadcast(free_vars_local)
         dumms = self._drudge.dumms
+        full_simplify = self._drudge.full_simplify
 
         # We keep the dummbegs dictionary for each term and substitute all
         # appearances of the lhs one-by-one.
@@ -871,7 +872,8 @@ class Tensor:
         if isinstance(lhs, (Indexed, Symbol)):
             res = nest_bind(subs_states, lambda x: subst_factor_in_term(
                 x[0], lhs, rhs_terms.value,
-                dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
+                dumms=dumms.value, dummbegs=x[1], excl=free_vars.value,
+                full_simplify=full_simplify
             ))
         else:
             res = nest_bind(subs_states, lambda x: subst_vec_in_term(

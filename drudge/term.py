@@ -1030,7 +1030,7 @@ def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
 
 
 def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
-                         dumms, dummbegs, excl):
+                         dumms, dummbegs, excl, full_simplify=True):
     """Substitute a scalar factor in the term.
 
     While vectors are always flattened lists of vectors.  The amplitude part can
@@ -1104,7 +1104,9 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
 
     if pow_val[0] is not None:
         amp = amp.subs(pow_placeholder, pow_val[0])
-    amp = amp.simplify().expand()
+    amp = (
+        amp.simplify() if full_simplify else amp
+    ).expand()
 
     # It is called nonlinear error, but some nonlinear forms, like conjugation,
     # can be handled.
