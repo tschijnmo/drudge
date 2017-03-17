@@ -286,6 +286,36 @@ class Tensor:
             return
 
     #
+    # Pickling support
+    #
+
+    def __getstate__(self):
+        """Get the current state of the tensor.
+
+        Here we just have the local terms.  Other cached information are
+        discarded.
+        """
+        return self.local_terms
+
+    def __setstate__(self, state):
+        """Set the state for the new tensor.
+
+        This function reads the drudge to use from the module attribute, which
+        is set in the :py:meth:`Drudge.pickle_env` method.
+        """
+
+        drudge = _default_drudge
+        if drudge is None:
+            raise ValueError(
+                'Tensor objects cannot be unpickled, '
+                'need to be inside Drudge.pickle_env'
+            )
+
+        assert isinstance(drudge, Drudge)
+        self.__init__(drudge, drudge.ctx.parallelize(state))
+        return
+
+    #
     # Small manipulations
     #
 
@@ -1915,6 +1945,44 @@ class Drudge:
         report = Report(filename, title)
         yield report
         report.write()
+
+    #
+    # Pickling support
+    #
+
+    @contextlib.contextmanager
+    def pickle_env(self):
+        """Prepare the environment for unpickling contents with tensors.
+
+        Pickled contents containing tensors cannot be directly unpickled by the
+        functions from the pickle module directly.  They should be used within
+        the context created by this function.  Note that the content does not
+        have to have a single tensor object.  Anything containing tensor objects
+        needs to be loaded within the context.
+
+        .. warning::
+
+            All tensors read within this environment will have the current
+            drudge as their drudge.  No checking is, or can be, done to make
+            sure that the tensors are sensible for the current drudge.  Normally
+            it should be the same drudge as the drudge used for their creation
+            be used.
+
+        """
+
+        global _default_drudge
+
+        _default_drudge = self
+        yield None
+        _default_drudge = None
+
+
+#
+# Global for pickling
+#
+
+
+_default_drudge = None
 
 
 #
