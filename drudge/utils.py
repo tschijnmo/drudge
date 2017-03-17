@@ -2,16 +2,16 @@
 
 import functools
 import operator
-from collections.abc import Sequence
 import time
+from collections.abc import Sequence
 
 from pyspark import RDD, SparkContext
 from sympy import (
     sympify, Symbol, Expr, SympifyError, count_ops, default_sort_key,
     AtomicExpr, Integer, S
 )
-from sympy.core.sympify import CantSympify
 from sympy.core.assumptions import ManagedProperties
+from sympy.core.sympify import CantSympify
 
 
 #
@@ -269,12 +269,22 @@ class BCastVar:
         return self._bcast
 
 
-def nest_bind(rdd: RDD, func):
+def nest_bind(rdd: RDD, func, full_balance=True):
     """Nest the flat map of the given function.
 
     When an entry no longer need processing, None can be returned by the call
     back function.
 
+    """
+
+    if full_balance:
+        return _nest_bind_full_balance(rdd, func)
+    else:
+        return _nest_bind_no_balance(rdd, func)
+
+
+def _nest_bind_full_balance(rdd: RDD, func):
+    """Nest the flat map of the given function with full load balancing.
     """
 
     ctx = rdd.context
@@ -303,29 +313,29 @@ def nest_bind(rdd: RDD, func):
     return ctx.union(res)
 
 
-def nest_bind_serial(data, func):
-    """Nest the flat map of the given function serially.
-
-    This function has the same semantics as the nest bind function for Spark
-    RDD.  It is mainly for the purpose of testing and debugging.
-
+def _nest_bind_no_balance(rdd: RDD, func):
+    """Nest the flat map of the given function without load balancing.
     """
 
-    curr = data
-    res = []
-    while len(curr) > 0:
-        new_curr = []
-        for i in curr:
-            step_res = func(i)
-            if step_res is None:
-                res.append(i)
-            else:
-                new_curr.extend(step_res)
+    def wrapped(obj):
+        """Wrapped function for nest bind."""
+        curr = [obj]
+        res = []
+        while len(curr) > 0:
+            new_curr = []
+            for i in curr:
+                step_res = func(i)
+                if step_res is None:
+                    res.append(i)
+                else:
+                    new_curr.extend(step_res)
+                continue
+            curr = new_curr
             continue
-        curr = new_curr
-        continue
 
-    return res
+        return res
+
+    return rdd.flatMap(wrapped)
 
 
 #

@@ -1194,6 +1194,43 @@ def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):
     return subst_states
 
 
+def rewrite_term(
+        term: Term, vecs: typing.Sequence[Vec], new_amp: Expr
+) -> typing.Tuple[typing.Optional[Term], Term]:
+    """Rewrite the given term.
+
+    When a rewriting happens, the result will be the pair of the rewritten term
+    and the term for the definition of the new amplitude, or the result will be
+    None and the original term.
+    """
+
+    if len(term.vecs) != len(vecs):
+        return None, term
+
+    substs = {}
+    for i, j in zip(term.vecs, vecs):
+        curr_substs = _match_indices(i, j)
+        if curr_substs is None:
+            break
+        for wild, expr in curr_substs.items():
+            if wild in substs:
+                if substs[wild] != expr:
+                    break
+            else:
+                substs[wild] = expr
+    else:
+        # When a match is found.
+        res_amp = new_amp.xreplace(substs)
+        res_symbs = res_amp.atoms(Symbol)
+        res_sums = tuple(i for i in term.sums if i[0] in res_symbs)
+        def_sums = tuple(i for i in term.sums if i[0] not in res_symbs)
+        return Term(res_sums, res_amp, term.vecs), Term(
+            def_sums, term.amp, ()
+        )
+
+    return None, term
+
+
 #
 # User interface support
 # ----------------------

@@ -6,7 +6,7 @@ import pickle
 
 import pytest
 from sympy import (
-    sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate
+    sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild
 )
 
 from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ
@@ -335,7 +335,8 @@ def test_tensors_can_be_differentiated(free_alg):
     assert (grad - 2 * b[j, i]).simplify() == 0
 
 
-def test_tensors_can_be_substituted_scalars(free_alg):
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
     """Test scalar substitution facility for tensors."""
 
     dr = free_alg
@@ -360,15 +361,16 @@ def test_tensors_can_be_substituted_scalars(free_alg):
 
     # Test different ways to perform the substitution.
     for res in [
-        orig.subst(x[i], x_def.rhs),
-        orig.subst_all([x_def]),
-        orig.subst_all([(x[i], x_def.rhs)]),
-        x_def.act(orig)
+        orig.subst(x[i], x_def.rhs, full_balance=full_balance),
+        orig.subst_all([x_def], full_balance=full_balance),
+        orig.subst_all([(x[i], x_def.rhs)], full_balance=full_balance),
+        x_def.act(orig, full_balance=full_balance)
     ]:
         assert res.simplify() == expected.simplify()
 
 
-def test_tensors_can_be_substituted_vectors(free_alg):
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_tensors_can_be_substituted_vectors(free_alg, full_balance):
     """Test vector substitution facility for tensors."""
 
     dr = free_alg
@@ -384,12 +386,40 @@ def test_tensors_can_be_substituted_vectors(free_alg):
     orig = dr.einst(x[i] * v[i])
     v_def = dr.einst(t[i, j] * w[j] + u[i, j] * w[j])
 
-    res = orig.subst(v[i], v_def).simplify()
+    res = orig.subst(v[i], v_def, full_balance=full_balance).simplify()
 
     expected = dr.einst(
         x[i] * t[i, j] * w[j] + x[i] * u[i, j] * w[j]
     ).simplify()
     assert res == expected
+
+
+def test_tensors_can_be_rewritten(free_alg):
+    """Test the amplitude rewriting facility for given vector patterns."""
+
+    dr = free_alg
+    p = dr.names
+    v = Vec('v')
+    a, b = p.R_dumms[:2]
+
+    x = IndexedBase('x')
+    o = IndexedBase('o')
+    y = IndexedBase('y')
+    z = IndexedBase('z')
+
+    tensor = dr.einst(
+        x[a] * v[a] + o[a, b] * y[b] * v[a]  # Terms to rewrite.
+        + z[a, b] * v[a] * v[b]  # Terms to keep.
+    )
+
+    w = Wild('w')
+    r = IndexedBase('r')
+    rewritten, defs = tensor.rewrite(v[w], r[w])
+
+    assert rewritten == dr.einst(z[a, b] * v[a] * v[b] + r[a] * v[a])
+    assert len(defs) == 1
+    assert r[a] in defs
+    assert defs[r[a]] == dr.einst(x[a] + o[a, b] * y[b])
 
 
 def test_tensor_method(free_alg):

@@ -18,7 +18,8 @@ from .canonpy import Perm, Group
 from .report import Report
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
-    subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range
+    subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
+    rewrite_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_
 
@@ -778,7 +779,7 @@ class Tensor:
     # Substitution
     #
 
-    def subst(self, lhs, rhs, wilds=None):
+    def subst(self, lhs, rhs, wilds=None, full_balance=False):
         """Substitute the all appearance of the defined tensor.
 
         When the given LHS is a plain SymPy symbol, all its appearances in the
@@ -843,9 +844,12 @@ class Tensor:
         rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
 
         expanded = self.expand()
-        return expanded._subst(lhs, rhs_terms)
+        return expanded._subst(lhs, rhs_terms, full_balance=full_balance)
 
-    def _subst(self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms):
+    def _subst(
+            self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms,
+            full_balance
+    ):
         """Core substitution function.
 
         This function assumes the self and the substituting terms are already
@@ -874,19 +878,19 @@ class Tensor:
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value,
                 full_simplify=full_simplify
-            ))
+            ), full_balance=full_balance)
         else:
             res = nest_bind(subs_states, lambda x: subst_vec_in_term(
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
-            ))
+            ), full_balance=full_balance)
 
         res_terms = res.map(operator.itemgetter(0))
         return Tensor(
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
-    def subst_all(self, defs, simplify=False):
+    def subst_all(self, defs, simplify=False, full_balance=False):
         """Substitute all given definitions serially.
 
         The definitions should be given as an iterable of either
@@ -899,18 +903,87 @@ class Tensor:
         res = self
         for i in defs:
             if isinstance(i, TensorDef):
-                res = i.act(res)
+                lhs = i.lhs
+                rhs = i.rhs
             elif isinstance(i, Sequence) and len(i) == 2:
-                res = res.subst(i[0], i[1])
+                lhs, rhs = i
             else:
                 raise TypeError(
                     'Invalid substitution', i,
                     'expecting definition or LHS/RHS pair'
                 )
+
+            res = res.subst(lhs, rhs, full_balance=full_balance)
             if simplify:
                 res = res.simplify().repartition()
 
         return res
+
+    def rewrite(self, vecs, new_amp):
+        """Rewrite terms with the given vectors in terms of the new amplitude.
+
+        This method will rewrite the terms whose vector part patches the given
+        vectors in terms of the given new amplitude.  And all terms rewritten
+        into the same form will be aggregated into a single term.
+
+        Parameters
+        ----------
+
+        vecs
+            A vector or a product of vectors.  They should be written in terms
+            of SymPy wild symbols when they need to be matched against different
+            actual vectors.
+
+        new_amp
+            The amplitude that the matched terms should have.  They are usually
+            written in terms of the same wild symbols as the wilds in the
+            vectors.
+
+        Returns
+        -------
+
+        rewritten
+            The tensor with the requested terms rewritten in term of the given
+            amplitude.
+
+        defs
+            The actual definitions of the rewritten amplitude.  One for each
+            rewritten term in the result.
+
+        """
+
+        vecs_terms = parse_terms(vecs)
+        invalid_vecs = ValueError(
+            'Invalid vectors to rewrite', vecs,
+            'expecting just vectors'
+        )
+        if len(vecs_terms) != 1:
+            raise invalid_vecs
+        vecs_term = vecs_terms[0]
+        if len(vecs_term.sums) > 0 or vecs_term.amp != 1:
+            raise invalid_vecs
+        vecs = vecs_term.vecs
+
+        rewritten = self._terms.map(
+            lambda term: rewrite_term(term, vecs, new_amp)
+        ).cache()
+        new_terms = [
+            i for i in rewritten.countByKey().keys() if i is not None
+            ]
+
+        get_term = operator.itemgetter(1)
+        untouched_terms = rewritten.filter(
+            lambda x: x[0] is None
+        ).map(get_term)
+        new_defs = {}
+        for i in new_terms:
+            def_terms = rewritten.filter(lambda x: x[0] == i).map(get_term)
+            new_defs[i.amp] = Tensor(self._drudge, def_terms)
+            continue
+
+        return Tensor(self._drudge, untouched_terms.union(
+            self._drudge.ctx.parallelize(new_terms)
+        )), new_defs
 
     #
     # Analytic gradient
@@ -1246,7 +1319,7 @@ class TensorDef:
     # Substitution.
     #
 
-    def act(self, tensor, wilds=None):
+    def act(self, tensor, wilds=None, full_balance=False):
         """Act the definition on a tensor.
 
         This method is the active voice version of the :py:meth:`Tensor.subst`
@@ -1258,7 +1331,9 @@ class TensorDef:
         if not isinstance(tensor, Tensor):
             tensor = self.rhs.drudge.sum(tensor)
 
-        return tensor.subst(self.lhs, self.rhs, wilds=wilds)
+        return tensor.subst(
+            self.lhs, self.rhs, wilds=wilds, full_balance=full_balance
+        )
 
     def __getitem__(self, item):
         """Get the tensor when the definition is indexed.
