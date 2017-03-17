@@ -269,12 +269,22 @@ class BCastVar:
         return self._bcast
 
 
-def nest_bind(rdd: RDD, func):
+def nest_bind(rdd: RDD, func, full_balance=True):
     """Nest the flat map of the given function.
 
     When an entry no longer need processing, None can be returned by the call
     back function.
 
+    """
+
+    if full_balance:
+        return _nest_bind_full_balance(rdd, func)
+    else:
+        return _nest_bind_no_balance(rdd, func)
+
+
+def _nest_bind_full_balance(rdd: RDD, func):
+    """Nest the flat map of the given function with full load balancing.
     """
 
     ctx = rdd.context
@@ -301,6 +311,31 @@ def nest_bind(rdd: RDD, func):
         continue
 
     return ctx.union(res)
+
+
+def _nest_bind_no_balance(rdd: RDD, func):
+    """Nest the flat map of the given function without load balancing.
+    """
+
+    def wrapped(obj):
+        """Wrapped function for nest bind."""
+        curr = [obj]
+        res = []
+        while len(curr) > 0:
+            new_curr = []
+            for i in curr:
+                step_res = func(i)
+                if step_res is None:
+                    res.append(i)
+                else:
+                    new_curr.extend(step_res)
+                continue
+            curr = new_curr
+            continue
+
+        return res
+
+    return rdd.flatMap(wrapped)
 
 
 #
