@@ -5,7 +5,6 @@ as well as function helpful for its subclasses.
 """
 
 import abc
-import collections
 import functools
 import typing
 
@@ -14,7 +13,6 @@ from sympy import Expr
 
 from .drudge import Drudge
 from .term import Term, Vec, simplify_deltas_in_expr, compose_simplified_delta
-from .utils import sympy_key
 from .wickcore import compose_wick
 
 
@@ -185,7 +183,7 @@ def _prepare_wick(term, comparator, contractor, symms, resolvers):
         contrs = _get_all_contrs(term, contractor, resolvers=resolvers)
         vec_order = None
     else:
-        term = _preproc_term(term, symms)
+        term = term.canon4normal(symms)
         vec_order, contrs = _sort_vecs(
             term, comparator, contractor, resolvers=resolvers
         )
@@ -238,28 +236,6 @@ def _sort_vecs(term, comparator, contractor, resolvers):
         continue
 
     return vec_order, contrs
-
-
-def _preproc_term(term, symms):
-    """Prepare the term for Wick expansion.
-
-    This is the preparation task for normal ordering.  The term will be
-    canonicalized with all the vectors considered the same.
-    """
-
-    # Make the dummies factory to canonicalize the vectors.
-    dumms = collections.defaultdict(list)
-    for i, v in term.sums:
-        dumms[v].append(i)
-    for i in dumms.values():
-        i.sort(key=sympy_key)
-
-    canon_term = (
-        term.canon(symms=symms, vec_colour=lambda idx, vec, term: 0)
-            .reset_dumms(dumms)[0]
-    )
-
-    return canon_term
 
 
 def _get_all_contrs(term, contractor, resolvers):

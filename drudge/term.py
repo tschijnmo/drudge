@@ -964,6 +964,30 @@ class Term(ATerms):
 
         return Term(tuple(res_sums), res_amp, tuple(res_vecs))
 
+    def canon4normal(self, symms):
+        """Canonicalize the term for normal-ordering.
+
+        This is the preparation task for normal ordering.  The term will be
+        canonicalized with all the vectors considered the same.  And the dummies
+        will be reset internally according to the summation list.
+        """
+
+        # Make the internal dummies factory to canonicalize the vectors.
+        dumms = collections.defaultdict(list)
+        for i, v in self.sums:
+            dumms[v].append(i)
+        for i in dumms.values():
+            # This is important for ordering vectors according to SymPy key in
+            # normal ordering.
+            i.sort(key=sympy_key)
+
+        canon_term = (
+            self.canon(symms=symms, vec_colour=lambda idx, vec, term: 0)
+                .reset_dumms(dumms)[0]
+        )
+
+        return canon_term
+
     def has_base(self, base):
         """Test if the given base is present in the current term."""
 
