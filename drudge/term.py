@@ -1103,7 +1103,7 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
         return None
 
     if pow_val[0] is not None:
-        amp = amp.subs(pow_placeholder, pow_val[0])
+        amp = amp.xreplace({pow_placeholder: pow_val[0]})
     amp = (
         amp.simplify() if full_simplify else amp
     ).expand()
@@ -1136,7 +1136,7 @@ def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
     res = []
     for i, j in subst_states:
         res.append((
-            Term(sums + i.sums, amp.subs(placeholder1, i.amp), vecs), j
+            Term(sums + i.sums, amp.xreplace({placeholder1: i.amp}), vecs), j
         ))
         continue
 
