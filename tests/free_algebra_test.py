@@ -370,7 +370,10 @@ def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
 
 
 @pytest.mark.parametrize('full_balance', [True, False])
-def test_tensors_can_be_substituted_vectors(free_alg, full_balance):
+@pytest.mark.parametrize('full_simplify', [True, False])
+def test_tensors_can_be_substituted_vectors(
+        free_alg, full_balance, full_simplify
+):
     """Test vector substitution facility for tensors."""
 
     dr = free_alg
@@ -386,7 +389,9 @@ def test_tensors_can_be_substituted_vectors(free_alg, full_balance):
     orig = dr.einst(x[i] * v[i])
     v_def = dr.einst(t[i, j] * w[j] + u[i, j] * w[j])
 
+    dr.full_simplify = full_simplify
     res = orig.subst(v[i], v_def, full_balance=full_balance).simplify()
+    dr.full_simplify = True
 
     expected = dr.einst(
         x[i] * t[i, j] * w[j] + x[i] * u[i, j] * w[j]
