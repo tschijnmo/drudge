@@ -13,6 +13,8 @@ from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
     UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge
 )
+from .genquad import GenQuadDrudge
+from .su2 import SU2LatticeDrudge
 from .utils import sum_, prod_, Stopwatch
 
 __all__ = [
@@ -48,6 +50,10 @@ __all__ = [
     'GenMBDrudge', 'PartHoleDrudge',
     'UP', 'DOWN',
     'SpinOneHalfGenDrudge', 'SpinOneHalfPartHoleDrudge',
+
+    # Other algebraic systems.
+    'GenQuadDrudge',
+    'SU2LatticeDrudge',
 
     # Small user utilities.
     'sum_',
