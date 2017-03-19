@@ -1,5 +1,6 @@
 """Drudge for SU(2) Lie algebra."""
 
+import collections
 import functools
 import operator
 
@@ -72,28 +73,35 @@ class SU2LatticeDrudge(GenQuadDrudge):
             lower.label[0] + '_m': lower
         })
 
-        self._root = root
-        self._norm = norm
-
-        self._swapper = functools.partial(
-            _swap_su2, cartan=cartan, raise_=raise_, lower=lower,
+        spec = _SU2Spec(
+            cartan=cartan, raise_=raise_, lower=lower,
             root=root, norm=norm
         )
+        self._spec = spec
+
+        self._swapper = functools.partial(_swap_su2, spec=spec)
 
     def swapper(self) -> GenQuadDrudge.Swapper:
         """The swapper for the spin algebra."""
         return self._swapper
 
 
-def _swap_su2(
-        vec1: Vec, vec2: Vec, *,
-        cartan, raise_, lower, root, norm
-):
+_SU2Spec = collections.namedtuple('_SU2Spec', [
+    'cartan',
+    'raise_',
+    'lower',
+    'root',
+    'norm'
+])
+
+
+def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
     """Swap two vectors based on the SU2 rules.
     """
 
-    char1, indice1, key1 = _parse_vec(vec1, cartan, raise_, lower)
-    char2, indice2, key2 = _parse_vec(vec2, cartan, raise_, lower)
+    char1, indice1, key1 = _parse_vec(vec1, spec)
+    char2, indice2, key2 = _parse_vec(vec2, spec)
+
     if len(indice1) != len(indice2):
         raise ValueError(
             'Invalid SU2 generators on lattice', (vec1, vec2),
@@ -102,6 +110,9 @@ def _swap_su2(
     delta = functools.reduce(
         operator.mul, zip(indice1, indice2), _UNITY
     )
+
+    root = spec.root
+    norm = spec.norm
 
     if char1 == _RAISE:
 
@@ -130,7 +141,7 @@ def _swap_su2(
     elif char1 == _LOWER:
 
         if char2 == _RAISE:
-            return _UNITY, - norm * delta * cartan[indice1]
+            return _UNITY, -norm * delta * spec.cartan[indice1]
         elif char2 == _CARTAN:
             return _UNITY, root * delta * vec1
         else:
@@ -150,16 +161,16 @@ _CARTAN = 1
 _LOWER = 2
 
 
-def _parse_vec(vec, cartan, raise_, lower):
-    """Get the character and lattice indices, and indices keys of the vector.
+def _parse_vec(vec, spec: _SU2Spec):
+    """Get the character, lattice indices, and indices keys of the vector.
     """
 
     base = vec.base
-    if base == cartan:
+    if base == spec.cartan:
         char = _CARTAN
-    elif base == raise_:
+    elif base == spec.raise_:
         char = _RAISE
-    elif base == lower:
+    elif base == spec.lower:
         char = _LOWER
     else:
         raise ValueError('Unexpected vector for SU2 algebra', vec)
