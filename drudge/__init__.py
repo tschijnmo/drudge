@@ -15,6 +15,7 @@ from .fock import (
 )
 from .genquad import GenQuadDrudge
 from .su2 import SU2LatticeDrudge
+from .clifford import CliffordDrudge, inner_by_delta
 from .utils import sum_, prod_, Stopwatch
 
 __all__ = [
@@ -54,6 +55,8 @@ __all__ = [
     # Other algebraic systems.
     'GenQuadDrudge',
     'SU2LatticeDrudge',
+    'CliffordDrudge',
+    'inner_by_delta',
 
     # Small user utilities.
     'sum_',
