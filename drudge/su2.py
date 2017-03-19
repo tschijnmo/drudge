@@ -58,8 +58,9 @@ class SU2LatticeDrudge(GenQuadDrudge):
             The coefficient for the commutator between the raising and lowering
             operators.
 
-        All other keyword arguments are given to the base class
-        :py:class:`GenQuadDrudge`.
+        kwargs
+            All other keyword arguments are given to the base class
+            :py:class:`GenQuadDrudge`.
 
         """
         super().__init__(ctx, **kwargs)

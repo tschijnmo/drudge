@@ -65,8 +65,9 @@ class CliffordDrudge(WickDrudge):
             number of indices will be computed to be the delta, or
             ``ValueError`` will be raised.
 
-        All other keyword arguments will be forwarded to the base class
-        :py:class:`WickDrudge`.
+        kwargs
+            All other keyword arguments will be forwarded to the base class
+            :py:class:`WickDrudge`.
 
         """
 

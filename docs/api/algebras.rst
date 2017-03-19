@@ -9,9 +9,21 @@ subclassing the :py:class:`Drudge` class, domain specific knowledge about the
 algebraic system in the problem can be given.  Inside drudge, we have some
 algebraic systems that is already built in.
 
+
+Abstract Wick alegbra
+~~~~~~~~~~~~~~~~~~~~~
+
 .. autoclass:: WickDrudge
     :members:
     :special-members:
+
+
+Concrete Wick algebras
+~~~~~~~~~~~~~~~~~~~~~~
+
+
+Fermion-boson CCR/CAR algebra
++++++++++++++++++++++++++++++
 
 .. autoclass:: FockDrudge
     :members:
@@ -32,3 +44,27 @@ algebraic systems that is already built in.
 .. data:: BOSE
 
     The label for boson exchange symmetry.
+
+
+Clifford algebra
+++++++++++++++++
+
+.. autoclass:: CliffordDrudge
+    :members:
+    :special-members:
+
+
+Abstract quadratic algebra
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: GenQuadDrudge
+    :members:
+    :special-members:
+
+
+Concrete quadratic algebras
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: SU2LatticeDrudge
+    :members:
+    :special-members:
