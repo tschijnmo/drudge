@@ -147,14 +147,17 @@ def _sort_vec(no_state: _NOState, swapper: GenQuadDrudge.Swapper, resolvers):
     # Now we need to do a swap.
     head = vecs[:prev]
     tail = vecs[pivot + 1:]
-    swapped_vecs = head + (vecs[pivot], vecs[prev]) + tail
-    swapped_term = Term(
-        orig_term.sums, phase * orig_term.amp, swapped_vecs
-    )
+    res_states = []
 
-    res_states = [_NOState(
-        pivot=prev, front=no_state.front, term=swapped_term
-    )]  # We at least have this in the result.
+    swapped_vecs = head + (vecs[pivot], vecs[prev]) + tail
+    swapped_amp = phase * orig_term.amp
+    if swapped_amp != 0:
+        swapped_term = Term(
+            orig_term.sums, swapped_amp, swapped_vecs
+        )
+        res_states.append(_NOState(
+            pivot=prev, front=no_state.front, term=swapped_term
+        ))
 
     for comm_term in comm_terms:
         if comm_term.amp == 0:
