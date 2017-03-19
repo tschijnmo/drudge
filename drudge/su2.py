@@ -123,7 +123,7 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
             elif key1 > key2:
                 return _UNITY, _NOUGHT
             else:
-                return _NOUGHT, _NOUGHT  # They are nilpotent.
+                return None
         else:
             return None
 
@@ -151,7 +151,7 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
             elif key1 > key2:
                 return _UNITY, _NOUGHT
             else:
-                return _NOUGHT, _NOUGHT
+                return None
 
     else:
         assert False
