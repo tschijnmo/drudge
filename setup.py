@@ -40,7 +40,7 @@ wickcore = Extension(
 
 setup(
     name='drudge',
-    version='0.2.0',
+    version='0.3.0dev',
     description=DESCRIPTION.splitlines()[0],
     long_description=DESCRIPTION,
     url='https://github.com/tschijnmo/drudge',
