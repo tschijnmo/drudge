@@ -1671,6 +1671,17 @@ class Drudge:
             continue
         self.add_resolver(dumm_resolver)
 
+    def add_default_resolver(self, range_):
+        """Add a default resolver.
+
+        The default resolver will resolve *any* expression to the given range.
+        Note that all later resolvers will not be invoked at all after this
+        resolver is added.
+        """
+        self.add_resolver(functools.partial(
+            _resolve_default_range, range_=range_
+        ))
+
     @property
     def resolvers(self):
         """The broadcast form of the resolvers."""
@@ -2091,3 +2102,8 @@ def _decompose_term(term):
 def _is_nonzero(term):
     """Test if a term is trivially non-zero."""
     return term.amp != 0
+
+
+def _resolve_default_range(_, range_):
+    """Resolve any expression to the given range."""
+    return range_
