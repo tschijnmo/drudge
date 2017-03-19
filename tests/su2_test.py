@@ -1,8 +1,8 @@
 """Test for the SU2 drudge."""
 
-from sympy import Rational, I
+from sympy import Rational, I, Symbol, symbols
 
-from drudge import SU2LatticeDrudge
+from drudge import SU2LatticeDrudge, Range
 
 
 def test_su2_without_symbolic_index(spark_ctx):
@@ -36,3 +36,37 @@ def test_su2_without_symbolic_index(spark_ctx):
         for i in [j_x, j_y, j_z]:
             assert (j_sq | i).simplify() == 0
         continue
+
+
+def test_su2_on_1d_heisenberg_model(spark_ctx):
+    """Test the SU2 drudge on 1D Heisenberg model with abstract lattice indices.
+
+    This test also acts as the test for the default resolver.
+    """
+
+    dr = SU2LatticeDrudge(spark_ctx)
+    l = Range('L')
+    dr.set_dumms(l, symbols('i j k l m n'))
+    dr.add_default_resolver(l)
+
+    p = dr.names
+    j_z = p.J_
+    j_p = p.J_p
+    j_m = p.J_m
+    i = p.i
+    half = Rational(1, 2)
+
+    coupling = Symbol('J')
+    ham = dr.sum(
+        (i, l),
+        j_z[i] * j_z[i + 1] +
+        half * j_p[i] * j_m[i + 1] + half * j_m[i] * j_p[i + 1]
+    ) * coupling
+
+    s_sq = dr.sum(
+        (i, l),
+        j_z[i] * j_z[i] + half * j_p[i] * j_m[i] + half * j_m[i] * j_p[i]
+    )
+
+    comm = (ham | s_sq).simplify()
+    assert comm == 0
