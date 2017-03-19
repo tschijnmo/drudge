@@ -7,6 +7,7 @@ Drudge, for symbolic noncommutative and tensor algebra
    :caption: Contents:
 
    intro
+   releases
    tutorial
    api
 
