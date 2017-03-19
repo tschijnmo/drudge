@@ -269,7 +269,14 @@ specific commutation rules added for the algebraic system.  For instance,
 :py:class:`WickDrudge` add abstract commutation rules where all the commutators
 have scalar values.  Based on it, its special subclass :py:class:`FockDrudge`
 implements the canonical commutation relations for bosons and the canonical
-anti-commutation relations for fermions.
+anti-commutation relations for fermions.  Also based on it, the subclass
+:py:class:`CliffordDrudge` is capable of treating all kinds of Clifford
+algebras, like geometric algebra, Pauli matrices, Dirac matrices, and Majorana
+fermion operators.  For algebraic systems where the commutator is not always a
+scalar, the abstract base class :py:class:`GenQuadDrudge` can be used for
+basically all kinds of commutation rules.  For instance, its subclass
+:py:class:`SU2LatticeDrudge` can be used for :math:`\mathfrak{su}(2)` algebra in
+Cartan-Weyl form.
 
 These drudge subclasses only has the mathematical commutation rules implemented,
 for convenience in solving problems, many drudge subclasses are built-in with a
