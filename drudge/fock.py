@@ -189,8 +189,8 @@ class FockDrudge(WickDrudge):
 
         This method is also set to be a tensor method with the same name.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
 
         tensor
             The operator to take the Hermitian adjoint for.
