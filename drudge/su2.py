@@ -4,7 +4,7 @@ import collections
 import functools
 import operator
 
-from sympy import Integer
+from sympy import Integer, KroneckerDelta
 
 from .genquad import GenQuadDrudge
 from .term import Vec
@@ -81,6 +81,7 @@ class SU2LatticeDrudge(GenQuadDrudge):
 
         self._swapper = functools.partial(_swap_su2, spec=spec)
 
+    @property
     def swapper(self) -> GenQuadDrudge.Swapper:
         """The swapper for the spin algebra."""
         return self._swapper
@@ -107,9 +108,9 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
             'Invalid SU2 generators on lattice', (vec1, vec2),
             'incompatible number of lattice indices'
         )
-    delta = functools.reduce(
-        operator.mul, zip(indice1, indice2), _UNITY
-    )
+    delta = functools.reduce(operator.mul, (
+        KroneckerDelta(i, j) for i, j in zip(indice1, indice2)
+    ), _UNITY)
 
     root = spec.root
     norm = spec.norm
