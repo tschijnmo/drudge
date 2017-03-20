@@ -1778,9 +1778,69 @@ class Drudge:
         is guaranteed that the same dictionary will be used for both predicate
         and the summand when they are given as callables.
 
+        For instance, mostly commonly, we can create a tensor by having simple
+        summations over symbolic ranges,
+
+        .. doctest::
+
+            >>> dr = Drudge(SparkContext())
+            >>> r = Range('R')
+            >>> a = Symbol('a')
+            >>> b = Symbol('b')
+            >>> x = IndexedBase('x')
+            >>> v = Vec('v')
+            >>> tensor = dr.sum((a, r), (b, r), x[a, b] * v[a] * v[b])
+            >>> str(tensor)
+            'sum_{a, b} x[a, b] * v[a] * v[b]'
+
+        And we can also give multiple symbolic ranges for a single dummy to sum
+        over all of them,
+
+        .. doctest::
+
+            >>> s = Range('S')
+            >>> tensor = dr.sum((a, r, s), x[a] * v[a])
+            >>> print(str(tensor))
+            sum_{a} x[a] * v[a]
+             + sum_{a} x[a] * v[a]
+
+        When the objects to sum over are not symbolic ranges, we are in the
+        concrete summation mode, for instance,
+
+        .. doctest::
+
+            >>> tensor = dr.sum((a, 1, 2), x[a] * v[a])
+            >>> print(str(tensor))
+            x[1] * v[1]
+             + x[2] * v[2]
+
+        The concrete and symbolic summation mode can be put together freely in
+        the same summation,
+
+        .. doctest::
+
+            >>> tensor = dr.sum((a, r, s), (b, 1, 2), x[b, a] * v[a])
+            >>> print(str(tensor))
+            sum_{a} x[1, a] * v[a]
+             + sum_{a} x[2, a] * v[a]
+             + sum_{a} x[1, a] * v[a]
+             + sum_{a} x[2, a] * v[a]
+
         Note that this function can also be called on existing tensor objects
         with the same semantics on the terms.  Existing summations are not
-        touched by it.
+        touched by it.  For instance,
+
+        .. doctest::
+
+            >>> tensor = dr.sum(x[a] * v[a])
+            >>> str(tensor)
+            'x[a] * v[a]'
+            >>> tensor = dr.sum((a, r), tensor)
+            >>> str(tensor)
+            'sum_{a} x[a] * v[a]'
+
+        where we have used summation with only summand (no sums) to create
+        simple tensor of only one term without any summation.
 
         """
 
@@ -1810,9 +1870,41 @@ class Drudge:
         does not satisfy the requirement precisely, it will **not** be added as
         a summation, but a warning will also be given for reference.
 
+        For instance, we can have the following fairly conventional Einstein
+        form,
+
+        .. doctest::
+
+            >>> dr = Drudge(SparkContext())
+            >>> r = Range('R')
+            >>> from sympy import symbols
+            >>> dumms = symbols('a b c')
+            >>> a, b, c = dumms
+            >>> dr.set_dumms(r, dumms)
+            [a, b, c]
+            >>> x = IndexedBase('x')
+            >>> dr.add_resolver_for_dumms()
+            >>> tensor = dr.einst(x[a, b] * x[b, c])
+            >>> str(tensor)
+            'sum_{b} x[a, b]*x[b, c]'
+
+        However, when a dummy is not in the most conventional form, the
+        summations cannot be automatically added.  For instance,
+
+        .. doctest::
+
+            >>> tensor = dr.einst(x[a, b] * x[b, b])
+            >>> str(tensor)
+            'x[a, b]*x[b, b]'
+
+        ``b`` is not summed over since it is repeated three times.  Note also
+        that the symbol must be able to be resolved its range for it to be
+        summed automatically.
+
         Note that in addition to creating tensors from scratch, this method can
         also be called on an existing tensor to add new summations.  In that
         case, no existing summations will be touched.
+
         """
 
         resolvers = self.resolvers
