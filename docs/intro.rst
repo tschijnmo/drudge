@@ -11,8 +11,9 @@ of drudge.  For small tasks without requirement on parallelization, a fork of
 the DummyRDD_ project can be used in place of an actual Spark context.  For
 parallel execution on supercomputers managed by the SLURM queueing system, the
 script ``sbin/start-spark-on-slurm.sh`` in the project source tree can be
-helpful.  Throughout the entire documentation, ``spark_ctx`` will be used to
-refer to a Spark context created for your site.
+helpful.  Throughout the entire documentation, ``SparkContext()`` will be used
+to create a minimal Spark context for demonstration purpose.  The actual context
+should be created according to your site.
 
 As an experimental project, the documentation can be outdated, incomplete,
 incorrect, or have a lot of bad formatting.  For any confusion, UTSL.

@@ -21,8 +21,8 @@ available cores, we can do
 
 .. doctest::
 
-    >>> import pyspark  # doctest: +SKIP
-    >>> spark_ctx = pyspark.SparkContext('local[*]', 'drudge-tutorial')  # doctest: +SKIP
+    >>> from pyspark import SparkContext  # doctest: +SKIP
+    >>> spark_ctx = SparkContext('local[*]', 'drudge-tutorial')
 
 For using Spark in cluster computing environment, please refer to the Spark
 documentation and setting of your cluster.  With the spark context created, we
