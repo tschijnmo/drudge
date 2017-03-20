@@ -2120,6 +2120,17 @@ class Drudge:
         This function should be used within a ``with`` statement to open a
         report for results.
 
+        Examples
+        --------
+
+        .. doctest::
+            :options: +SKIP
+
+            >>> dr = Drudge(SparkContext())
+            >>> tensor = dr.sum(IndexedBase('x')[Symbol('a')])
+            >>> with dr.report('report.html', 'A simple tensor') as report:
+            ...     report.add('Simple tensor', tensor)
+
         """
 
         report = Report(filename, title)
@@ -2147,6 +2158,20 @@ class Drudge:
             sure that the tensors are sensible for the current drudge.  Normally
             it should be the same drudge as the drudge used for their creation
             be used.
+
+        Examples
+        --------
+
+        .. doctest::
+
+            >>> dr = Drudge(SparkContext())
+            >>> tensor = dr.sum(IndexedBase('x')[Symbol('a')])
+            >>> import pickle
+            >>> serialized = pickle.dumps(tensor)
+            >>> with dr.pickle_env():
+            ...     res = pickle.loads(serialized)
+            >>> print(tensor == res)
+            True
 
         """
 
