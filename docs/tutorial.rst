@@ -345,3 +345,14 @@ to demonstrate its usage in large-scale spin-explicit coupled-cluster theories.
 .. _general script: https://github.com/tschijnmo/drudge/blob/master/docs/examples/gencc.py
 
 .. _script for RCCSD theory: https://github.com/tschijnmo/drudge/blob/master/docs/examples/rccsd.py
+
+
+Note about importing drudge
+---------------------------
+
+In this tutorial, ``import drudge`` and ``import sympy`` is used and we need to
+give fully-qualified name to refer to objects in them.  Normally, it can be
+convenient to use ``from drudge import *`` to import everything from drudge. For
+these cases, it needs to be careful that the importation of all objects from
+drudge needs to follow the importation of all objects from SymPy, or the SymPy
+``Range`` class will shallow the actual class for symbolic range in drudge.
