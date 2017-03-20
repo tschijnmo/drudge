@@ -21,10 +21,17 @@ available cores, we can do
 
 .. doctest::
 
-    >>> import pyspark
+    >>> import pyspark  # doctest: +SKIP
+    >>> spark_ctx = pyspark.SparkContext('local[*]', 'drudge-tutorial')  # doctest: +SKIP
+
+For using Spark in cluster computing environment, please refer to the Spark
+documentation and setting of your cluster.  With the spark context created, we
+can make the main entry point for drudge,
+
+.. doctest::
+
     >>> import drudge
-    >>> ctx = pyspark.SparkContext('local[*]', 'drudge-tutorial')
-    >>> dr = drudge.Drudge(ctx)
+    >>> dr = drudge.Drudge(spark_ctx)
 
 Then from it, we can create the symbolic expressions as :py:class:`Tensor`
 objects, which are basically mathematical expressions containing noncommutative
@@ -287,7 +294,7 @@ two particle-hole excitation operators by using the :py:class:`PartHoleDrudge`.
 
 .. doctest::
 
-    >>> phdr = drudge.PartHoleDrudge(ctx)
+    >>> phdr = drudge.PartHoleDrudge(spark_ctx)
     >>> t = sympy.IndexedBase('t')
     >>> u = sympy.IndexedBase('u')
     >>> p = phdr.names

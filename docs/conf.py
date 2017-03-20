@@ -161,3 +161,15 @@ texinfo_documents = [
 
 autodoc_member_order = 'bysource'
 
+doctest_global_setup = '''
+import os
+if 'DUMMY_SPARK' in os.environ:
+    from dummy_spark import SparkContext
+    spark_ctx = SparkContext()
+else:
+    from pyspark import SparkContext
+    spark_ctx = SparkContext("local[*]", "drudge-test")
+
+import sympy
+import drudge
+'''
