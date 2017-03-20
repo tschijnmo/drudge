@@ -164,10 +164,7 @@ autodoc_member_order = 'bysource'
 doctest_global_setup = '''
 import os
 
-if 'DUMMY_SPARK' in os.environ:
-    from dummy_spark import SparkContext
-else:
-    from pyspark import SparkContext
+from dummy_spark import SparkContext
 
 from sympy import *
 from drudge import *
