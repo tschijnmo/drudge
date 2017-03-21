@@ -6,3 +6,4 @@ Release history
    :caption: Releases
 
    releases/0_2_0
+   releases/0_3_0
