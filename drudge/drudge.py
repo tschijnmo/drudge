@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex
+from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex, symbols
 
 from .canonpy import Perm, Group
 from .report import Report
@@ -799,6 +799,53 @@ class Tensor:
         exclusion. And empty dictionary can be used to disable all such
         automatic translation.  The default value of None should satisfy most
         needs.
+
+        Examples
+        --------
+
+        For instance, we can have a very simple tensor, the outer product of the
+        same vector,
+
+        .. doctest::
+
+            >>> dr = Drudge(SparkContext())
+            >>> r = Range('R')
+            >>> a, b = dr.set_dumms(r, symbols('a b c d e f'))[:2]
+            >>> dr.add_default_resolver(r)
+            >>> x = IndexedBase('x')
+            >>> v = Vec('v')
+            >>> tensor = dr.einst(x[a] * x[b] * v[a] * v[b])
+            >>> str(tensor)
+            'sum_{a, b} x[a]*x[b] * v[a] * v[b]'
+
+        We can replace the indexed base by the product of a matrix with another
+        indexed base,
+
+        .. doctest::
+
+            >>> o = IndexedBase('o')
+            >>> y = IndexedBase('y')
+            >>> res = tensor.subst(x[a], dr.einst(o[a, b] * y[b]))
+            >>> str(res)
+            'sum_{a, b, c, d} y[c]*y[d]*o[a, c]*o[b, d] * v[a] * v[b]'
+
+        We can also make substitution on the vectors,
+
+        .. doctest::
+
+            >>> w = Vec('w')
+            >>> res = tensor.subst(v[a], dr.einst(o[a, b] * w[b]))
+            >>> str(res)
+            'sum_{a, b, c, d} x[a]*x[b]*o[a, c]*o[b, d] * w[c] * w[d]'
+
+        After the substitution, we can always make a simplification, at least to
+        make the naming of the dummies more aesthetically pleasing,
+
+        .. doctest::
+
+            >>> res = res.simplify()
+            >>> str(res)
+            'sum_{a, b, c, d} x[c]*x[d]*o[c, a]*o[d, b] * w[a] * w[b]'
 
         """
 
