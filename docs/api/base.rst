@@ -1,7 +1,6 @@
 Base drudge system
 ------------------
 
-
 The base drudge system handles the part of program logic universally applicable
 to any tensor and noncommutative algebra system.
 
