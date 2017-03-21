@@ -1924,13 +1924,9 @@ class Drudge:
 
             >>> dr = Drudge(SparkContext())
             >>> r = Range('R')
-            >>> from sympy import symbols
-            >>> dumms = symbols('a b c')
-            >>> a, b, c = dumms
-            >>> dr.set_dumms(r, dumms)
-            [a, b, c]
-            >>> x = IndexedBase('x')
+            >>> a, b, c = dr.set_dumms(r, symbols('a b c'))
             >>> dr.add_resolver_for_dumms()
+            >>> x = IndexedBase('x')
             >>> tensor = dr.einst(x[a, b] * x[b, c])
             >>> str(tensor)
             'sum_{b} x[a, b]*x[b, c]'
