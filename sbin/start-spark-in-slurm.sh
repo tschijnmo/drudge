@@ -99,27 +99,43 @@ export_env="PATH,LD_LIBRARY_PATH,\
 JAVA_HOME,SPARK_CONF_DIR,SPARK_NO_DAEMONIZE,\
 PYTHONPATH,PYTHONHASHSEED"
 
-if [ "$SLURM_JOB_NUM_NODES" -gt 1 ]; then
+if [ "${SLURM_JOB_NUM_NODES}" -gt 1 ]; then
     cross_nodes=1
     export PYTHONHASHSEED=323
     spark_master_link="spark://${spark_master_host}:${spark_master_port}"
 
-    if [ -z "$SLURM_CPUS_PER_TASK" ]; then
-        echo "SLURM jobs should be submitted with explicit `-c` option!"
+    if [ -z "${SLURM_NTASKS_PER_NODE}" ]; then
+        echo "SLURM jobs should be submitted with explicit `--ntasks-per-node` option!"
         exit 1
     fi
 
-    spark_default_parallelism=$[ ${SLURM_NTASKS} * ${SLURM_CPUS_PER_TASK} ]
+    spark_default_parallelism=$[ ${SLURM_NTASKS_PER_NODE} * ${SLURM_JOB_NUM_NODES} ]
 else
     cross_nodes=0
     spark_master_link="local[*]"
+    
+    if [ -z ${SLURM_NTASKS} ]; then
+	spark_default_parallelism=$[ ${SLURM_CPUS_ON_NODE} ]
+    else
+	spark_default_parallelism="${SLURM_NTASKS}"
+    fi
+fi
 
-    spark_default_parallelism="${SLURM_CPUS_ON_NODE}"
+if [ "${SLURM_MEM_PER_NODE}" ]; then
+    if [ -z "${SLURM_NTASKS_PER_NODE}" ]; then
+	spark_memory=`echo "${SLURM_MEM_PER_NODE} / (${SLURM_CPUS_ON_NODE} + 1) * 0.9 " | bc -l | xargs printf "%.0fm"`
+    else
+	spark_memory=`echo "${SLURM_MEM_PER_NODE} / (${SLURM_NTASKS_PER_NODE} + 1) * 0.9 " | bc -l | xargs printf "%.0fm"`
+    fi
+else
+    spark_memory="2000m"
 fi
 
 cat > ${spark_conf_dir}/spark-defaults.conf << EOF
 spark.master ${spark_master_link}
 spark.default.parallelism ${spark_default_parallelism}
+spark.driver.memory  ${spark_memory}
+spark.executor.memory  ${spark_memory}
 EOF
 
 

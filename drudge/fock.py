@@ -81,7 +81,8 @@ class FockDrudge(WickDrudge):
         if exch == FERMI or exch == BOSE:
             self._exch = exch
         else:
-            raise ValueError('Invalid exchange', exch, 'expecting plus/minus 1')
+            raise ValueError('Invalid exchange', exch,
+                             'expecting plus/minus 1')
 
         self.set_tensor_method('eval_vev', self.eval_vev)
         self.set_tensor_method('eval_phys_vev', self.eval_phys_vev)
@@ -261,7 +262,7 @@ class FockDrudge(WickDrudge):
         cycl_accs = [
             NEG if self._exch == FERMI and i % 2 == 0 else IDENT
             for i in [n_body, n_body2]
-            ]  # When n_body2 is zero, this value is kinda wrong but not used.
+        ]  # When n_body2 is zero, this value is kinda wrong but not used.
 
         gens = []
 
@@ -305,7 +306,8 @@ class FockDrudge(WickDrudge):
         """Get the LaTeX form of field operators.
         """
 
-        head = r'{}^{{{}}}'.format(vec.label, self._latex_sympy(vec.indices[0]))
+        head = r'{}^{{{}}}'.format(
+            vec.label, self._latex_sympy(vec.indices[0]))
         indices = ', '.join(self._latex_sympy(i) for i in vec.indices[1:])
         return r'{}_{{{}}}'.format(head, indices)
 
@@ -623,7 +625,7 @@ class GenMBDrudge(FockDrudge):
         indices = [
             (i, j) if has_spin else i
             for i, j in zip(orb_dumms, spin_dumms)
-            ]
+        ]
 
         # Actual Hamiltonian building.
 
@@ -877,12 +879,12 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
     def __init__(
             self, *args,
             part_orb=(
-                    Range('V'),
-                    PartHoleDrudge.DEFAULT_PART_DUMMS + symbols('beta gamma')
+                Range('V', 0, Symbol('nv')),
+                PartHoleDrudge.DEFAULT_PART_DUMMS + symbols('beta gamma')
             ),
             hole_orb=(
-                    Range('O'),
-                    PartHoleDrudge.DEFAULT_HOLE_DUMMS + symbols('u v')
+                Range('O', 0, Symbol('no')),
+                PartHoleDrudge.DEFAULT_HOLE_DUMMS + symbols('u v')
             ),
             **kwargs
     ):
