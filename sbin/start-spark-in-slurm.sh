@@ -115,7 +115,7 @@ else
     spark_master_link="local[*]"
     
     if [ -z ${SLURM_NTASKS} ]; then
-	spark_default_parallelism=$[ ${SLURM_CPUS_ON_NODE} * 12 ]
+	spark_default_parallelism=$[ ${SLURM_CPUS_ON_NODE} ]
     else
 	spark_default_parallelism="${SLURM_NTASKS}"
     fi
@@ -123,7 +123,7 @@ fi
 
 if [ "${SLURM_MEM_PER_NODE}" ]; then
     if [ -z "${SLURM_NTASKS_PER_NODE}" ]; then
-	spark_memory=`echo "${SLURM_MEM_PER_NODE} / (${SLURM_CPUS_ON_NODE} * 12 + 1) * 0.9 " | bc -l | xargs printf "%.0fm"`
+	spark_memory=`echo "${SLURM_MEM_PER_NODE} / (${SLURM_CPUS_ON_NODE} + 1) * 0.9 " | bc -l | xargs printf "%.0fm"`
     else
 	spark_memory=`echo "${SLURM_MEM_PER_NODE} / (${SLURM_NTASKS_PER_NODE} + 1) * 0.9 " | bc -l | xargs printf "%.0fm"`
     fi
