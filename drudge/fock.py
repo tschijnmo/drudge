@@ -6,9 +6,10 @@ and annihilation operators acting on fermion or boson Fock spaces.
 """
 
 import functools
-import typing
 import warnings
 
+import typing
+from pyspark import RDD
 from sympy import (
     KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols, conjugate
 )
@@ -183,6 +184,16 @@ class FockDrudge(WickDrudge):
             self, self.normal_order(tensor.terms, comparator=None)
         )
 
+    def normal_order(self, terms: RDD, **kwargs):
+        """Normal order the field operators.
+
+        Here the normal-ordering operation of general Wick drudge will be
+        invoked twice to ensure full simplification.
+        """
+
+        step1 = super().normal_order(terms, **kwargs)
+        return super().normal_order(step1, **kwargs)
+
     @staticmethod
     def dagger(tensor: Tensor, real=False):
         """Get the Hermitian adjoint of the given operator.
@@ -261,7 +272,7 @@ class FockDrudge(WickDrudge):
         cycl_accs = [
             NEG if self._exch == FERMI and i % 2 == 0 else IDENT
             for i in [n_body, n_body2]
-            ]  # When n_body2 is zero, this value is kinda wrong but not used.
+        ]  # When n_body2 is zero, this value is kinda wrong but not used.
 
         gens = []
 
@@ -623,7 +634,7 @@ class GenMBDrudge(FockDrudge):
         indices = [
             (i, j) if has_spin else i
             for i, j in zip(orb_dumms, spin_dumms)
-            ]
+        ]
 
         # Actual Hamiltonian building.
 
