@@ -888,11 +888,11 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
     def __init__(
             self, *args,
             part_orb=(
-                    Range('V'),
+                    Range('V', 0, Symbol('nv')),
                     PartHoleDrudge.DEFAULT_PART_DUMMS + symbols('beta gamma')
             ),
             hole_orb=(
-                    Range('O'),
+                    Range('O', 0, Symbol('no')),
                     PartHoleDrudge.DEFAULT_HOLE_DUMMS + symbols('u v')
             ),
             **kwargs
