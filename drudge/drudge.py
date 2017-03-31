@@ -1025,6 +1025,9 @@ class Tensor:
         new_defs = {}
         for i in new_terms:
             def_terms = rewritten.filter(lambda x: x[0] == i).map(get_term)
+            # Eagerly evaluate to circumvent a Spark bug.
+            def_terms.cache()
+            def_terms.count()
             new_defs[i.amp] = Tensor(self._drudge, def_terms)
             continue
 
