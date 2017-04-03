@@ -290,6 +290,17 @@ def test_tensor_math_ops(free_alg):
     assert comm_v1w1.simplify() == expected.simplify()
 
 
+def test_tensors_can_be_simplified_sums(free_alg):
+    """Test the summation simplification facility of tensors."""
+    dr = free_alg
+    r = Range('D', 0, 2)
+
+    a, b = symbols('a b')
+    tensor = dr.sum(1) + dr.sum((a, r), 1) + dr.sum((a, r), (b, r), 1)
+    res = tensor.simplify()
+    assert res == dr.sum(7)
+
+
 def test_tensors_can_be_differentiated(free_alg):
     """Test the analytic gradient computation of tensors."""
 
