@@ -624,17 +624,11 @@ class GenMBDrudge(FockDrudge):
         )
         spin_dumms = tuple(
             Symbol('internalSpinPlaceholder{}'.format(i))
-            for i in range(4)
+            for i in range(2)
         )
 
         orb_sums = [(i, orb_ranges) for i in orb_dumms]
         spin_sums = [(i, spin_vals) for i in spin_dumms]
-
-        # The indices to get the operators in the hamiltonian.
-        indices = [
-            (i, j) if has_spin else i
-            for i, j in zip(orb_dumms, spin_dumms)
-        ]
 
         # Actual Hamiltonian building.
 
@@ -643,12 +637,18 @@ class GenMBDrudge(FockDrudge):
 
         one_body_sums = orb_sums[:2]
         if has_spin:
-            one_body_sums.extend(spin_sums[:2])
+            one_body_sums.append(spin_sums[0])
+
+        if has_spin:
+            one_body_ops = (
+                cr[orb_dumms[0], spin_dumms[0]] *
+                an[orb_dumms[1], spin_dumms[0]]
+            )
+        else:
+            one_body_ops = cr[orb_dumms[0]] * an[orb_dumms[1]]
 
         one_body_ham = self.sum(
-            *one_body_sums,
-            one_body[orb_dumms[:2]] * cr[indices[0]] * an[indices[1]],
-            predicate=conserve_spin(*spin_dumms[:2]) if has_spin else None
+            *one_body_sums, one_body[orb_dumms[:2]] * one_body_ops
         )
 
         if dbbar:
@@ -661,13 +661,23 @@ class GenMBDrudge(FockDrudge):
 
         two_body_sums = orb_sums
         if has_spin:
-            two_body_sums.extend(spin_sums)
+            two_body_sums.extend(spin_sums[:2])
+
+        if has_spin:
+            two_body_ops = (
+                cr[orb_dumms[0], spin_dumms[0]] *
+                cr[orb_dumms[1], spin_dumms[1]] *
+                an[orb_dumms[3], spin_dumms[1]] *
+                an[orb_dumms[2], spin_dumms[0]]
+            )
+        else:
+            two_body_ops = (
+                cr[orb_dumms[0]] * cr[orb_dumms[1]] *
+                an[orb_dumms[3]] * an[orb_dumms[2]]
+            )
 
         two_body_ham = self.sum(
-            *two_body_sums,
-            two_body_coeff * two_body[orb_dumms] *
-            cr[indices[0]] * cr[indices[1]] * an[indices[3]] * an[indices[2]],
-            predicate=conserve_spin(*spin_dumms) if has_spin else None
+            *two_body_sums, two_body_coeff * two_body[orb_dumms] * two_body_ops
         )
 
         # We need to at lease remove the internal symbols.
