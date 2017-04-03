@@ -1228,6 +1228,24 @@ class TensorDef:
         this initializer is also unlikely to be used directly in user code.
         Drudge methods :py:meth:`Drudge.define` and
         :py:meth:`Drudge.define_einst` can be more convenient.
+
+        Parameters
+        ----------
+
+        base
+            The base for the definition.  It should be a :py:class:`Vec`
+            instance for tensors with vector part.  Or it should be SymPy
+            IndexedBase or Symbol instance for scalar tensors, depending on the
+            presence or absence of external indices.
+
+        exts
+            The iterable for external indices.  They can be either symbol/range
+            pairs for external indices with explicit range, or they can also be
+            a plain symbol for generic definitions.
+
+        tensor
+            The RHS of the definition.
+
         """
 
         if isinstance(base, Vec):
