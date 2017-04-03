@@ -601,6 +601,7 @@ class Tensor:
         if self._drudge.full_simplify:
             terms = self._simplify_amps(terms)
         terms = self._simplify_deltas(terms, False)
+        terms = self._simplify_sums(terms)
 
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms, True)
@@ -773,7 +774,7 @@ class Tensor:
                 prod = self._terms.flatMap(lambda term: [
                     (i, term) if right else (term, i)
                     for i in other_terms
-                    ])
+                ])
             else:
                 # Special optimization when we just have one term.
                 other_term = other_terms[0]
@@ -784,7 +785,7 @@ class Tensor:
 
             free_vars = set.union(*[
                 i.free_vars for i in other_terms
-                ])
+            ])
             free_vars |= self.free_vars
             expanded = False
 
@@ -894,7 +895,7 @@ class Tensor:
                 wilds = {
                     i: Wild(i.name) for i in lhs.indices if
                     isinstance(i, Symbol)
-                    }
+                }
             else:
                 wilds = {}
 
@@ -1031,7 +1032,7 @@ class Tensor:
         ).cache()
         new_terms = [
             i for i in rewritten.countByKey().keys() if i is not None
-            ]
+        ]
 
         get_term = operator.itemgetter(1)
         untouched_terms = rewritten.filter(
