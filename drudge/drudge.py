@@ -1252,16 +1252,20 @@ class TensorDef:
 
         self._exts = []
         for i in exts:
-            valid_ext = (
+            explicit_ext = (
                 isinstance(i, Sequence) and len(i) == 2 and
                 isinstance(i[0], Symbol) and isinstance(i[1], Range)
             )
-            if valid_ext:
+            if explicit_ext:
                 self._exts.append(tuple(i))
+            elif isinstance(i, Symbol):
+                self._exts.append((
+                    i, None
+                ))
             else:
                 raise TypeError(
                     'Invalid external index', i,
-                    'expecting dummy and range pair'
+                    'expecting dummy/range pair or a dummy.'
                 )
             continue
 
