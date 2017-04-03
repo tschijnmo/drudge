@@ -19,7 +19,7 @@ def test_genmb_has_basic_properties(genmb):
     dr = genmb
 
     assert len(dr.orb_ranges) == 1
-    assert len(dr.spin_vals) == 0
+    assert dr.spin_vals is None
 
     assert dr.one_body == dr.names.t == IndexedBase('t')
     assert dr.two_body == dr.names.u == IndexedBase('u')
