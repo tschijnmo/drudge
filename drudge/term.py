@@ -829,6 +829,30 @@ class Term(ATerms):
         # Note that here the substitutions needs to be performed in order.
         return self.subst(substs, purge_sums=True, amp=new_amp)
 
+    def simplify_sums(self):
+        """Simplify the summations in the term."""
+
+        involved = {
+            i for expr in self.exprs for i in expr.atoms(Symbol)
+        }
+
+        new_sums = []
+        factor = _UNITY
+        dirty = False
+
+        for symb, range_ in self._sums:
+            if symb not in involved and range_.bounded:
+                dirty = True
+                factor *= range_.size
+            else:
+                new_sums.append((symb, range_))
+            continue
+
+        if dirty:
+            return Term(tuple(new_sums), factor * self._amp, self._vecs)
+        else:
+            return self
+
     def expand(self):
         """Expand the term into many terms."""
         expanded_amp = self.amp.expand()
@@ -1574,7 +1598,7 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
     dumms = [
         i for i in set.union(arg1.atoms(Symbol), arg2.atoms(Symbol))
         if i in sums_dict
-        ]
+    ]
 
     if len(dumms) == 0:
         return KroneckerDelta(arg1, arg2)
