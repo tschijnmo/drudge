@@ -516,7 +516,12 @@ class GenMBDrudge(FockDrudge):
 
     .. attribute::  spin_vals
 
-        A list of all the explicit spin values.
+        A list of all the explicit spin values.  None if spin values are not
+        given.
+
+    .. attribute:: spin_range
+
+        The symbolic range for spin values.  None if it is not given.
 
     .. attribute:: orig_ham
 
@@ -553,7 +558,10 @@ class GenMBDrudge(FockDrudge):
             names archive by :py:meth:`Drudge.set_dumms`.
 
         spin
-            The values for the explicit spin quantum number.
+            The explicit spin quantum number.  It can be an empty sequence to
+            disable explicit spin.  Or it can be a sequence of SymPy expressions
+            to give explicit spin values, or a range and dummies pair for
+            symbolic spin.
 
         one_body
             The indexed base for the amplitude in the one-body part of the
@@ -600,16 +608,39 @@ class GenMBDrudge(FockDrudge):
         self.orb_ranges = orb_ranges
         self.add_resolver_for_dumms()
 
-        spin_vals = []
-        for i in spin:
-            spin_vals.append(ensure_expr(i))
-        has_spin = len(spin_vals) > 0
-        if len(spin_vals) == 1:
-            warnings.warn(
-                'Just one spin value is given: '
-                'consider dropping it for better performance'
-            )
-        self.spin_vals = spin_vals
+        spin = list(spin)
+        if len(spin) == 0:
+            has_spin = False
+            spin_range = None
+
+            self.spin_vals = None
+            self.spin_range = None
+
+        elif isinstance(spin[0], Range):
+            has_spin = True
+            if len(spin) != 2:
+                raise ValueError(
+                    'Invalid spin specification', spin,
+                    'expecting range/dummies pair.'
+                )
+            self.set_dumms(spin[0], spin[1])
+            spin_range = spin[0]
+
+            self.spin_vals = None
+            self.spin_range = spin_range
+
+        else:
+            has_spin = True
+            spin_vals = [ensure_expr(i) for i in spin]
+            if len(spin_vals) == 1:
+                warnings.warn(
+                    'Just one spin value is given: '
+                    'consider dropping it for better performance'
+                )
+            spin_range = spin_vals
+
+            self.spin_vals = spin_vals
+            self.spin_range = None
 
         # These dummies are used temporarily and will soon be reset.  They are
         # here, rather than the given dummies directly, because we might need to
@@ -628,7 +659,7 @@ class GenMBDrudge(FockDrudge):
         )
 
         orb_sums = [(i, orb_ranges) for i in orb_dumms]
-        spin_sums = [(i, spin_vals) for i in spin_dumms]
+        spin_sums = [(i, spin_range) for i in spin_dumms]
 
         # Actual Hamiltonian building.
 
