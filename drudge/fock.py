@@ -920,9 +920,10 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
     """Drudge for the particle-hole problems with explicit one-half spin.
 
     This is a shallow subclass over the general particle-hole drudge without
-    explicit spin.  The spin values are given explicitly to be :py:data:`UP` and
-    :py:data:`DOWN` and the double-bar of the two-body interaction is disabled.
-    And some additional dummies traditional in the field are also added.
+    explicit spin.  The spin values are given explicitly, which are set to
+    :py:data:`UP` and :py:data:`DOWN` by default.  And the double-bar of the
+    two-body interaction is disabled.  And some additional dummies traditional
+    in the field are also added.
 
     """
 
@@ -935,12 +936,12 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
             hole_orb=(
                     Range('O', 0, Symbol('no')),
                     PartHoleDrudge.DEFAULT_HOLE_DUMMS + symbols('u v')
-            ),
+            ), spin=(UP, DOWN),
             **kwargs
     ):
         """Initialize the particle-hole drudge."""
 
         super().__init__(
-            *args, spin=[UP, DOWN], dbbar=False,
+            *args, spin=spin, dbbar=False,
             part_orb=part_orb, hole_orb=hole_orb, **kwargs
         )
