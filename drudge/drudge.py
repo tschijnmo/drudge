@@ -449,6 +449,21 @@ class Tensor:
             lambda x: x.simplify_deltas(resolvers.value)
         ).filter(_is_nonzero)
 
+    def simplify_sums(self):
+        """Simplify the summations in the tensor.
+
+        Currently, only bounded summations with dummies not involved in the term
+        will be replaced by a multiplication with its size.
+        """
+
+        return self.apply(self._simplify_sums)
+
+    @staticmethod
+    def _simplify_sums(terms: RDD):
+        """Simplify the summations in the given terms."""
+
+        return terms.map(lambda x: x.simplify_sums())
+
     def expand(self):
         """Expand the terms in the tensor.
 
