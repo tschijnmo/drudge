@@ -9,18 +9,17 @@ Scuseria et al, J Chem Phys 89 (1988) 7382 (10.1063/1.455269).
 from pyspark import SparkConf, SparkContext
 from sympy import IndexedBase, Rational, symbols
 
-from drudge import SpinOneHalfPartHoleDrudge, Vec, UP, DOWN, Stopwatch
+from drudge import RestrictedPartHoleDrudge, Stopwatch
 
 # Environment setting up.
 
 conf = SparkConf().setAppName('rccsd')
 ctx = SparkContext(conf=conf)
-dr = SpinOneHalfPartHoleDrudge(ctx)
+dr = RestrictedPartHoleDrudge(ctx)
 dr.full_simplify = False
 
 p = dr.names
-c_dag = p.c_dag
-c_ = p.c_
+e_ = p.e_
 a, b, c, d = p.V_dumms[:4]
 i, j, k, l = p.O_dumms[:4]
 
@@ -33,9 +32,6 @@ i, j, k, l = p.O_dumms[:4]
 #
 
 t = IndexedBase('t')
-e_ = dr.define(
-    Vec('E')[a, i], c_dag[a, UP] * c_[i, UP] + c_dag[a, DOWN] * c_[i, DOWN]
-)
 
 cluster = dr.einst(
     t[a, i] * e_[a, i] +
@@ -70,14 +66,9 @@ stopwatch.tock('Energy equation', en_eqn)
 dr.wick_parallel = 1
 
 beta, gamma, u, v = symbols('beta gamma u v')
-spin = symbols('spin')
-e_dag = dr.define(
-    Vec(r'E^\dagger')[a, i],
-    dr.sum((spin, UP, DOWN), c_dag[i, spin] * c_[a, spin])
-)
 projs = [
-    e_dag[beta, u],
-    e_dag[beta, u] * e_dag[gamma, v]
+    e_[u, beta],
+    e_[u, beta] * e_[v, gamma]
 ]
 
 #
