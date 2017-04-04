@@ -106,6 +106,8 @@ for order in orders:
 
     continue
 
+stopwatch.tock_total()
+
 # Check with the result from TCE.
 TCE_BASE_URL = 'http://www.scs.illinois.edu/~sohirata/'
 tce_labels = ['e']

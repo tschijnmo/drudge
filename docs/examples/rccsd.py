@@ -82,6 +82,8 @@ for order, proj in enumerate(projs):
     amp_eqns.append(eqn)
     continue
 
+stopwatch.tock_total()
+
 with dr.report('rCCSD.html', 'restricted CCSD theory') as rep:
     rep.add('Energy equation', en_eqn)
     for i, v in enumerate(amp_eqns):
