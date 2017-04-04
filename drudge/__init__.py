@@ -11,7 +11,8 @@ from .drudge import Tensor, TensorDef, Drudge
 from .wick import WickDrudge
 from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
-    UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge
+    UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge,
+    RestrictedPartHoleDrudge
 )
 from .genquad import GenQuadDrudge
 from .su2 import SU2LatticeDrudge
@@ -53,6 +54,7 @@ __all__ = [
     'GenMBDrudge', 'PartHoleDrudge',
     'UP', 'DOWN',
     'SpinOneHalfGenDrudge', 'SpinOneHalfPartHoleDrudge',
+    'RestrictedPartHoleDrudge',
 
     # Other algebraic systems.
     'GenQuadDrudge',
