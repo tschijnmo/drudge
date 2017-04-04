@@ -17,7 +17,7 @@ from sympy import (
 from ._tceparser import parse_tce_out
 from .canon import NEG, IDENT
 from .canonpy import Perm
-from .drudge import Tensor
+from .drudge import Tensor, TensorDef
 from .term import Vec, Range, try_resolve_range, Term
 from .utils import sympy_key, ensure_expr, EnumSymbs
 from .wick import WickDrudge
@@ -945,3 +945,41 @@ class SpinOneHalfPartHoleDrudge(PartHoleDrudge):
             *args, spin=spin, dbbar=False,
             part_orb=part_orb, hole_orb=hole_orb, **kwargs
         )
+
+
+class RestrictedPartHoleDrudge(SpinOneHalfPartHoleDrudge):
+    """Drudge for the particle-hole problems on restricted reference.
+
+    Similar to :py:class:`SpinOneHalfPartHoldDrudge`, this drudge deals with
+    particle-hole problems with explicit one-half spin.  However, here the spin
+    quantum number is summed symbolically.  This gives **much** faster
+    derivations for theories based on restricted reference, but offers less
+    flexibility.
+
+    .. attribute:: e_
+
+        Tensor definition for the unitary group generators.  It should be
+        indexed with the upper and lower indices to the :math:`E` operator.  It
+        is also registered in the name archive as ``e_``.
+
+    """
+
+    def __init__(
+            self, *args,
+            spin_range=Range(r'\uparrow\downarrow', 0, 2),
+            spin_dumms=tuple(Symbol('sigma{}'.format(i)) for i in range(50)),
+            **kwargs
+    ):
+        """Initialize the restricted particle-hole drudge."""
+
+        super().__init__(
+            *args, spin=(spin_range, spin_dumms), **kwargs
+        )
+
+        sigma = self.dumms.value[spin_range][0]
+        p = Symbol('p')
+        q = Symbol('q')
+        self.e_ = TensorDef(Vec('E'), (p, q), self.sum(
+            (sigma, spin_range), self.cr[p, sigma] * self.an[q, sigma]
+        ))
+        self.set_name(e_=self.e_)
