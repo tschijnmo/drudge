@@ -1458,6 +1458,9 @@ def einst_term(term: Term, resolvers):
     new_sums = []
     for symb, use in use_tally.items():
 
+        if symb in existing_dumms:
+            continue
+
         if use[0] != 2 and use[0] + use[1] != 2:
             # No chance to be an Einstein summation.
             continue
@@ -1484,8 +1487,7 @@ def einst_term(term: Term, resolvers):
             continue
 
         # Now we have an Einstein summation.
-        if symb not in existing_dumms:
-            new_sums.append((symb, range_))
+        new_sums.append((symb, range_))
         continue
 
     # Make summation from Einstein convention deterministic.
