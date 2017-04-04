@@ -45,3 +45,7 @@ def test_stopwatch():
     assert res.startswith('Tensor done, 2 terms')
     assert float(res.split()[-2]) - 0.5 < 0.1
     tensor.cache.assert_called_once_with()
+
+    stamper.tock_total()
+    res = res_holder[0]
+    assert float(res.split()[-2]) - 1.0 < 0.1
