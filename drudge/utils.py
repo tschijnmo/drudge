@@ -410,17 +410,28 @@ class Stopwatch:
 
         """
         self._print = print_cb
-        self.tick()
+        self.tick(total=True)
 
-    def tick(self):
-        """Reset the timer."""
+    def tick(self, total=False):
+        """Reset the timer.
+
+        Parameters
+        ----------
+
+        total
+            If the total beginning time is going to be reset as well.
+
+        """
         self._prev = time.time()
+        if total:
+            self._begin = self._prev
 
     def tock(self, label, tensor=None):
         """Make a timestamp.
 
         The formatted timestamp will be given to the callback of the current
-        stamper.
+        stamper.  The wall time elapsed since the last :py:meth:`tick` will be
+        printed.
 
         Parameters
         ----------
@@ -448,4 +459,16 @@ class Stopwatch:
 
         self._print(
             '{} done, {}wall time: {:.2f} s'.format(label, n_terms, elapse)
+        )
+
+    def tock_total(self):
+        """Make a timestamp for the total time.
+
+        The total time will be the time elapsed since the **total** time was
+        last reset.
+        """
+
+        now = time.time()
+        self._print(
+            'Total wall time: {:.2f} s'.format(now - self._begin)
         )
