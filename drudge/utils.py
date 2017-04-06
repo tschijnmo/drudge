@@ -192,20 +192,34 @@ class EnumSymbs(AtomicExpr, metaclass=_EnumSymbsMeta):
         """Test two values for greater than."""
         return self.args > other.args
 
-    def __sub__(self, other):
+    def __sub__(self, other: Expr):
         """Subtract the current value with another.
 
         This method is mainly to be able to work together with the Kronecker
-        delta class from SymPy.
+        delta class from SymPy.  The difference is only guaranteed to have
+        correct ``is_zero`` property.  The actual difference might not make
+        mathematical sense.
         """
 
-        if not isinstance(other, type(self)):
+        if isinstance(other, type(self)):
+            return self.args[0] - other.args[0]
+        elif len(other.atoms(Symbol)) == 0:
             raise ValueError(
                 'Invalid operation for ', (self, other),
                 'concrete symbols can only be subtracted for the same type'
             )
+        else:
+            # We are having a symbolic value at the other expression.  We just
+            # need to make sure that the result is fuzzy.
+            assert other.is_zero is None
+            return other
 
-        return self.args[0] - other.args[0]
+    def __rsub__(self, other):
+        """Subtract the current value from the other expression.
+
+        Only the ``is_zero`` property is guaranteed.
+        """
+        return self.__sub__(other)
 
     def sort_key(self, order=None):
         return (
