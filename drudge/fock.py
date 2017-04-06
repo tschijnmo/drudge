@@ -606,7 +606,6 @@ class GenMBDrudge(FockDrudge):
             orb_ranges.append(range_)
             continue
         self.orb_ranges = orb_ranges
-        self.add_resolver_for_dumms()
 
         spin = list(spin)
         if len(spin) == 0:
@@ -641,6 +640,8 @@ class GenMBDrudge(FockDrudge):
 
             self.spin_vals = spin_vals
             self.spin_range = None
+
+        self.add_resolver_for_dumms()
 
         # These dummies are used temporarily and will soon be reset.  They are
         # here, rather than the given dummies directly, because we might need to
