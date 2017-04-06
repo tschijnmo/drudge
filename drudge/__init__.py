@@ -19,7 +19,7 @@ from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
 from .utils import sum_, prod_, Stopwatch
 
-__version__ = '0.6.0'
+__version__ = '0.7.0dev'
 
 __all__ = [
     # Canonpy.
