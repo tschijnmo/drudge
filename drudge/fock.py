@@ -984,6 +984,10 @@ class RestrictedPartHoleDrudge(SpinOneHalfPartHoleDrudge):
         super().__init__(
             *args, spin=(spin_range, spin_dumms), **kwargs
         )
+        self.add_resolver({
+            UP: spin_range,
+            DOWN: spin_range
+        })
 
         self.spin_range = spin_range
         self.spin_dumms = self.dumms.value[spin_range]
