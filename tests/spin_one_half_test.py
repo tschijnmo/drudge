@@ -9,6 +9,21 @@ from drudge import (
 )
 
 
+def test_up_down_enum_symbs():
+    """Test the desired mathematical properties of enumeration symbols."""
+
+    for i in [UP, DOWN]:
+        assert KroneckerDelta(i, i) == 1
+
+    assert KroneckerDelta(UP, DOWN) == 0
+    assert KroneckerDelta(DOWN, UP) == 0
+
+    sigma = symbols('sigma')
+    for i in [UP, DOWN]:
+        assert KroneckerDelta(i, sigma) != 0
+        assert KroneckerDelta(sigma, i) != 0
+
+
 @pytest.fixture(scope='module')
 def genmb(spark_ctx):
     """The fixture with a general spin one-half drudge."""
