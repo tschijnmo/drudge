@@ -957,6 +957,14 @@ class RestrictedPartHoleDrudge(SpinOneHalfPartHoleDrudge):
     derivations for theories based on restricted reference, but offers less
     flexibility.
 
+    .. attribute:: spin_range
+
+        The symbolic range for spin values.
+
+    .. attribute:: spin_dumms
+
+        The dummies for the spin quantum number.
+
     .. attribute:: e_
 
         Tensor definition for the unitary group generators.  It should be
@@ -976,6 +984,9 @@ class RestrictedPartHoleDrudge(SpinOneHalfPartHoleDrudge):
         super().__init__(
             *args, spin=(spin_range, spin_dumms), **kwargs
         )
+
+        self.spin_range = spin_range
+        self.spin_dumms = self.dumms.value[spin_range]
 
         sigma = self.dumms.value[spin_range][0]
         p = Symbol('p')
