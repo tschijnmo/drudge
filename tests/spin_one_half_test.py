@@ -1,7 +1,7 @@
 """Tests for the drudges with explicit one-half spin."""
 
 import pytest
-from sympy import IndexedBase, symbols, Rational, KroneckerDelta
+from sympy import IndexedBase, symbols, Rational, KroneckerDelta, Integer
 
 from drudge import (
     CR, AN, UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge,
@@ -135,3 +135,26 @@ def test_restricted_parthole_drudge_has_good_hamiltonian(restricted_parthole):
         )
     )
     assert (dr.orig_ham - expected_ham).simplify() == 0
+
+
+def test_restricted_parthole_drudge_simplification(restricted_parthole):
+    """Test simplification in restricted particle-hole drudge.
+
+    The purpose of this test is mostly on testing the correct resolution of
+    ranges of constants up and down.
+    """
+
+    dr = restricted_parthole
+    p = dr.names
+    a = p.a
+    sigma = dr.spin_dumms[0]
+
+    op1 = dr.sum(p.c_[a, UP])
+    op2 = dr.sum(p.c_dag[a, UP])
+    res_concr = (op1 * op2 + op2 * op1).simplify()
+
+    op1 = dr.sum((sigma, dr.spin_range), p.c_[a, sigma])
+    res_abstr = (op1 * op2 + op2 * op1).simplify()
+
+    for i in [res_concr, res_abstr]:
+        assert (i - Integer(1)).simplify() == 0
