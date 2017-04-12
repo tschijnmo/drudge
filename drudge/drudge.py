@@ -700,6 +700,15 @@ class Tensor:
         """Subtract the tensor from another quantity."""
         return (self * Integer(-1))._add(other)
 
+    def __neg__(self):
+        """Negate the current tensor.
+
+        The result will be equivalent to multiplication with :math:`-1`.
+        """
+        return self.apply(
+            lambda terms: terms.map(lambda x: x.scale(-1))
+        )
+
     def __mul__(self, other) -> 'Tensor':
         """Multiply the tensor.
 
