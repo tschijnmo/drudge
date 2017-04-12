@@ -1603,7 +1603,7 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
     ]
 
     if len(dumms) == 0:
-        return KroneckerDelta(arg1, arg2)
+        return KroneckerDelta(arg1, arg2), None
 
     eqn = Eq(arg1, arg2)
 
