@@ -262,6 +262,9 @@ def test_tensor_math_ops(free_alg):
     assert v1.n_terms == 1
     assert w1.n_terms == 1
 
+    v1_neg = -v1
+    assert v1_neg == dr.sum((i, r), -x[i] * v[i])
+
     v1_1 = v1 + 2
     assert v1_1.n_terms == 2
     assert v1_1 == 2 + v1
