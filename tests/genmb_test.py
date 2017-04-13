@@ -79,6 +79,22 @@ def test_genmb_simplify_simple_expressions(
     assert res == expected
 
 
+def test_genmb_gives_conventional_dummies(genmb):
+    """Test dummy placement in canonicalization facility on many-body drudge.
+    """
+
+    dr = genmb
+    p = dr.names
+    c_dag = p.c_dag
+    c_ = p.c_
+    a, b, c, d = p.a, p.b, p.c, p.d
+
+    x = IndexedBase('x')
+    tensor = dr.einst(x[a, b, c, d] * c_dag[a] * c_dag[b] * c_[d] * c_[c])
+    res = tensor.simplify()
+    assert res == tensor
+
+
 def test_genmb_derives_spin_orbit_hartree_fock(genmb):
     """Test general many-body model can derive HF theory in spin-orbital basis.
     """
