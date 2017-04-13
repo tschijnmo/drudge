@@ -694,11 +694,11 @@ class Tensor:
     def __sub__(self, other):
         """Subtract another tensor from this tensor.
         """
-        return self._add(other * Integer(-1))
+        return self._add(-other)
 
     def __rsub__(self, other):
         """Subtract the tensor from another quantity."""
-        return (self * Integer(-1))._add(other)
+        return (-self)._add(other)
 
     def __neg__(self):
         """Negate the current tensor.
