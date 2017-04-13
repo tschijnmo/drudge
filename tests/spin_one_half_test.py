@@ -126,14 +126,15 @@ def test_restricted_parthole_drudge_has_good_hamiltonian(restricted_parthole):
     orbs = tuple(dr.orb_ranges)
     p, q, r, s = symbols('p q r s')
 
-    expected_ham = dr.sum(
+    expected_ham = (dr.sum(
         (p, orbs), (q, orbs), h[p, q] * e_[p, q]
     ) + dr.sum(
         (p, orbs), (q, orbs), (r, orbs), (s, orbs),
         half * v[p, r, q, s] * (
             e_[p, q] * e_[r, s] - KroneckerDelta(q, r) * e_[p, s]
         )
-    )
+    )).simplify()
+
     assert (dr.orig_ham - expected_ham).simplify() == 0
 
 
