@@ -185,7 +185,10 @@ class Tensor:
         """
 
         self.cache()
-        return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
+        if self._terms.count() == 0:
+            return True
+        else:
+            return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
 
     @property
     def free_vars(self) -> typing.Set[Symbol]:
