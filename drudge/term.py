@@ -1567,6 +1567,7 @@ def compose_simplified_delta(amp, new_substs, substs, sums_dict, resolvers):
         old = subst[0]
         new = subst[1].xreplace(substs)
 
+        to_add = None
         if old in substs:
             comp_amp, new_substs = proc_delta(
                 substs[old], new, sums_dict, resolvers
@@ -1574,14 +1575,16 @@ def compose_simplified_delta(amp, new_substs, substs, sums_dict, resolvers):
             amp = amp * comp_amp
             if new_substs is not None:
                 # The new substitution cannot involve substituted symbols.
-                substs[new_substs[0]] = new_substs[1]
+                to_add = {new_substs[0]: new_substs[1]}
                 # amp could now be zero.
         else:
             # Easier case, a new symbol is tried to be added.
-            replace_old = {old: new}
+            to_add = {old: new}
+
+        if to_add is not None:
             for i in substs.keys():
-                substs[i] = substs[i].xreplace(replace_old)
-            substs[old] = new
+                substs[i] = substs[i].xreplace(to_add)
+            substs.update(to_add)
 
         continue
 
