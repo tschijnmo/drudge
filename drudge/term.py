@@ -754,7 +754,7 @@ class Term(ATerms):
             lambda x: x.xreplace(substs), sums=sums, amp=amp, vecs=vecs
         )
 
-    def reset_dumms(self, dumms, dummbegs=None, excl=None):
+    def reset_dumms(self, dumms, dummbegs=None, excl=None, add_substs=None):
         """Reset the dummies in the term.
 
         The term with dummies reset will be returned alongside with the new
@@ -767,6 +767,8 @@ class Term(ATerms):
         new_sums, substs, dummbegs = self.reset_sums(
             self._sums, dumms, dummbegs, excl
         )
+        if add_substs is not None:
+            substs.update(add_substs)
 
         return self.subst(substs, new_sums), dummbegs
 
