@@ -159,3 +159,29 @@ def test_restricted_parthole_drudge_simplification(restricted_parthole):
 
     for i in [res_concr, res_abstr]:
         assert (i - Integer(1)).simplify() == 0
+
+
+def test_restricted_parthole_drudge_on_complex_expression(restricted_parthole):
+    """Test simplification entailing complex contraction of spin dummies.
+
+    This tensor comes from an intermediate step in RCCSD theory derivation.
+    """
+
+    dr = restricted_parthole
+    p = dr.names
+    a, b, c, d = p.V_dumms[0:4]
+    i, j, k, l = p.O_dumms[0:4]
+    e_ = p.e_
+
+    t = IndexedBase('t')
+    u = p.u
+
+    tensor = dr.einst(
+        u[i, j, c, d] * e_[i, c] * e_[j, d] *
+        t[a, b, k, l] * e_[b, l] * e_[a, k]
+    )
+    res = tensor.simplify()
+    frees_vars = res.free_vars
+    spin_dumms = set(dr.spin_dumms)
+    # The spin dummies are always summed.
+    assert not any(i in spin_dumms for i in frees_vars)
