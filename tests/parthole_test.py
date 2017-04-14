@@ -141,3 +141,20 @@ def test_parthole_with_ph_excitations(parthole):
     for i in comm.local_terms:
         assert len(i.sums) == 4
     assert comm.simplify() == 0
+
+
+def test_parthole_drudge_gives_conventional_dummies(parthole):
+    """Test dummy naming in canonicalization facility on particle-hole drudge.
+    """
+
+    dr = parthole
+    p = dr.names
+    c_dag = p.c_dag
+    c_ = p.c_
+    a, b = p.a, p.b
+    i, j = p.i, p.j
+    u = p.u
+
+    tensor = dr.einst(u[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i])
+    res = tensor.simplify()
+    assert res == tensor
