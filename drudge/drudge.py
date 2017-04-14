@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Integer, Wild, latex, symbols
+from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols
 
 from .canonpy import Perm, Group
 from .report import Report
