@@ -421,7 +421,8 @@ def _get_field_op_colour(idx, vec, term, op_parser: FockDrudge.OP_PARSER):
     conventions in physics.
     """
 
-    _, char, _ = op_parser(vec, term)
+    char = vec.indices[0]
+    assert char == CR or char == AN
     return char, idx if char == CR else -idx
 
 
