@@ -490,6 +490,34 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def[1].simplify() == dr.einst(o[1, j] * x[j]).simplify()
 
 
+def test_tensor_def_simplification(free_alg):
+    """Test basic tensor definition simplification and dummy manipulation.
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    i, j = p.R_dumms[:2]
+
+    x = IndexedBase('x')
+    o = IndexedBase('o')
+    y = IndexedBase('y')
+
+    y_def = dr.define(
+        y, (j, p.R),
+        dr.sum((i, p.R), o[j, i] * x[i]) - dr.einst(o[j, i] * x[i])
+    )
+
+    reset = y_def.reset_dumms()
+    assert reset.base == y_def.base
+    assert reset.exts == [(i, p.R)]
+    assert reset.lhs == y[i]
+    assert reset.rhs == dr.einst(o[i, j] * x[j]) - dr.einst(o[i, j] * x[j])
+
+    simplified = reset.simplify()
+    assert simplified.rhs == 0
+
+
 def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
     """Test the string and LaTeX form representation of tensors."""
 
