@@ -1352,14 +1352,40 @@ class TensorDef:
 
     def simplify(self):
         """Simplify the tensor in the definition.
-
-        Due to the scarcity of the usefulness of keeping both the unsimplified
-        and the simplified tensor definition, this method will mutate the tensor
-        with its simplified form.
         """
 
-        self._tensor = self._tensor.simplify()
-        return self
+        reset = self.reset_dumms()
+        return TensorDef(reset.base, reset.exts, reset.rhs.simplify())
+
+    def reset_dumms(self, excl=None):
+        """Reset the dummies in the definition.
+
+        The external indices will take higher precedence over the summed indices
+        inside the right-hand side.
+        """
+
+        dumms = self._tensor.drudge.dumms
+
+        exts, ext_substs, dummbegs = Term.reset_sums(
+            self._exts, dumms.value, excl=excl
+        )
+
+        free_vars = self._tensor.free_vars
+        if excl is None:
+            excl = free_vars
+        else:
+            excl |= free_vars
+        excl -= {i for i, _ in self._exts}
+
+        tensor = Tensor(
+            self._tensor.drudge,
+            self._tensor.terms.map(lambda x: x.reset_dumms(
+                dumms=dumms.value, excl=excl,
+                dummbegs=dict(dummbegs), add_substs=ext_substs
+            )[0])
+        )
+
+        return TensorDef(self._base, exts, tensor)
 
     def __eq__(self, other):
         """Compare two tensor definitions for equality.
