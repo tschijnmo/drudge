@@ -1,4 +1,8 @@
-"""Tests for the general many-body problem."""
+"""Tests for the general many-body problem.
+
+Some general tensor operations requiring range and dummies in the drudge are
+also tested here.
+"""
 
 import pytest
 from sympy import IndexedBase, conjugate
@@ -28,6 +32,25 @@ def test_genmb_has_basic_properties(genmb):
     assert dr.ham.n_terms == 2
     assert dr.ham == dr.orig_ham
     # The details of the Hamiltonian will be tested in other ways.
+
+
+def test_einstein_summation(genmb):
+    """Test Einstein summation convention."""
+    dr = genmb
+    p = dr.names
+    l = p.L
+    a, b, c = p.L_dumms[:3]
+    o = IndexedBase('o')
+    v = IndexedBase('v')
+    c_dag = p.c_dag
+
+    summand = o[a, b] * v[b] * c_dag[a]
+    tensor = dr.einst(summand)
+    assert tensor == dr.sum((a, l), (b, l), summand)
+
+    summand = conjugate(o[b, a]) * v[b] * c_dag[a]
+    tensor = dr.einst(summand)
+    assert tensor == dr.sum((a, l), (b, l), summand)
 
 
 @pytest.mark.parametrize('par_level', [0, 1, 2])
