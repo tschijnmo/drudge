@@ -755,10 +755,10 @@ class PartHoleDrudge(GenMBDrudge):
 
     """
 
-    DEFAULT_PART_DUMMS = tuple(Symbol(i) for i in 'abcdefgh') + tuple(
+    DEFAULT_PART_DUMMS = tuple(Symbol(i) for i in 'abcd') + tuple(
         Symbol('a{}'.format(i)) for i in range(50)
     )
-    DEFAULT_HOLE_DUMMS = tuple(Symbol(i) for i in 'ijklmnpq') + tuple(
+    DEFAULT_HOLE_DUMMS = tuple(Symbol(i) for i in 'ijkl') + tuple(
         Symbol('i{}'.format(i)) for i in range(50)
     )
 
