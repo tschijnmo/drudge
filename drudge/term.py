@@ -704,7 +704,7 @@ class Term(ATerms):
             need_treatment = any(
                 (i in dumms or i in special_symbs)
                 for i in factor.atoms(Symbol)
-            ) or isinstance(factor, Indexed)
+            ) or factor.has(Indexed)
             if need_treatment:
                 factors.append(factor)
             else:
