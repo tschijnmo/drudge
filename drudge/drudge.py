@@ -807,7 +807,7 @@ class Tensor:
     # Substitution
     #
 
-    def subst(self, lhs, rhs, wilds=None, full_balance=False):
+    def subst(self, lhs, rhs, wilds=None, full_balance=False, excl=None):
         """Substitute the all appearance of the defined tensor.
 
         When the given LHS is a plain SymPy symbol, all its appearances in the
@@ -919,11 +919,13 @@ class Tensor:
         rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
 
         expanded = self.expand()
-        return expanded._subst(lhs, rhs_terms, full_balance=full_balance)
+        return expanded._subst(
+            lhs, rhs_terms, full_balance=full_balance, excl=excl
+        )
 
     def _subst(
             self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms,
-            full_balance
+            full_balance, excl=None
     ):
         """Core substitution function.
 
@@ -935,6 +937,9 @@ class Tensor:
         free_vars_local = (
             self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
         )
+        if excl is not None:
+            free_vars_local |= excl
+
         free_vars = self._drudge.ctx.broadcast(free_vars_local)
         dumms = self._drudge.dumms
         full_simplify = self._drudge.full_simplify
@@ -965,7 +970,7 @@ class Tensor:
             self._drudge, res_terms, free_vars=free_vars_local, expanded=True
         )
 
-    def subst_all(self, defs, simplify=False, full_balance=False):
+    def subst_all(self, defs, simplify=False, full_balance=False, excl=None):
         """Substitute all given definitions serially.
 
         The definitions should be given as an iterable of either
@@ -988,7 +993,7 @@ class Tensor:
                     'expecting definition or LHS/RHS pair'
                 )
 
-            res = res.subst(lhs, rhs, full_balance=full_balance)
+            res = res.subst(lhs, rhs, full_balance=full_balance, excl=excl)
             if simplify:
                 res = res.simplify().repartition()
 
