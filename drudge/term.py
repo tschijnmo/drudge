@@ -713,16 +713,19 @@ class Term(ATerms):
 
         return factors, coeff
 
-    def map(self, func, sums=None, amp=None, vecs=None, skip_vecs=False):
+    def map(
+            self, func=lambda x: x, sums=None, amp=None, vecs=None,
+            skip_vecs=False
+    ):
         """Map the given function to the SymPy expressions in the term.
 
         The given function will **not** be mapped to the dummies in the
         summations.  When operations on summations are needed, a **tuple**
         for the new summations can be given.
 
-        By passing the identity function, this function can also be used to
-        replace the summation list, the amplitude expression, or the vector
-        part.
+        By the default function of the identity function, this function can also
+        be used to replace the summation list, the amplitude expression, or the
+        vector part.
         """
 
         return Term(
