@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols
+from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols, sympify
 
 from .canonpy import Perm, Group
 from .report import Report
@@ -802,6 +802,19 @@ class Tensor:
             expanded = False
 
         return prod, free_vars, expanded
+
+    def __truediv__(self, other):
+        """Divide tensor by a scalar quantity."""
+
+        other = sympify(other)
+        return self.apply(
+            lambda terms: terms.map(lambda x: x.scale(1 / other)),
+            free_vars=None
+        )
+
+    def __rtruediv__(self, other):
+        """Make division over a tensor."""
+        raise NotImplementedError('General tensors cannot be divided over.')
 
     #
     # Substitution
