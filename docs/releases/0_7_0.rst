@@ -1,0 +1,23 @@
+0.7.0
+-----
+
+This releases adds some convenience operations defined for tensorial objects,
+like direct negation and division by scalars.  For instance, to negate a tensor
+``t``, now we can just write ``-t`` instead of the more cumbersome ``-1 * t``.
+Similarly, to divide it by two, we can now just write ``t / 2``, compared with
+the previous syntax of::
+
+    t * sympy.Rational(1, 2).
+
+The examples for CC theories are also updated for the new syntax.  Also multiple
+bugs are fixed,
+
+* Now the code no longer crashes when a deltas contains no dummy.
+
+* Incorrectness from highly cyclic delta resolution result is fixed.
+
+* The dummies in simplified result for particle-hole problems are made
+  conventional.
+
+* Simplification of ``TensorDef`` now resets external dummies as well.
+
