@@ -76,7 +76,7 @@ stopwatch = Stopwatch()
 curr = dr.ham
 h_bar = dr.ham
 for i in range(4):
-    curr = (curr | corr).simplify() * Rational(1, i + 1)
+    curr = (curr | corr).simplify() / (i + 1)
     stopwatch.tock('Commutator order {}'.format(i + 1), curr)
     h_bar += curr
     continue
