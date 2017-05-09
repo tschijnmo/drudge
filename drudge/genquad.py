@@ -62,7 +62,8 @@ class GenQuadDrudge(Drudge, abc.ABC):
         [Vec, Vec], typing.Optional[typing.Tuple[Expr, ATerms]]
     ]
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def swapper(self) -> Swapper:
         """The function to be called with two operators to commute.
 

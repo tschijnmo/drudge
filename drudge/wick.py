@@ -57,7 +57,8 @@ class WickDrudge(Drudge, abc.ABC):
             )
         self._wick_parallel = level
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def contractor(self) -> typing.Callable[[Vec, Vec, Term], Expr]:
         """Get the contractor for the algebraic system.
 
@@ -67,7 +68,8 @@ class WickDrudge(Drudge, abc.ABC):
         """
         pass
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def phase(self):
         """Get the phase for the commutation rule.
 
@@ -76,7 +78,8 @@ class WickDrudge(Drudge, abc.ABC):
         """
         pass
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def comparator(self) -> typing.Callable[[Vec, Vec, Term], bool]:
         """Get the comparator for the canonicalized vectors.
 
@@ -125,7 +128,7 @@ class WickDrudge(Drudge, abc.ABC):
             normal_ordered = wick_terms.flatMap(lambda x: [
                 _form_term_from_wick(x[0], x[1], phase, resolvers.value, i)
                 for i in x[2]
-                ])
+            ])
 
         elif self._wick_parallel == 1:
 

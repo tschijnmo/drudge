@@ -192,7 +192,8 @@ class ATerms(abc.ABC):
 
     """
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def terms(self) -> typing.List['Term']:
         """Get an list for the terms.
         """
