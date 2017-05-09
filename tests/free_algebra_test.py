@@ -262,7 +262,7 @@ def test_tensor_can_be_canonicalized(free_alg):
 def test_tensor_math_ops(free_alg):
     """Test tensor math operations.
 
-    Mainly here we test addition and multiplication.
+    Mainly here we test addition, multiplication, and division.
     """
 
     dr = free_alg
@@ -308,6 +308,18 @@ def test_tensor_math_ops(free_alg):
         dr.sum((i, r), (j, r), x[j] * x[i] * w[i] * v[j])
     )
     assert comm_v1w1.simplify() == expected.simplify()
+
+    alpha = symbols('alpha')
+    assert alpha not in v1.free_vars
+    tensor = v1 / alpha
+    assert tensor.n_terms == 1
+    terms = tensor.local_terms
+    assert len(terms) == 1
+    term = terms[0]
+    assert term.sums == ((i, r),)
+    assert term.amp == x[i] / alpha
+    assert term.vecs == (v[i],)
+    assert alpha in tensor.free_vars
 
 
 def test_tensors_can_be_simplified_sums(free_alg):
