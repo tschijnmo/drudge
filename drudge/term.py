@@ -292,6 +292,17 @@ class ATerms(abc.ABC):
             for i in terms
         )
 
+    def __truediv__(self, other):
+        """Make division with another object."""
+        other = sympify(other)
+        return Terms([
+            i.scale(1 / other) for i in self.terms
+        ])
+
+    def __rtruediv__(self, other):
+        """Being divided over by other object."""
+        raise NotImplementedError('General tensors cannot inversed')
+
 
 class Terms(ATerms):
     """A local collection of terms.
