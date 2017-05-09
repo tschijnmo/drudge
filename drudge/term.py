@@ -689,7 +689,7 @@ class Term(ATerms):
 
         return self.get_amp_factors(set())
 
-    def get_amp_factors(self, special_symbs):
+    def get_amp_factors(self, *special_symbs):
         """Get the factors in the amplitude and the coefficient.
 
         The indexed factors and factors involving dummies or the symbols in the
@@ -714,7 +714,7 @@ class Term(ATerms):
         coeff = _UNITY
         for factor in all_factors:
             need_treatment = any(
-                (i in dumms or i in special_symbs)
+                (i in dumms or any(i in j for j in special_symbs))
                 for i in factor.atoms(Symbol)
             ) or factor.has(Indexed)
             if need_treatment:
