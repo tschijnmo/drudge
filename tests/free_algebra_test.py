@@ -84,6 +84,23 @@ def test_tensor_can_be_created(free_alg):
         assert term == Term(((i, r),), x[i], (v[i],))
 
 
+def test_complex_tensor_creation(free_alg):
+    """Test tensor creation involving operations."""
+
+    dr = free_alg
+    p = dr.names
+    i, v, r = p.i, p.v, p.R
+    x = IndexedBase('x')
+    for summand in [(x[i] / 2) * v[i], x[i] * (v[i] / 2)]:
+        tensor = dr.einst(summand)
+        assert tensor.n_terms == 1
+
+        terms = tensor.local_terms
+        assert len(terms) == 1
+        term = terms[0]
+        assert term == Term(((i, r),), x[i] / 2, (v[i],))
+
+
 def test_tensor_has_basic_operations(free_alg):
     """Test some of the basic operations on tensors.
 
