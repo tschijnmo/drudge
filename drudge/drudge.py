@@ -233,7 +233,9 @@ class Tensor:
             When it is a vector, its presence in the vector part is tested.
 
         """
-        return self._terms.map(lambda x: x.has_base(base)).reduce(operator.or_)
+        return self._terms.map(
+            functools.partial(Term.has_base, base=base)
+        ).reduce(operator.or_)
 
     #
     # Printing support
