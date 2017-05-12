@@ -233,6 +233,12 @@ class Tensor:
             When it is a vector, its presence in the vector part is tested.
 
         """
+
+        # We need to force the evaluations of the terms to avoid repeated
+        # computation.  A tensor is barely needed by a has_base decision only.
+        if self.n_terms == 0:
+            return False
+
         return self._terms.map(
             functools.partial(Term.has_base, base=base)
         ).reduce(operator.or_)
@@ -1011,6 +1017,10 @@ class Tensor:
             res = res.subst(lhs, rhs, full_balance=full_balance, excl=excl)
             if simplify:
                 res = res.simplify().repartition()
+
+            # Mostly to make the evaluation eagerly.
+            if res.n_terms == 0:
+                return res
 
         return res
 
