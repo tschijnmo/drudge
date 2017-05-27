@@ -158,3 +158,34 @@ def test_parthole_drudge_gives_conventional_dummies(parthole):
     tensor = dr.einst(u[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i])
     res = tensor.simplify()
     assert res == tensor
+
+
+def test_parthole_drudge_canonicalize_complex_exprs(parthole):
+    r"""Test canonicalization of complex expressions by particle-hole drudge.
+
+    The tensor,
+
+    .. math::
+
+        \sum_{k, l, c, d} t_{c, l} t_{d, k} u_{k, i, c, a} z_{d, b, j, l}
+
+    which comes from the research by Roman Schutski.  This complex expression
+    would require two steps of canonicalization on some platforms due to a
+    non-deterministic bug in libcanon.  This test successes when this problem is
+    fixed.
+    """
+    dr = parthole
+    p = dr.names
+
+    t = IndexedBase('t')
+    z = IndexedBase('z')
+
+    tensor = dr.einst(
+        t[p.c, p.l] * t[p.d, p.k] * p.u[p.k, p.i, p.c, p.a] *
+        z[p.d, p.b, p.j, p.l]
+    )
+
+    once = tensor.canon().reset_dumms()
+    twice = once.canon().reset_dumms()
+
+    assert once == twice
