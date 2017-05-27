@@ -21,3 +21,6 @@ bugs are fixed,
 
 * Simplification of ``TensorDef`` now resets external dummies as well.
 
+* Core dependency ``libcanon`` is updated to 0.1.2 such that the erroneous
+  requirement of twice simplification for some complex expressions is fixed.
+
