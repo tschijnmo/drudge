@@ -578,13 +578,24 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
 
     # Test the reporting facility.
     with tmpdir.as_cwd():
+        title = 'Simple report test'
+        sect = 'A simple tensor'
+        descr = 'Nothing'
+
         filename = 'freealg.html'
-        with dr.report(filename, 'Simple report test') as rep:
-            rep.add('A simple tensor', tensor, description='Nothing')
+        with dr.report(filename, title) as rep:
+            rep.add(sect, tensor, description=descr)
 
         # Here we just simply test the existence of the file.
         assert os.path.isfile(filename)
-        os.remove(filename)
+
+        filename = 'freealg.pdf'
+        with dr.report(filename, 'Simple report test') as rep:
+            rep.add(
+                sect, tensor, description=descr, env='dmath', sep_lines=False
+            )
+        assert os.path.isfile('freealg.tex')
+        assert os.path.isfile(filename)
 
 
 def test_drudge_has_default_properties(free_alg):
