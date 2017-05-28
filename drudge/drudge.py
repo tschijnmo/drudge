@@ -2270,7 +2270,25 @@ class Drudge:
         """Make a report for results.
 
         This function should be used within a ``with`` statement to open a
-        report for results.
+        report (:py:class:`Report`) for results.
+
+        Parameters
+        ----------
+
+        filename : str
+
+            The name of the report file, whose extension gives the type of the
+            report.  Currently, ``.html`` gives reports in HTML format, where
+            the ``MathJAX`` library is used for rendering the math.  ``.tex``
+            gives reports in LaTeX format, while ``.pdf`` will automatically
+            compile the LaTeX source by program ``pdflatex`` in the path.
+            Normally for LaTeX output, finer tuning of the display environment
+            in :py:meth:`Report.add` is required, especially for long
+            equations.
+
+        title
+
+            The title to be printed in the report.
 
         Examples
         --------

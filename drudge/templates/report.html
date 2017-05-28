@@ -44,7 +44,7 @@
             {% if i.description is not none %}
             <p>{{ i.description }}</p>
             {% endif %}
-            <p>\[ {{ i.expr }} \]</p>
+            <p>{{ i.opening }} {{ i.expr }} {{ i.closing }}</p>
             {% endfor %}
         </div>
 
