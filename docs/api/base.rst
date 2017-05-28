@@ -79,4 +79,8 @@ Miscellaneous utilities
     :members:
     :special-members:
 
+.. autoclass:: Report
+    :members:
+    :special-members:
+
 

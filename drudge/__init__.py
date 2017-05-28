@@ -17,6 +17,7 @@ from .fock import (
 from .genquad import GenQuadDrudge
 from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
+from .report import Report
 from .utils import sum_, prod_, Stopwatch
 
 __version__ = '0.7.0dev'
@@ -65,5 +66,6 @@ __all__ = [
     # Small user utilities.
     'sum_',
     'prod_',
-    'Stopwatch'
+    'Stopwatch',
+    'Report'
 ]
