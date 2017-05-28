@@ -9,8 +9,11 @@ the previous syntax of::
 
     t * sympy.Rational(1, 2).
 
-The examples for CC theories are also updated for the new syntax.  Also multiple
-bugs are fixed,
+The examples for CC theories are also updated for the new syntax.  And some
+other convenience enhancements are added.  For instance, now LaTeX or pdf report
+can directly be generated.
+
+Also multiple bugs are fixed,
 
 * Now the code no longer crashes when a deltas contains no dummy.
 
