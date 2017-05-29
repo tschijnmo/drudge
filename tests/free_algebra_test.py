@@ -1,5 +1,6 @@
 """Tests for the basic tensor facilities using free algebra."""
 
+import io
 import os
 import os.path
 import pickle
@@ -642,3 +643,24 @@ def test_pickling_tensors(free_alg):
         res = pickle.loads(serialized)
 
     assert res == tensor
+
+
+def test_memoise(free_alg, tmpdir):
+    """Test the memoise facility of drudge."""
+
+    dr = free_alg
+    n_calls = [0]
+    filename = 'tmp.pickle'
+    log = io.StringIO()
+
+    def get_zero():
+        n_calls[0] += 1
+        return 0
+
+    # Test the reporting facility.
+    with tmpdir.as_cwd():
+        assert dr.memoize(get_zero, filename, log=log) == 0
+        assert dr.memoize(get_zero, filename, log=log) == 0
+        assert dr.memoize(get_zero, filename) == 0
+        assert n_calls[0] == 1
+        assert len(log.getvalue().splitlines()) == 2
