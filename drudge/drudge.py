@@ -5,6 +5,8 @@ import functools
 import inspect
 import itertools
 import operator
+import pickle
+import sys
 import types
 import typing
 import warnings
@@ -2350,6 +2352,90 @@ class Drudge:
         _default_drudge = self
         yield None
         _default_drudge = None
+
+    def memoize(self, comput, filename, log=None, log_header='Memoize:'):
+        """Preserve/lookup result of computation into/from pickle file.
+
+        When the file with the given name exists, it will be opened and
+        attempted to be unpickled, with the deserialized content returned and
+        the given computation skipped.  When the file is absent or does not
+        contain valid pickle, the given computation will be performed, with the
+        result both pickled into a file created with the given name and
+        returned.
+
+        Parameters
+        ----------
+
+        comput
+
+            The callable giving the computation to be performed.  To be called
+            with no arguments.
+
+        filename
+
+            The name of the pickle file to read from or write to.
+
+        log
+
+            The file object to write log information to.  ``None`` if no logging
+            is desired, ``True`` if they are to be written to the standard
+            output, or any writable file object can be given.
+
+        log_header
+
+            The header to be prepended to lines of the log texts.
+
+        Returns
+        -------
+
+        The result of the computation, either read from existing file or newly
+        computed.
+
+        Examples
+        --------
+
+        .. doctest::
+            :options: +SKIP
+
+            >>> dr = Drudge(SparkContext())
+            >>> res = dr.memoize(lambda: 10, 'intermediate.pickle')
+            >>> res
+            10
+            >>> dr.memoize(lambda: 10, 'intermediate.pickle')
+            10
+
+        Note that in the second execution, the number 10 should be read from the
+        file rather than being computed again.  Normally, rather than a trivial
+        number, expensive intermediate results can be memoized in this way so
+        that the script can be restarted readily.
+
+        """
+
+        if log is True:
+            log = sys.stdout
+        if log is None:
+            log_args = {}
+        else:
+            log_args = {'file': log}
+
+        try:
+
+            with self.pickle_env(), open(filename, 'rb') as fp:
+                res = pickle.load(fp)
+
+            print(log_header, 'read data from {}'.format(filename), **log_args)
+
+        except (OSError, pickle.PickleError) as exc:
+
+            print(log_header, 'computing, failed to read from {}: {!s}'.format(
+                filename, exc
+            ), **log_args)
+
+            res = comput()
+            with open(filename, 'wb') as fp:
+                pickle.dump(res, fp)
+
+        return res
 
 
 #
