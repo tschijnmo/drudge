@@ -15,13 +15,17 @@
 \maketitle
 
 {% for i in sects %}
+{% if i.title is not none %}
 \section{{ '{' }}{{ i.title }}{{ '}' }}
+{% endif %}
 
 {% if i.description is not none %}
 {{ i.description }}
 {% endif %}
 
+{% if i.expr is not none %}
 {{ i.opening }} {{ i.expr }} {{ i.closing }}
+{% endif %}
 
 {% endfor %}
 

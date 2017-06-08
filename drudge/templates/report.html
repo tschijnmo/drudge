@@ -38,13 +38,17 @@
         <!-- The main content -->
         <div class="col-sm-9 col-lg-10">
             {% for i in sects %}
+            {% if i.title is not none %}
             <div class="page-header" id="sect-{{ loop.index }}">
                 <h2>{{ i.title }}</h2>
             </div>
+            {% endif %}
             {% if i.description is not none %}
             <p>{{ i.description }}</p>
             {% endif %}
+            {% if i.expr is not none %}
             <p>{{ i.opening }} {{ i.expr }} {{ i.closing }}</p>
+            {% endif %}
             {% endfor %}
         </div>
 
@@ -52,7 +56,9 @@
         <div class="col-sm-3 col-lg-2">
             <ul class="nav nav-pills nav-stacked">
                 {% for i in sects %}
+                {% if i.title is not none %}
                 <li {% if loop.first %}class="active"{% endif %}><a href="#sect-{{ loop.index }}">{{ i.title }}</a></li>
+                {% endif %}
                 {% endfor %}
             </ul>
         </div>

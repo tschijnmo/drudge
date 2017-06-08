@@ -36,7 +36,10 @@ class Report:
             'sects': self._sects
         }
 
-    def add(self, title, content, description='', env='[', **kwargs):
+    def add(
+            self, title=None, content=None, description=None,
+            env='[', **kwargs
+    ):
         r"""Add a section to the result.
 
         Parameters
@@ -45,15 +48,18 @@ class Report:
         title
 
             The title of the equation.  It will be used as a section header.
+            When it is given as a None, the section header will not be added.
 
         content
 
-            The actual tensor or tensor definition to be printed.
+            The actual tensor or tensor definition to be printed.  It can be
+            given as a None to skip any equation rendering.
 
         description
 
             A verbal description of the content.  It will be typeset before the
-            actual equation as normal text.
+            actual equation as normal text.  A None value will cause it to be
+            suppressed.
 
         env
 
@@ -89,7 +95,7 @@ class Report:
         self._sects.append({
             'title': title,
             'description': description,
-            'expr': content.latex(**kwargs),
+            'expr': content.latex(**kwargs) if content is not None else None,
             'opening': opening,
             'closing': closing
         })
