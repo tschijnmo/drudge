@@ -36,7 +36,7 @@ class Report:
             'sects': self._sects
         }
 
-    def add(self, title, content, description='', sep_lines=True, env='['):
+    def add(self, title, content, description='', env='[', **kwargs):
         r"""Add a section to the result.
 
         Parameters
@@ -55,16 +55,17 @@ class Report:
             A verbal description of the content.  It will be typeset before the
             actual equation as normal text.
 
-        sep_lines
-
-            Line separation of terms, as explained in :py:meth:`Tensor.latex`.
-
         env
 
             The environment to put the equation in.  A value of ``'['`` will use
             ``\[`` and ``\]`` as the deliminator of the math environment.  Other
             values will be put inside the common ``\begin{}`` and ``\end{}``
             tags of LaTeX.
+
+        kwargs
+
+            All the rest of the keyword arguments are forwarded to the
+            :py:meth:`Drudge.format_latex` method.
 
         Note
         ----
@@ -88,7 +89,7 @@ class Report:
         self._sects.append({
             'title': title,
             'description': description,
-            'expr': content.latex(sep_lines=sep_lines),
+            'expr': content.latex(**kwargs),
             'opening': opening,
             'closing': closing
         })

@@ -260,23 +260,19 @@ class Tensor:
         else:
             return '\n + '.join(str(i) for i in self.local_terms)
 
-    def latex(self, sep_lines=False):
+    def latex(self, **kwargs):
         r"""Get the latex form for the tensor.
 
         The actual printing is dispatched to the drudge object for the
         convenience of tuning the appearance.
 
-        Parameters
-        ----------
-
-        sep_lines : bool
-            If terms should be put into separate lines by separating them with
-            ``\\``.
+        All keyword arguments are forwarded to the
+        :py:meth:`Drudge.format_latex` method.
 
         """
-        return self._drudge.format_latex(self, sep_lines=sep_lines)
+        return self._drudge.format_latex(self, **kwargs)
 
-    def display(self, if_return=True, sep_lines=False):
+    def display(self, if_return=True, **kwargs):
         """Display the tensor in interactive IPython notebook sessions.
 
         Parameters
@@ -287,12 +283,13 @@ class Tensor:
             It can be disabled for displaying equation in the middle of a
             Jupyter cell.
 
-        sep_lines
-            If terms should be written into separate lines.
+        kwargs
+            All the rest of the keyword arguments are forwarded to the
+            :py:meth:`Drudge.format_latex` method.
 
         """
 
-        form = Math(self.latex(sep_lines=sep_lines))
+        form = Math(self.latex(**kwargs))
         if if_return:
             return form
         else:
@@ -1441,7 +1438,7 @@ class TensorDef:
 
         return ' = '.join([str(self.lhs), str(self.rhs)])
 
-    def latex(self, sep_lines=False):
+    def latex(self, **kwargs):
         r"""Get the latex form for the tensor definition.
 
         The result will just be the form from :py:meth:`Tensor.latex` with the
@@ -1450,23 +1447,21 @@ class TensorDef:
         Parameters
         ----------
 
-        sep_lines : bool
-            If terms should be put into separate lines by separating them with
-            ``\\``.
+        kwargs
+            All keyword parameters are forwarded to the
+            :py:meth:`Drudge.format_latex` method.
 
         """
-        return self._tensor.drudge.format_latex(
-            self, sep_lines=sep_lines
-        )
+        return self._tensor.drudge.format_latex(self, **kwargs)
 
-    def display(self, if_return=True, sep_lines=False):
+    def display(self, if_return=True, **kwargs):
         """Display the tensor definition in interactive notebook sessions.
 
         The parameters here all have the same meaning as in
         :py:meth:`Tensor.display`.
         """
 
-        form = Math(self.latex(sep_lines=sep_lines))
+        form = Math(self.latex(**kwargs))
         if if_return:
             return form
         else:
