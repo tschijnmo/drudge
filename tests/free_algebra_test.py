@@ -567,13 +567,27 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
     assert str(zero) == '0'
 
     # The LaTeX form.
-    expected = (
-        r'\sum_{i \in R} x_{i} \mathbf{v}_{i} '
-        '- \sum_{i \in R} x_{i} \mathbf{v}_{i}'
-    )
+    expected_terms = [
+        r'\sum_{i \in R} x_{i} \mathbf{v}_{i}',
+        r'- \sum_{i \in R} x_{i} \mathbf{v}_{i}'
+    ]
+    expected = ' '.join(expected_terms)
     assert tensor.latex() == expected
+
     assert tensor.latex(sep_lines=True) != expected
     assert tensor.latex(sep_lines=True).replace(r'\\ ', '') == expected
+
+    assert tensor.latex(align_terms=True) != expected
+    assert tensor.latex(align_terms=True).replace(' & ', '') == expected
+
+    def proc(form, term, idx):
+        """Process the terms in the LaTeX formatting."""
+        assert term == tensor.local_terms[idx]
+        assert form == expected_terms[idx]
+        return 'N'
+
+    assert tensor.latex(proc=proc).replace(' ', '') == 'N + N'.replace(' ', '')
+
     assert zero.latex() == '0'
     assert zero.latex(sep_lines=True) == '0'
 
