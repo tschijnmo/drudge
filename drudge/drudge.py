@@ -2161,12 +2161,30 @@ class Drudge:
     # Printing
     #
 
-    def format_latex(self, inp, sep_lines=False):
-        """Get the LaTeX form of a given tensor or tensor definition.
+    def format_latex(self, inp, sep_lines=False, align_terms=False):
+        r"""Get the LaTeX form of a given tensor or tensor definition.
 
         Subclasses should fine-tune the appearance of the resulted LaTeX form by
         overriding methods ``_latex_sympy``, ``_latex_vec``, and
         ``_latex_vec_mul``.
+
+        Parameters
+        ==========
+
+        inp
+
+            The input tensor or tensor definition.
+
+        sep_lines
+
+            If terms should be put into separate lines by separating them with
+            ``\\``.
+
+        align_terms
+
+            If ``&`` is going to be prepended to each term to have them aligned.
+            This option is intended for cases where the LaTeX form is going to
+            be put inside environments supporting alignment.
 
         """
 
@@ -2196,6 +2214,8 @@ class Drudge:
             term = self._latex_term(v)
             if i != 0 and term[0] not in {'+', '-'}:
                 term = ' + ' + term
+            if align_terms:
+                term = ' & ' + term
             terms.append(term)
             continue
 
