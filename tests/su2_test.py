@@ -60,7 +60,7 @@ def test_su2_on_1d_heisenberg_model(spark_ctx):
     ham = dr.sum(
         (i, l),
         j_z[i] * j_z[i + 1] +
-        half * j_p[i] * j_m[i + 1] + half * j_m[i] * j_p[i + 1]
+        j_p[i] * j_m[i + 1] / 2 + j_m[i] * j_p[i + 1] / 2
     ) * coupling
 
     s_sq = dr.sum(
