@@ -95,3 +95,4 @@ ENV/
 # For testing files
 /tests/metastore_db
 /tests/test-env.sh
+/tests/scratch
