@@ -10,7 +10,7 @@ from sympy import (
     sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild
 )
 
-from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ
+from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef
 
 
 @pytest.fixture(scope='module')
@@ -483,6 +483,14 @@ def test_tensor_method(free_alg):
 
     with pytest.raises(AttributeError):
         tensor.get_two()
+
+
+def test_creating_empty_tensor_def(free_alg):
+    """Test the creation of empty tensor definition."""
+    dr = free_alg
+
+    def_ = TensorDef(symbols('a'), (), dr.create_tensor([]))
+    assert def_.rhs == 0
 
 
 def test_tensor_def_creation_and_basic_properties(free_alg):
