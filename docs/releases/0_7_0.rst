@@ -11,8 +11,10 @@ the previous syntax of::
 
 The examples for CC theories are also updated for the new syntax.  And some
 other convenience enhancements are added.  For instance, now LaTeX or pdf report
-can directly be generated.  And ``memoize`` method is added to the ``Drudge``
-class for the convenience of caching intermediate results.
+can directly be generated, with the structure of the report more flexible and
+tunable.  And the LaTeX formatting is enhanced with more options to fine tune
+its behaviour.  Also ``memoize`` method is added to the ``Drudge`` class for the
+convenience of caching intermediate results.
 
 Also multiple bugs are fixed,
 
