@@ -2161,7 +2161,7 @@ class Drudge:
     # Printing
     #
 
-    def format_latex(self, inp, sep_lines=False, align_terms=False):
+    def format_latex(self, inp, sep_lines=False, align_terms=False, proc=None):
         r"""Get the LaTeX form of a given tensor or tensor definition.
 
         Subclasses should fine-tune the appearance of the resulted LaTeX form by
@@ -2185,6 +2185,14 @@ class Drudge:
             If ``&`` is going to be prepended to each term to have them aligned.
             This option is intended for cases where the LaTeX form is going to
             be put inside environments supporting alignment.
+
+        proc
+
+            A callable to be called with the string of the original LaTeX
+            formatting of each of the terms to return a processed final form.
+            The callable is also going to be given keyword arguments ``term``
+            for the actual tensor term and ``idx`` for the index of the term
+            within the tensor.
 
         """
 
@@ -2212,6 +2220,10 @@ class Drudge:
         terms = []
         for i, v in enumerate(inp_terms):
             term = self._latex_term(v)
+
+            if proc is not None:
+                term = proc(term, term=v, idx=i)
+
             if i != 0 and term[0] not in {'+', '-'}:
                 term = ' + ' + term
             if align_terms:
