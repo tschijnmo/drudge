@@ -187,10 +187,11 @@ class Tensor:
         """
 
         self.cache()
-        if self._terms.count() == 0:
-            return True
-        else:
-            return self._terms.map(lambda x: x.is_scalar).reduce(operator.and_)
+
+        # Work around a pyspark bug by doing the reduction locally.
+        return all(
+            self._terms.map(lambda x: x.is_scalar).collect()
+        )
 
     @property
     def free_vars(self) -> typing.Set[Symbol]:
@@ -236,14 +237,14 @@ class Tensor:
 
         """
 
-        # We need to force the evaluations of the terms to avoid repeated
-        # computation.  A tensor is barely needed by a has_base decision only.
-        if self.n_terms == 0:
-            return False
+        # A tensor is barely needed by a has_base decision only.
+        self.cache()
 
-        return self._terms.map(
-            functools.partial(Term.has_base, base=base)
-        ).reduce(operator.or_)
+        # Work around a possible pyspark bug in reduce.
+        return any(
+            self._terms.map(functools.partial(Term.has_base, base=base))
+                .collect()
+        )
 
     #
     # Printing support
