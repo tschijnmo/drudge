@@ -30,3 +30,6 @@ Also multiple bugs are fixed,
 * Core dependency ``libcanon`` is updated to 0.1.2 such that the erroneous
   requirement of twice simplification for some complex expressions is fixed.
 
+* A PySpark bug in ``reduce`` is circumvented by doing boolean reduction
+  locally.
+
