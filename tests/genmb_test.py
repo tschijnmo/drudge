@@ -171,7 +171,7 @@ def test_fock_drudge_prints_operators(genmb):
 
     tensor = dr.einst(- x[a, b] * p.c_dag[a] * p.c_[b])
     assert tensor.latex() == (
-        r'- \sum_{a \in L} \sum_{b \in L} x_{a,b} c^{\dagger}_{a} c^{}_{b}'
+        r'- \sum_{a \in L} \sum_{b \in L} x_{a,b}    c^{\dagger}_{a} c^{}_{b}'
     )
 
 

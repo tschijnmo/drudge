@@ -517,7 +517,7 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def.exts == [(i, p.R)]
 
     assert str(y_def) == 'y[i] = sum_{j} x[j]*o[i, j]'
-    assert y_def.latex().strip() == r'y_{i} = \sum_{j \in R} x_{j} o_{i,j}'
+    assert y_def.latex().strip() == r'y_{i} = \sum_{j \in R} x_{j}  o_{i,j}'
 
     y_def1 = dr.define(y[i], dr.sum((j, p.R), o[i, j] * x[j]))
     y_def2 = dr.define_einst(y[i], o[i, j] * x[j])
@@ -576,8 +576,8 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
 
     # The LaTeX form.
     expected_terms = [
-        r'\sum_{i \in R} x_{i} \mathbf{v}_{i}',
-        r'- \sum_{i \in R} x_{i} \mathbf{v}_{i}'
+        r'\sum_{i \in R} x_{i}    \mathbf{v}_{i}',
+        r'- \sum_{i \in R} x_{i}    \mathbf{v}_{i}'
     ]
     expected = ' '.join(expected_terms)
     assert tensor.latex() == expected
@@ -616,6 +616,10 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
         with dr.report(filename, 'Simple report test') as rep:
             rep.add(
                 sect, tensor, description=descr, env='dmath', sep_lines=False
+            )
+            rep.add(
+                sect, tensor, description=descr, env='dmath',
+                no_sum=True, scalar_mul=r'\invismult'
             )
         assert os.path.isfile('freealg.tex')
         assert os.path.isfile(filename)
