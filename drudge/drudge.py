@@ -2162,7 +2162,10 @@ class Drudge:
     # Printing
     #
 
-    def format_latex(self, inp, sep_lines=False, align_terms=False, proc=None):
+    def format_latex(
+            self, inp, sep_lines=False, align_terms=False, proc=None,
+            no_sum=False, scalar_mul=''
+    ):
         r"""Get the LaTeX form of a given tensor or tensor definition.
 
         Subclasses should fine-tune the appearance of the resulted LaTeX form by
@@ -2195,6 +2198,23 @@ class Drudge:
             for the actual tensor term and ``idx`` for the index of the term
             within the tensor.
 
+        no_sum : bool
+
+            If summation is going to be suppressed in the printing, useful for
+            cases where a convention, like the Einstein's, exists for the
+            summations.
+
+        scalar_mul : str
+
+            The text for scalar multiplication.  By default, scalar
+            multiplication is just rendered as juxtaposition.  When a string is
+            given for this argument, it is going to be placed between scalar
+            factors and between the amplitude and the vectors.  In LaTeX output
+            of tensors with terms with many factors, special command
+            ``\invismult`` can be used, which just makes a small space but
+            enables the factors to be automatically split by the ``breqn``
+            package.
+
         """
 
         if isinstance(inp, Tensor):
@@ -2220,7 +2240,7 @@ class Drudge:
 
         terms = []
         for i, v in enumerate(inp_terms):
-            term = self._latex_term(v)
+            term = self._latex_term(v, no_sum=no_sum, scalar_mul=scalar_mul)
 
             if proc is not None:
                 term = proc(term, term=v, idx=i)
@@ -2236,7 +2256,7 @@ class Drudge:
 
         return prefix + term_sep.join(terms)
 
-    def _latex_term(self, term):
+    def _latex_term(self, term, no_sum=False, scalar_mul=''):
         """Format a term into LaTeX form.
 
         This method does not generally need to be overridden.
@@ -2256,15 +2276,26 @@ class Drudge:
                 parts.append('-')
                 coeff_latex = coeff_latex[1:]
 
-        parts.extend(r'\sum_{{{} \in {}}}'.format(
-            i, j.label
-        ) for i, j in term.sums)
+        if not no_sum:
+            parts.extend(r'\sum_{{{} \in {}}}'.format(
+                i, j.label
+            ) for i, j in term.sums)
 
         if coeff_latex is not None:
             parts.append(coeff_latex)
 
         if len(factors) > 0:
-            parts.extend(self._latex_sympy(i) for i in factors)
+            scalar_mul = ''.join([' ', scalar_mul, ' '])
+
+            if coeff_latex is not None:
+                parts.append(scalar_mul)
+
+            parts.append(scalar_mul.join(
+                self._latex_sympy(i) for i in factors
+            ))
+
+            if not term.is_scalar:
+                parts.append(scalar_mul)
 
         vecs = self._latex_vec_mul.join(
             self._latex_vec(i) for i in term.vecs
