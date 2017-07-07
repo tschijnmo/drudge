@@ -1,0 +1,7 @@
+0.8.0
+-----
+
+The LaTeX formatting has been improved with the option to suppress summations
+and the capability of using the LaTeX ``breqn`` package to automatically format
+long terms with a lot of factors.
+
