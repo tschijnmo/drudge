@@ -1461,7 +1461,7 @@ class TensorDef(Tensor):
             :py:meth:`Drudge.format_latex` method.
 
         """
-        return self._tensor.drudge.format_latex(self, **kwargs)
+        return self.drudge.format_latex(self, **kwargs)
 
     def display(self, if_return=True, **kwargs):
         """Display the tensor definition in interactive notebook sessions.

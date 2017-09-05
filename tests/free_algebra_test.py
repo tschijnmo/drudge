@@ -516,7 +516,7 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def.base == y
     assert y_def.exts == [(i, p.R)]
 
-    assert str(y_def) == 'y[i] = sum_{j} x[j]*o[i, j]'
+    assert str(y_def) == 'y[i] = sum_{j} o[i, j]*x[j]'
     assert y_def.latex().strip() == r'y_{i} = \sum_{j \in R} x_{j}  o_{i,j}'
 
     y_def1 = dr.define(y[i], dr.sum((j, p.R), o[i, j] * x[j]))
