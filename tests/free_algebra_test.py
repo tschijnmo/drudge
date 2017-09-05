@@ -508,10 +508,12 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     o = IndexedBase('o')
     y = IndexedBase('y')
 
-    y_def = dr.define(y, (i, p.R), dr.sum((j, p.R), o[i, j] * x[j]))
+    rhs = o[i, j] * x[j]
+
+    y_def = dr.define(y, (i, p.R), dr.sum((j, p.R), rhs))
 
     assert y_def.is_scalar
-    assert y_def.rhs == dr.einst(o[i, j] * x[j])
+    assert y_def.rhs == dr.einst(rhs)
     assert y_def.lhs == y[i]
     assert y_def.base == y
     assert y_def.exts == [(i, p.R)]
@@ -519,10 +521,26 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert str(y_def) == 'y[i] = sum_{j} o[i, j]*x[j]'
     assert y_def.latex().strip() == r'y_{i} = \sum_{j \in R} x_{j}  o_{i,j}'
 
-    y_def1 = dr.define(y[i], dr.sum((j, p.R), o[i, j] * x[j]))
-    y_def2 = dr.define_einst(y[i], o[i, j] * x[j])
+    y_def1 = dr.define(y[i], dr.sum((j, p.R), rhs))
+    y_def2 = dr.define_einst(y[i], rhs)
     assert y_def1 == y_def
     assert y_def2 == y_def
+
+    # Test the drudge script facility.
+    assert not dr.default_einst
+    dr.default_einst = True
+    y_def3 = dr.do_def(y[i], rhs)
+    dr.default_einst = False
+    y_def4 = dr.do_def(y[i], rhs)
+    assert y_def3 == y_def
+    assert y_def4 != y_def
+    assert len(y_def4.local_terms) == 1
+    assert len(y_def4.local_terms[0].sums) == 0
+    assert p._y == y
+    assert p.y == y_def4
+    dr.undef(y_def4)
+    assert not hasattr(p, '_y')
+    assert not hasattr(p, 'y')
 
     # This tests the `act` method as well.
     assert y_def[1].simplify() == dr.einst(o[1, j] * x[j]).simplify()
