@@ -1252,15 +1252,21 @@ class Tensor:
         return functools.partial(meth, self)
 
 
-class TensorDef:
+class TensorDef(Tensor):
     """Definition of a tensor.
+
+    A tensor definition is basically a tensor with a name.  In additional to
+    being a tensor, a tensor definition also has a left-hand side.  When the
+    tensor is zero-order, the left-hand side is simply a symbol.  When it has
+    external indices, the base and external indices for the it are both
+    stored.  Explicit storage of a left-hand side can be convenient in many
+    cases.
+
     """
 
     __slots__ = [
-        '_tensor',
         '_base',
         '_exts',
-        '_is_scalar'
     ]
 
     def __init__(self, base, exts, tensor: Tensor):
@@ -1290,24 +1296,24 @@ class TensorDef:
 
         """
 
-        if isinstance(base, Vec):
-            self._base = base
-            self._is_scalar = False
-        elif isinstance(base, (IndexedBase, Symbol)):
-            self._base = base
-            self._is_scalar = True
-        else:
-            raise TypeError(
-                'Invalid base for tensor definition', base,
-                'expecting vector or scalar base'
-            )
-
         if isinstance(tensor, Tensor):
-            self._tensor = tensor
+            super().__init__(tensor.drudge, tensor.terms)
         else:
             raise TypeError(
                 'Invalid LHS for tensor definition', tensor,
                 'expecting a tensor instance'
+            )
+
+        if isinstance(base, Vec):
+            self._base = base
+            is_scalar = False
+        elif isinstance(base, (IndexedBase, Symbol)):
+            self._base = base
+            is_scalar = True
+        else:
+            raise TypeError(
+                'Invalid base for tensor definition', base,
+                'expecting vector or scalar base'
             )
 
         self._exts = []
@@ -1330,10 +1336,10 @@ class TensorDef:
             continue
 
         # Additional processing for scalar replacement.
-        if self._is_scalar:
-            if not self._tensor.is_scalar:
+        if is_scalar:
+            if not self.is_scalar:
                 raise ValueError(
-                    'Invalid tensor', self._tensor, 'for base', self._base,
+                    'Invalid tensor', tensor, 'for base', self._base,
                     'expecting a scalar'
                 )
             if len(self._exts) == 0 and isinstance(self._base, IndexedBase):
@@ -1344,19 +1350,18 @@ class TensorDef:
     #
 
     @property
-    def is_scalar(self):
-        """If the tensor defined is a scalar."""
-        return self._is_scalar
-
-    @property
     def rhs(self):
-        """Get the right-hand-side of the definition."""
-        return self._tensor
+        """Get the right-hand-side of the definition.
+
+        The result is the definition itself.  Kept here for backward
+        compatibility.
+        """
+        return self
 
     @property
     def rhs_terms(self):
         """Gather the terms on the right-hand-side of the definition."""
-        return self._tensor.local_terms
+        return self.local_terms
 
     @property
     def lhs(self):
@@ -1385,7 +1390,7 @@ class TensorDef:
         """
 
         reset = self.reset_dumms()
-        return TensorDef(reset.base, reset.exts, reset.rhs.simplify())
+        return TensorDef(reset.base, reset.exts, Tensor.simplify(reset))
 
     def reset_dumms(self, excl=None):
         """Reset the dummies in the definition.
@@ -1394,13 +1399,13 @@ class TensorDef:
         inside the right-hand side.
         """
 
-        dumms = self._tensor.drudge.dumms
+        dumms = self.drudge.dumms
 
         exts, ext_substs, dummbegs = Term.reset_sums(
             self._exts, dumms.value, excl=excl
         )
 
-        free_vars = self._tensor.free_vars
+        free_vars = self.free_vars
         if excl is None:
             excl = free_vars
         else:
@@ -1408,8 +1413,8 @@ class TensorDef:
         excl -= {i for i, _ in self._exts}
 
         tensor = Tensor(
-            self._tensor.drudge,
-            self._tensor.terms.map(lambda x: x.reset_dumms(
+            self.drudge,
+            self.terms.map(lambda x: x.reset_dumms(
                 dumms=dumms.value, excl=excl,
                 dummbegs=dict(dummbegs), add_substs=ext_substs
             )[0])
@@ -1422,12 +1427,15 @@ class TensorDef:
 
         Note that similar to the equality comparison of tensors, here we only
         compare the syntactic equality rather than the mathematical equality.
+        The left-hand side is put into consideration only for comparison with
+        another tensor definition.
         """
 
-        if not isinstance(other, TensorDef):
-            return False
+        rhs_eq = super().__eq__(other)
 
-        return self.lhs == other.lhs and self.rhs == other.rhs
+        return rhs_eq and (
+            self.lhs == other.lhs if isinstance(other, TensorDef) else True
+        )
 
     #
     # Representations.
@@ -1437,7 +1445,7 @@ class TensorDef:
         """Form simple readable string for a definition.
         """
 
-        return ' = '.join([str(self.lhs), str(self.rhs)])
+        return ' = '.join([str(self.lhs), super().__str__()])
 
     def latex(self, **kwargs):
         r"""Get the latex form for the tensor definition.
@@ -2217,23 +2225,18 @@ class Drudge:
 
         """
 
-        if isinstance(inp, Tensor):
-
-            n_terms = inp.n_terms
-            inp_terms = inp.local_terms
-            prefix = ''
-
-        elif isinstance(inp, TensorDef):
-
-            n_terms = inp.rhs.n_terms
-            inp_terms = inp.rhs_terms
+        if isinstance(inp, TensorDef):
             prefix = (
                          self._latex_sympy(inp.lhs) if inp.is_scalar else
                          self._latex_vec(inp.lhs)
                      ) + ' = '
-
+        elif isinstance(inp, Tensor):
+            prefix = ''
         else:
             raise TypeError('Invalid object to form into LaTeX.')
+
+        n_terms = inp.n_terms
+        inp_terms = inp.local_terms
 
         if n_terms == 0:
             return prefix + '0'
