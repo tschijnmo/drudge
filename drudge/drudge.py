@@ -1303,18 +1303,6 @@ class TensorDef(Tensor):
                 'expecting a tensor instance'
             )
 
-        if isinstance(base, Vec):
-            self._base = base
-            is_scalar = False
-        elif isinstance(base, (IndexedBase, Symbol)):
-            self._base = base
-            is_scalar = True
-        else:
-            raise TypeError(
-                'Invalid base for tensor definition', base,
-                'expecting vector or scalar base'
-            )
-
         self._exts = []
         for i in exts:
             explicit_ext = (
@@ -1334,15 +1322,21 @@ class TensorDef(Tensor):
                 )
             continue
 
-        # Additional processing for scalar replacement.
-        if is_scalar:
-            if not self.is_scalar:
-                raise ValueError(
-                    'Invalid tensor', tensor, 'for base', self._base,
-                    'expecting a scalar'
-                )
-            if len(self._exts) == 0 and isinstance(self._base, IndexedBase):
-                self._base = self._base.label
+        if not isinstance(base, (Vec, IndexedBase, Symbol)):
+            raise TypeError(
+                'Invalid base for tensor definition', base,
+                'expecting vector or scalar base'
+            )
+
+        # Normalize the base.
+        base_name = str(base)
+        is_scalar = self.is_scalar
+        if is_scalar and len(self._exts) == 0:
+            self._base = Symbol(base_name)
+        elif is_scalar:
+            self._base = IndexedBase(base_name)
+        else:
+            self._base = Vec(base_name)
 
     #
     # Basic properties.
