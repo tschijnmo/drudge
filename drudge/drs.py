@@ -131,7 +131,40 @@ class _NumFixer(ast.NodeTransformer):
             return val
 
 
-_FIXERS = [_NumFixer()]
+_DEF_METH_NAME = 'def_as'
+
+
+class _DefFixer(ast.NodeTransformer):
+    """Fixer for tensor definitions.
+
+    All augmented assignments ``<<=`` will be replaced by a call to the
+    method with its name given in ``_DEF_METH_NAME``.
+    """
+
+    def visit_AugAssign(self, node: ast.AugAssign):
+        """Update L-shift assignments."""
+        op = node.op
+        if not isinstance(op, ast.LShift):
+            return node
+
+        lhs = node.target
+        if hasattr(lhs, 'ctx'):
+            lhs.ctx = ast.Load()
+        rhs = node.value
+
+        deleg = ast.Attribute(
+            value=lhs, attr=_DEF_METH_NAME, ctx=ast.Load()
+        )
+        ast.copy_location(deleg, lhs)
+        call = ast.Call(func=deleg, args=[rhs], keywords=[])
+        ast.copy_location(call, node)
+
+        expr = ast.Expr(value=call)
+        ast.copy_location(expr, node)
+        return expr
+
+
+_FIXERS = [_NumFixer(), _DefFixer()]
 
 
 def compile_drs(src, filename):

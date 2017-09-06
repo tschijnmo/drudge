@@ -1,8 +1,10 @@
 """Tests for drudge scripts."""
 
+from unittest.mock import Mock
+
 from sympy import Symbol, IndexedBase, Rational, Integer
 
-from drudge.drs import DrsSymbol, compile_drs
+from drudge.drs import DrsSymbol, compile_drs, _DEF_METH_NAME
 from drudge.utils import sympy_key
 
 
@@ -74,3 +76,18 @@ def test_drs_integers():
     ctx = {'Integer': Integer}
     exec(code, ctx)
     assert ctx['a'] == Rational(1, 4)
+
+
+def test_drs_global_def():
+    """Test global definition operation in drudge scripts."""
+    body = 'a[0] <<= "x"'
+    code = compile_drs(body, '<unknown>')
+    a = [Mock()]
+    def_mock = Mock(return_value=10)
+    setattr(a[0], _DEF_METH_NAME, def_mock)
+    ctx = {'a': a, 'Integer': Integer}
+    exec(code, ctx)
+
+    # Test a is no longer rebound.
+    assert ctx['a'] is a
+    def_mock.assert_called_with('x')
