@@ -1,11 +1,12 @@
 """Tests for drudge scripts."""
 
+import types
 from unittest.mock import Mock
 
 from sympy import Symbol, IndexedBase, Rational, Integer
 
 from drudge import Drudge, Range
-from drudge.drs import DrsSymbol, compile_drs, _DEF_METH_NAME
+from drudge.drs import DrsSymbol, compile_drs, _DEF_METH_NAME, DrsEnv
 from drudge.utils import sympy_key
 
 
@@ -124,3 +125,21 @@ def test_drs_global_def():
     # Test a is no longer rebound.
     assert ctx['a'] is a
     def_mock.assert_called_with('x')
+
+
+def test_drs_env():
+    """Test the drudge script execution environment."""
+
+    dr = Mock()
+    dr.names = types.SimpleNamespace()
+    dr.names.archived = 'archived'
+
+    specials = types.SimpleNamespace()
+    specials.special = 'special'
+
+    env = DrsEnv(dr, specials=specials)
+
+    assert env['archived'] == 'archived'
+    assert env['special'] == 'special'
+    assert env['Range'] is Range
+    assert env['Symbol'] is Symbol

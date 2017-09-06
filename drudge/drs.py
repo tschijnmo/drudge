@@ -197,3 +197,57 @@ def compile_drs(src, filename):
         continue
 
     return compile(root, filename, mode='exec')
+
+
+#
+# Execution environment
+# ---------------------
+#
+
+
+class DrsEnv(dict):
+    """The global scope for drudge script execution.
+    """
+
+    def __init__(self, dr, specials=None):
+        """Initialize the scope."""
+
+        super().__init__()
+
+        self._drudge = dr
+        path = [dr.names]
+        self._path = path
+
+        if specials is not None:
+            path.append(specials)
+
+        import drudge
+        path.append(drudge)
+
+        try:
+            import gristmill
+        except ModuleNotFoundError:
+            pass
+        else:
+            path.append(gristmill)
+
+        import sympy
+        path.append(sympy)
+
+    def __missing__(self, key):
+        """Get the missing name.
+
+        The missing name will be returned.  The result is not cached to avoid
+        surprise.
+        """
+
+        for i in self._path:
+            if hasattr(i, key):
+                resolv = getattr(i, key)
+                break
+            else:
+                continue
+        else:
+            resolv = DrsSymbol(self._drudge, key)
+
+        return resolv
