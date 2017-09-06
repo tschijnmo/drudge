@@ -11,7 +11,27 @@ from sympy import Symbol, Indexed, IndexedBase
 # ---------------------------------
 #
 
-class DrsSymbol(Symbol):
+
+class _Definable:
+    """Mixin for definable objects in drudge scripts.
+    """
+
+    def def_as(self, rhs):
+        """Define itself as a tensor.
+
+        The definition is also added to the name archive.
+        """
+        drudge = self._drudge
+        def_ = drudge.def_(self, rhs)
+        drudge.set_name(def_)
+        return def_
+
+    def __le__(self, rhs):
+        """Make a definition without touching the name archive."""
+        return self._drudge.def_(self, rhs)
+
+
+class DrsSymbol(_Definable, Symbol):
     """Symbols used in drudge scripts.
 
     The drudge symbol needs to behave as similar to the actual symbol as
@@ -71,7 +91,7 @@ class DrsSymbol(Symbol):
         raise TypeError('Drudge script symbol cannot be iterated over.')
 
 
-class DrsIndexed(Indexed):
+class DrsIndexed(_Definable, Indexed):
     """Indexed objects for drudge scripts."""
 
     __slots__ = [

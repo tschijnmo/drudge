@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 from sympy import Symbol, IndexedBase, Rational, Integer
 
+from drudge import Drudge, Range
 from drudge.drs import DrsSymbol, compile_drs, _DEF_METH_NAME
 from drudge.utils import sympy_key
 
@@ -67,6 +68,38 @@ def test_basic_drs_indexed():
                 assert ref == i
                 assert hash(ref) == hash(i)
                 assert sympy_key(ref) == sympy_key(i)
+
+
+def test_drs_tensor_def_dispatch(spark_ctx):
+    """Tests the dispatch to drudge for tensor definitions."""
+
+    dr = Drudge(spark_ctx)
+    names = dr.names
+
+    i_symb = Symbol('i')
+    x = IndexedBase('x')
+    rhs = x[i_symb]
+
+    dr.add_default_resolver(Range('R'))
+
+    a = DrsSymbol(dr, 'a')
+    i = DrsSymbol(dr, 'i')
+    for lhs in [a, a[i]]:
+        expected = dr.define(lhs, rhs)
+
+        def_ = lhs <= rhs
+        assert def_ == expected
+        assert not hasattr(names, 'a')
+        assert not hasattr(names, '_a')
+
+        def_ = lhs.def_as(rhs)
+        assert def_ == expected
+        assert names.a == expected
+        if isinstance(lhs, DrsSymbol):
+            assert names._a == Symbol('a')
+        else:
+            assert names._a == IndexedBase('a')
+        dr.unset_name(def_)
 
 
 def test_drs_integers():
