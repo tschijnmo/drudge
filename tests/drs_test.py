@@ -1,8 +1,8 @@
 """Tests for drudge scripts."""
 
-from sympy import Symbol, IndexedBase
+from sympy import Symbol, IndexedBase, Rational, Integer
 
-from drudge.drs import DrsSymbol
+from drudge.drs import DrsSymbol, compile_drs
 from drudge.utils import sympy_key
 
 
@@ -65,3 +65,12 @@ def test_basic_drs_indexed():
                 assert ref == i
                 assert hash(ref) == hash(i)
                 assert sympy_key(ref) == sympy_key(i)
+
+
+def test_drs_integers():
+    """Test fixers for integer literals in drudge scripts."""
+    body = 'a = 1 / (1 + (1 + 2))'
+    code = compile_drs(body, '<unknown>')
+    ctx = {'Integer': Integer}
+    exec(code, ctx)
+    assert ctx['a'] == Rational(1, 4)

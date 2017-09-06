@@ -1,5 +1,6 @@
 """Support for drudge scripts."""
 
+import ast
 import collections
 
 from sympy import Symbol, Indexed, IndexedBase
@@ -103,3 +104,43 @@ class DrsIndexed(Indexed):
     @classmethod
     def class_key(cls):
         return Indexed.class_key()
+
+
+#
+# Python syntax tree manipulation
+# -------------------------------
+#
+
+
+class _NumFixer(ast.NodeTransformer):
+    """Fixer for number literals.
+
+    Integer literals will be changed into creation of symbolic integers.
+    """
+
+    def visit_Num(self, node: ast.Num):
+        """Update the number nodes."""
+        val = node.n
+        if isinstance(val, int):
+            constr = ast.Name(id='Integer', ctx=ast.Load())
+            ast.copy_location(constr, node)
+            fixed = ast.Call(func=constr, args=[node], keywords=[])
+            ast.copy_location(fixed, node)
+            return fixed
+        else:
+            return val
+
+
+_FIXERS = [_NumFixer()]
+
+
+def compile_drs(src, filename):
+    """Compile the drudge script."""
+
+    root = ast.parse(src, filename=filename)
+
+    for i in _FIXERS:
+        root = i.visit(root)
+        continue
+
+    return compile(root, filename, mode='exec')
