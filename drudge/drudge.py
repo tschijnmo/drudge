@@ -3,7 +3,6 @@
 import contextlib
 import functools
 import inspect
-import itertools
 import operator
 import pickle
 import sys
@@ -1648,15 +1647,11 @@ class Drudge:
             )
         self._simple_merge = value
 
-    #
-    # Settings for drudge scripts.
-    #
-
     @property
     def default_einst(self):
-        """If definitions in drudge scripts default to Einstein convention.
+        """If :py:meth:`def_` takes Einstein convention.
 
-        This property tunes the behaviour of :py:meth:`do_def`.  When it is
+        This property tunes the behaviour of :py:meth:`def_`.  When it is
         set, the Einstein summation convention is always assumed for the
         right-hand side for that function.
         """
@@ -1664,7 +1659,7 @@ class Drudge:
 
     @default_einst.setter
     def default_einst(self, value):
-        """Set if Einstein convention definition is default for definitions.
+        """Set if Einstein convention definition is default for def_.
         """
 
         if value is not True and value is not False:
@@ -1674,16 +1669,21 @@ class Drudge:
             )
         self._default_einst = value
 
-    def form_base_name(self, tensor_def: TensorDef) -> typing.Optional[str]:
-        """Form the name for the base in a definition in drudge script.
+    #
+    # Name archive utilities.
+    #
 
-        This method is called by :py:meth:`do_def` to get a formatted string
+    def form_base_name(self, tensor_def: TensorDef) -> typing.Optional[str]:
+        """Form the name for the base to use for tensor definitions.
+
+        This method is called by :py:meth:`set_name` to get a formatted string
         for the base of the tensor definition, which is to be used as the
         name for the base in the name archive.  ``None`` can be returned to
         stop the base from being added.
 
         By default, an underscore is put in front of the string form of the
         base.
+
         """
         if self is not tensor_def.drudge:
             raise ValueError('Unable to add definition from another drudge.')
@@ -1691,37 +1691,68 @@ class Drudge:
         return '_' + str(tensor_def.base)
 
     def form_def_name(self, tensor_def: TensorDef) -> typing.Optional[str]:
-        """Form the name for a definition in drudge script.
+        """Form the name for a tensor definition in name archive.
 
-        The result will be used by :py:meth:`do_def` as the name of the
+        The result will be used by :py:meth:`set_name` as the name of the
         tensor definition itself in the name archive.  By default, it is set
         just to be plain string form of the base of the definition.
+
         """
         if self is not tensor_def.drudge:
             raise ValueError('Unable to add definition from another drudge.')
         return str(tensor_def.base)
 
-    #
-    # Name archive utilities.
-    #
-
     def set_name(self, *args, **kwargs):
-        """Set the object into the name archive of the drudge.
+        """Set objects into the name archive of the drudge.
 
-        For positional arguments, the str form of the given label is going to be
-        used for the name of the object.  For keyword arguments, the keyword
-        will be used for the name.
+        For positional arguments, the str form of the given label is going to
+        be used for the name of the object.  Special treatment is given to
+        tensor definitions, the base and and definition itself will be added
+        under names given by the methods :py:meth:`form_base_name`,
+        and :py:meth:`form_def_name`.
+
+        For keyword arguments, the keyword will be used for the name.
         """
 
-        to_set = itertools.chain(
-            ((str(i), i) for i in args), kwargs.items()
-        )
-
-        for label, obj in to_set:
+        for label, obj in self._get_name_obj_pairs(args, kwargs):
             setattr(self._names, label, obj)
             continue
-
         return
+
+    def unset_name(self, *args, **kwargs):
+        """Unset names from name archive.
+
+        This method is mostly used to undo the effect of :py:meth:`set_name`.
+        Here, names that are not actually present in the name archive will be
+        skipped without error.
+
+        """
+
+        for label, obj in self._get_name_obj_pairs(args, kwargs):
+            if hasattr(self.names, label):
+                delattr(self._names, label)
+            continue
+        return
+
+    def _get_name_obj_pairs(self, args, kwargs):
+        """Get the name/object pairs for name archive.
+
+        The pairs are generated lazily.
+        """
+
+        for i in args:
+            if isinstance(i, TensorDef):
+                for j, k in [
+                    (self.form_base_name(i), i.base),
+                    (self.form_def_name(i), i)
+                ]:
+                    if j is not None:
+                        yield j, k
+            else:
+                yield str(i), i
+            continue
+
+        yield from kwargs.items()
 
     @property
     def names(self):
@@ -2225,52 +2256,22 @@ class Drudge:
         else:
             return args[0], args[1:]
 
-    def do_def(self, lhs, rhs) -> TensorDef:
-        """Make a tensor definition, mostly inside drudge scripts.
+    def def_(self, *args) -> TensorDef:
+        """Make a tensor definition according to convention set in drudge.
 
-        This method is mostly used for tensor definition operations inside
-        drudge scripts.  In addition to making the tensor definition,
-        the base and the definition will also be attempted to be added to the
-        name archive.  The exact operations are tunable via properties
-        :py:meth:`default_einst` :py:meth:`form_base_name`,
-        and :py:meth:`form_def_name`.
+        This method is a convenient utility for making tensor definitions.
+        Basically it calls :py:meth:`define` or :py:meth:`define_einst`
+        according to the value of the property :py:meth:`default_einst`.
+
+        It is also the operations used for tensor definition operations inside
+        drudge scripts.
 
         """
 
         if self.default_einst:
-            def_ = self.define_einst(lhs, rhs)
+            return self.define_einst(*args)
         else:
-            def_ = self.define(lhs, rhs)
-
-        to_set = self._get_names_for_def(def_)
-        self.set_name(**to_set)
-
-        return def_
-
-    def undef(self, tensor_def: TensorDef):
-        """Unset a previous definition in name archive.
-
-        This method is mostly used inside drudge scripts to undo the effect
-        of a tensor definition operation.  The names for the given definition
-        will be purged from the name archive.
-
-        """
-
-        to_unset = self._get_names_for_def(tensor_def)
-        for i, j in to_unset.items():
-            if hasattr(self.names, i):
-                delattr(self.names, i)
-            continue
-
-        return
-
-    def _get_names_for_def(self, def_: TensorDef):
-        """Get the mapping for name/object from a tensor definition."""
-        pairs = [
-            (self.form_base_name(def_), def_.base),
-            (self.form_def_name(def_), def_)
-        ]
-        return {i: j for i, j in pairs if i is not None}
+            return self.define(*args)
 
     #
     # Printing

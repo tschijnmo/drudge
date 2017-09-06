@@ -526,19 +526,22 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def1 == y_def
     assert y_def2 == y_def
 
-    # Test the drudge script facility.
+    # Test the def_ utility.
     assert not dr.default_einst
     dr.default_einst = True
-    y_def3 = dr.do_def(y[i], rhs)
+    y_def3 = dr.def_(y[i], rhs)
     dr.default_einst = False
-    y_def4 = dr.do_def(y[i], rhs)
+    y_def4 = dr.def_(y[i], rhs)
     assert y_def3 == y_def
     assert y_def4 != y_def
     assert len(y_def4.local_terms) == 1
     assert len(y_def4.local_terms[0].sums) == 0
+
+    # Test name archive utility for tensor definitions.
+    dr.set_name(y_def4)
     assert p._y == y
     assert p.y == y_def4
-    dr.undef(y_def4)
+    dr.unset_name(y_def4)
     assert not hasattr(p, '_y')
     assert not hasattr(p, 'y')
 
