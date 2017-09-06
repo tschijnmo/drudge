@@ -221,6 +221,7 @@ class DrsEnv(dict):
         if specials is not None:
             path.append(specials)
 
+        path.append(dr)
         import drudge
         path.append(drudge)
 
@@ -234,12 +235,18 @@ class DrsEnv(dict):
         import sympy
         path.append(sympy)
 
-    def __missing__(self, key):
+        import builtins
+        path.append(builtins)
+
+    def __missing__(self, key: str):
         """Get the missing name.
 
         The missing name will be returned.  The result is not cached to avoid
         surprise.
         """
+
+        if key.startswith('__') and key.endswith('__'):
+            raise KeyError(key)
 
         for i in self._path:
             if hasattr(i, key):
@@ -249,5 +256,4 @@ class DrsEnv(dict):
                 continue
         else:
             resolv = DrsSymbol(self._drudge, key)
-
         return resolv

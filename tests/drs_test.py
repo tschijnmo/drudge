@@ -3,6 +3,7 @@
 import types
 from unittest.mock import Mock
 
+import pytest
 from sympy import Symbol, IndexedBase, Rational, Integer
 
 from drudge import Drudge, Range
@@ -130,7 +131,7 @@ def test_drs_global_def():
 def test_drs_env():
     """Test the drudge script execution environment."""
 
-    dr = Mock()
+    dr = types.SimpleNamespace()
     dr.names = types.SimpleNamespace()
     dr.names.archived = 'archived'
 
@@ -139,7 +140,12 @@ def test_drs_env():
 
     env = DrsEnv(dr, specials=specials)
 
+    with pytest.raises(KeyError):
+        env['__tracebackhide__']
+
     assert env['archived'] == 'archived'
     assert env['special'] == 'special'
+    assert env['names'] is dr.names
     assert env['Range'] is Range
     assert env['Symbol'] is Symbol
+    assert env['range'] is range
