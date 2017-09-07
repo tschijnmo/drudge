@@ -504,6 +504,9 @@ class GenMBDrudge(FockDrudge):
     one-body and two-body interaction, both of them are assumed to be spin
     conserving.
 
+    Also Einstein summation convention is assumed for this drudge in drudge
+    scripts.
+
     .. attribute:: op
 
         The vector base for the field operators.
@@ -724,6 +727,8 @@ class GenMBDrudge(FockDrudge):
 
         simpled_ham = orig_ham.simplify()
         self.ham = simpled_ham
+
+        self.default_einst = True
 
 
 class PartHoleDrudge(GenMBDrudge):
