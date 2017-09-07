@@ -195,6 +195,7 @@ DRUDGE_SCRIPT = """
 set_dbbar_base(t, 2)
 x = x <= t[a, b, i, j] * u[i, j, a, b] + t[b, a, i, j] * u[i, j, a, b]
 s = simplify(x)
+s_str = repr(s)
 """
 
 
@@ -216,3 +217,7 @@ def test_drs_for_parthole_drudge(parthole):
         t[a, b, i, j] * u[i, j, a, b] + t[b, a, i, j] * u[i, j, a, b]
     )
     assert s == 0
+
+    # Different repr form in different environments.
+    assert repr(s).find('TensorDef object at 0x') > 0
+    assert env['s_str'] == 'x = 0'

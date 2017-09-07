@@ -250,6 +250,19 @@ class Tensor:
     # Printing support
     #
 
+    def __repr__(self):
+        """Get the machine string representation.
+
+        In normal execution environment, only the memory address is displayed,
+        since the tensor may or may not be evaluated yet.  In drudge scripts,
+        the readable string representation is returned.
+        """
+
+        if self._drudge.inside_drs:
+            return str(self)
+        else:
+            return super().__repr__()
+
     def __str__(self):
         """Get the string representation of the tensor.
 
