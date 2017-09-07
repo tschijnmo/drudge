@@ -189,3 +189,30 @@ def test_parthole_drudge_canonicalize_complex_exprs(parthole):
     twice = once.canon().reset_dumms()
 
     assert once == twice
+
+
+DRUDGE_SCRIPT = """
+set_dbbar_base(t, 2)
+x = x <= t[a, b, i, j] * u[i, j, a, b] + t[b, a, i, j] * u[i, j, a, b]
+s = simplify(x)
+"""
+
+
+def test_drs_for_parthole_drudge(parthole):
+    """Test drudge script execution for particle-hole drudges."""
+    dr = parthole
+    p = dr.names
+
+    env = dr.exec_drs(DRUDGE_SCRIPT, '<inline>')
+
+    x_def = env['x']
+    s = env['s']
+
+    t = IndexedBase('t')
+    u = p.u
+    i, j, a, b = p.i, p.j, p.a, p.b
+
+    assert x_def == dr.einst(
+        t[a, b, i, j] * u[i, j, a, b] + t[b, a, i, j] * u[i, j, a, b]
+    )
+    assert s == 0
