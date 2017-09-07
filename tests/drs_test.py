@@ -7,7 +7,9 @@ import pytest
 from sympy import Symbol, IndexedBase, Rational, Integer
 
 from drudge import Drudge, Range
-from drudge.drs import DrsSymbol, compile_drs, _DEF_METH_NAME, DrsEnv
+from drudge.drs import (
+    DrsSymbol, compile_drs, _DEF_METH_NAME, DrsEnv, _DRUDGE_MAGIC, main
+)
 from drudge.utils import sympy_key
 
 
@@ -170,3 +172,32 @@ def test_drs_env():
     assert env['Range'] is Range
     assert env['Symbol'] is Symbol
     assert env['range'] is range
+
+
+CONF_SCRIPT = """
+from dummy_spark import SparkContext
+from drudge import Drudge
+
+{} = Drudge(SparkContext())
+""".format(_DRUDGE_MAGIC)
+
+DRUDGE_SCRIPT = """
+def_ = x <= 1 / 5
+"""
+
+
+def test_drs_main(tmpdir):
+    """Test drudge main function."""
+    olddir = tmpdir.chdir()
+    with open('conf.py', 'w') as fp:
+        fp.write(CONF_SCRIPT)
+    with open('run.drs', 'w') as fp:
+        fp.write(DRUDGE_SCRIPT)
+
+    env = main(['conf.py', 'run.drs'])
+    assert 'def_' in env
+    def_ = env['def_']
+    assert def_.n_terms == 1
+    assert def_.rhs_terms[0].amp == Rational(1, 5)
+
+    olddir.chdir()

@@ -1,5 +1,6 @@
 """Support for drudge scripts."""
 
+import argparse
 import ast
 import collections
 import inspect
@@ -280,3 +281,51 @@ class DrsEnv(dict):
         else:
             resolv = DrsSymbol(self._drudge, key)
         return resolv
+
+
+#
+# The main driver.
+#
+
+
+_DRUDGE_MAGIC = 'DRUDGE'
+
+_CONF_HELP = '''
+The config file for the drudge to be used, it needs to be a Python script
+finally setting a global variable named ``{}`` for the drudge.
+'''.format(_DRUDGE_MAGIC)
+
+
+def main(argv):
+    """The main driver for using drudge as a program.
+    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('conf', type=str, metavar='CONF', help=_CONF_HELP)
+    parser.add_argument(
+        'script', type=str, metavar='SCRIPT',
+        help='The drudge script to execute'
+    )
+    args = parser.parse_args(args=argv)
+
+    with open(args.conf, 'r') as conf_fp:
+        conf_src = conf_fp.read()
+        conf_code = compile(conf_src, args.conf, 'exec')
+
+    with open(args.script, 'r') as script_fp:
+        script_src = script_fp.read()
+
+    conf_env = {}
+    exec(conf_code, conf_env)
+    if _DRUDGE_MAGIC not in conf_env:
+        raise ValueError('Drudge is not set to {} by {}'.format(
+            _DRUDGE_MAGIC, args.conf
+        ))
+    drudge = conf_env[_DRUDGE_MAGIC]
+    from drudge import Drudge
+    if not isinstance(drudge, Drudge):
+        raise ValueError('Invalid drudge is set to {} by {}'.format(
+            _DRUDGE_MAGIC, args.conf
+        ))
+
+    return drudge.exec_drs(script_src, args.script)
