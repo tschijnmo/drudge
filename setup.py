@@ -21,7 +21,7 @@ PROJ_ROOT = os.path.dirname(os.path.abspath(__file__))
 INCLUDE_DIRS = [
     '/'.join([PROJ_ROOT, i])
     for i in ['deps/libcanon/include', 'drudge']
-    ]
+]
 COMPILE_FLAGS = ['-std=c++14']
 
 canonpy = Extension(
@@ -51,5 +51,10 @@ setup(
     packages=find_packages(),
     ext_modules=[canonpy, wickcore],
     package_data={'drudge': ['templates/*']},
-    install_requires=['sympy', 'ipython', 'Jinja2']
+    install_requires=['sympy', 'ipython', 'Jinja2'],
+    entry_points={
+        'console_scripts': [
+            'drudge = drudge.drs:main'
+        ]
+    }
 )

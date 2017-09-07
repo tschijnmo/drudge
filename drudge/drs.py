@@ -296,17 +296,20 @@ finally setting a global variable named ``{}`` for the drudge.
 '''.format(_DRUDGE_MAGIC)
 
 
-def main(argv):
+def main(argv=None):
     """The main driver for using drudge as a program.
     """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='drudge')
     parser.add_argument('conf', type=str, metavar='CONF', help=_CONF_HELP)
     parser.add_argument(
         'script', type=str, metavar='SCRIPT',
         help='The drudge script to execute'
     )
-    args = parser.parse_args(args=argv)
+    if argv is not None:
+        args = parser.parse_args(args=argv)
+    else:
+        args = parser.parse_args()
 
     with open(args.conf, 'r') as conf_fp:
         conf_src = conf_fp.read()
