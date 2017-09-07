@@ -582,13 +582,22 @@ class Tensor:
     def simplify(self):
         """Simplify the tensor.
 
-        This is the master driver function for tensor simplification.
+        This is the master driver function for tensor simplification.  Inside
+        drudge scripts, it also make eager evaluation and repartition the terms
+        among the Spark workers, with the result cached.  This is for the ease
+        of users unfamiliar with the Spark lazy execution model.
 
         """
 
-        return Tensor(
+        result = Tensor(
             self._drudge, self._simplify(self._terms), expanded=True
         )
+
+        if self._drudge.inside_drs:
+            result.repartition(cache=True)
+            _ = result.n_terms
+
+        return result
 
     def _simplify(self, terms):
         """Get the terms in the simplified form."""
@@ -2671,6 +2680,17 @@ class Drudge:
         exec(code, env)
         self._inside_drs = False
         return env
+
+    @staticmethod
+    def simplify(arg, **kwargs):
+        """Make simplification for both SymPy expressions and tensors.
+
+        This method is mostly designed to be used in drudge scripts.  The actual
+        simplification is dispatched based on the type of the given argument.
+        Simple SymPy simplification for SymPy expressions, drudge simplification
+        for drudge tensors or tensor definitions.
+        """
+        return arg.simplify(**kwargs)
 
 
 #
