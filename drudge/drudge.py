@@ -2656,6 +2656,14 @@ class Drudge:
         4. All left-shift augmented assignment ``<<=`` operations are
            replaced by ``def_as`` method calling.
 
+        5. Some operations could have slightly different behaviour more suitable
+           inside drudge scripts.  For developers, the :py:meth:`inside_drs`
+           property can be used to query if the function is called inside a
+           drudge script.
+
+        For a non-technical introduction to drudge script, please see
+        :ref:`drs intro`.
+
         """
         code = compile_drs(src, filename)
         env = DrsEnv(self, specials=self._drs_specials)

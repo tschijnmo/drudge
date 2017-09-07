@@ -2,6 +2,7 @@ Drudge tutorial for beginners
 =============================
 
 .. currentmodule:: drudge
+.. highlight:: Python
 
 
 Get started
@@ -324,6 +325,161 @@ directly compute the expectation value with respect to the Fermi vacuum by
 
 These additional operations are called tensor methods and are documented in the
 drudge subclasses.
+
+
+.. _drs intro:
+
+Drudge scripts
+--------------
+
+For maximum flexibility, drudge has been designed to be a Python library from
+the beginning.  However, in a lot of cases, like for small tasks or for users
+unfamiliar with the Python language or the Spark environment, a domain-specific
+language capable of making simple tasks simple can be desired.  Drudge script is
+such a language for this purpose.
+
+A drudge script is essentially a Python script heavily tweaked to be executed
+inside a special environment.  So all Python lexicographical and syntactical
+rules apply.  For a technical description of the pre-processing and execution
+drudge scripts, please see :py:meth:`Drudge.exec_drs`.  To execute a drudge
+script, we first need a :py:class:`Drudge` object, such that the domain specific
+information about the current problem can be available.  For this, we can either
+have a normal Python script, where a Drudge object is created with its
+:py:meth:`Drudge.exec_drs` called with the source code for the drudge script,
+and execute it normally as Python scripts.  Or drudge can also be used as the
+main program, either by ``python3 -m drudge`` or ``drudge``.  Then two files
+needs to be given as arguments.  The first one is a configuration script, which
+is a normal Python script with a Drudge object assigned to a special variable
+``DRUDGE``.  Then this Drudge object will be used for the execution of the
+actual drudge script given in the second argument.
+
+As an example illustrating the basic principles and ease of drudge scripts, we
+assume that we are working on a drudge with a single range registered in the
+name archive as ``R``.  To create a symbolic definition of a matrix as a product
+of two matrices, suppose the drudge object can be accessed by a variable ``dr``,
+we need to write something like::
+
+    p = dr.names
+    r = sympy.IndexedBase('r')
+    x = sympy.IndexedBase('x')
+    y = sympy.IndexedBase('y')
+    i, j, k = sympy.symbols('i j k')
+    def_ = dr.define(r, (i, p.R), (j, p.R), dr.sum((k, p.R), x[i, k] * y[k, j]))
+
+which can be quite cumbersome for such a simple task.  Suppose the drudge has a
+resolver capable of resolving any index to the range, we can write::
+
+    r = sympy.IndexedBase('r')
+    x = sympy.IndexedBase('x')
+    y = sympy.IndexedBase('y')
+    i, j, k = sympy.symbols('i j k')
+    def_ = dr.define_einst(r[i, j], x[i, k] * y[k, j])
+
+which although is simplified a lot, still contains quite a lot of noise. Because
+of the Python execution model and scoping rules, the indexed bases and symbols
+must be explicitly created before they can be used.
+
+Inside a drudge script, names in the name archive, all methods of the current
+drudge object, as well as names from the drudge, gristmill (if installed), and
+the SymPy package can directly be used without any qualification. More
+importantly, Symbol objects and IndexedBase objects are no longer needed to be
+explicitly created.  All undefined names will be resolved as an atomic symbol,
+which can be construed as both a SymPy symbol and a SymPy IndexedBase.  With
+these, the above definition can be simplified into::
+
+    def_ = define_einst(r[i, j], x[i, k] * y[k, j])
+
+Due to the ubiquity of tensor definitions in common drudge tasks, a special
+operator ``<<=`` (Python left-shift augmented assignment operator) is introduced
+for the making definitions.  With this, the above definition can be written as::
+
+    r[i, j] <<= sum((k, R), x[i, k] * y[k, j])
+
+which makes the definition and put the definition in the name archive by
+:py:meth:`Drudge.set_name`.  So by default, the definition is put into the name
+archive under name ``r`` as a :py:class:`TensorDef` object, and the base of the
+definition is put under name ``_r``.  Since names in the name archive do not
+need to be qualified in drudge scripts::
+
+    sum((k, R), r[i, k] * r[k, j])
+
+directly gives us the chain product :math:`\mathbf{XYXY}`.  And symbolic
+references to the ``r`` tensor without the concrete definition substituted in
+can still be made by using ``_r``, like::
+
+    s = sum((k, R), _r[i, k] * _r[k, j])
+
+which gives us the product :math:`\mathbf{RR}`.  For this, the actual definition
+can be substituted explicitly when desired, for example, by::
+
+    s.subst(r)
+
+which gives us :math:`\mathbf{XYXY}`.
+
+Note that the definition by ``<<=`` is made by using the :py:meth:`Drudge.def_`
+method.  As a result, when the drudge property :py:meth:`Drudge.default_einst`
+is set, Einstein summation convention is going to be automatically applied to
+the right-hand side.  So we can simply write::
+
+    r[i, j] <<= x[i, k] * y[k, j]
+
+when the ranges of :math:`i, j, k` can be resolved by the drudge.
+
+In cases where tainting of the global name archive is undesired for a tensor
+definition, we can use the ``<=`` operator, which simply returns the definition
+object without adding it to the name archive.  For instance, to store the tensor
+definition in a variable ``def_``, we can use::
+
+    def_ = r[i, j] <= x[i, k] * y[k, j]
+
+This can be useful in functions inside drudge scripts.
+
+Additionally, drudges could have more functions specifically to be used inside
+drudge scripts.  For instance, in the base :py:class:`Drudge` class, we have a
+simple constructor ``S``, for converting strings to the special kind of symbols
+that can be indexed and used in ``<<=`` in drudge scripts.  Also have ``sum_``
+for the actual Python built-in ``sum`` function, which is shadowed by the
+:py:meth:`Drudge.sum` method.
+
+For the taste of users without much object-oriented programming, inside drudge
+scripts, method calling like ``obj.meth(args)`` can also be written as
+``meth(obj, args)``.  For instance, for a tensor ``tensor``::
+
+    simplify(tensor)
+
+is equivalent to::
+
+    tensor.simplify()
+
+Attribute access can be done in the same way, for instance,::
+
+    n_terms(tensor)
+
+is equivalent to::
+
+    tensor.n_terms
+
+Note that a caveat of this syntactic sugar is that the method name cannot be
+defined to be anything else before the calling.  For instance,::
+
+    n_terms = 10
+    n_terms(tensor)
+
+does not work, since ``n_terms`` is already defined to the integer 10, thus
+cannot be called any more.  Another caveat is that static methods cannot be
+called in this way, which fortunately does not appear a lot in common usages of
+drudge.
+
+For the convenience of symbolic computation, all integer literals inside drudge
+scripts are automatically resolved to SymPy integer values, rather than the
+built-in integer values.  As a result, we can directly write::
+
+    1 / 2
+
+for the rational value of one-half, without having to worry about the truncation
+or degradation to finite-precision floating-point numbers for Python integers.
+To access built-in integers, which is normally unnecessary, we can explicitly
+write something like ``int(1)``.
 
 
 Examples on real-world applications
