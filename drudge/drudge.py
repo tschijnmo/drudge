@@ -2620,7 +2620,41 @@ class Drudge:
         """Execute the drudge script.
 
         Drudge script are Python scripts tweaked to be executed in special
-        environments.
+        environments.  This domain-specific language is made for the
+        convenience users for simple tasks, especially for users unfamiliar
+        with Python.
+
+        Being a Python script executed inside the current interpreter,
+        drudge script differs from normal Python scripts by
+
+        1. All integer literal are resolved into SymPy symbolic integers.
+
+        2. Global names are resolved in the order of,
+
+           - the name archive in the current drudge,
+           - the special drudge script functions in the drudge,
+           - the drudge package exported names,
+           - the gristmill package exported names (if installed),
+           - the SymPy exported names,
+           - built-in Python names.
+
+        3. All unresolved names are created as a special kind of symbolic
+           object, which behaves basically like SymPy ``Symbol``, but with
+           differences,
+
+           1. They are be directly subscripted, like ``IndexedBase``.
+
+           2. ``def_as`` method can be used to make a tensor definition with
+              such symbols or its indexing on the left-hand side, the other
+              operand on its right-hand side.  The resulted definition is also
+              added to the name archive of the drudge.
+
+           3. ``<=`` operator can be used similar to ``def_as``, except the
+              definition is not added to the archive.  The result can be put
+              into local variables.
+
+        4. All left-shift augmented assignment ``<<=`` operations are
+           replaced by ``def_as`` method calling.
 
         """
         code = compile_drs(src, filename)
