@@ -7,7 +7,8 @@ import pickle
 
 import pytest
 from sympy import (
-    sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild
+    sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild,
+    Rational
 )
 
 from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef
@@ -711,3 +712,23 @@ def test_memoise(free_alg, tmpdir):
         assert dr.memoize(get_zero, filename) == 0
         assert n_calls[0] == 1
         assert len(log.getvalue().splitlines()) == 2
+
+
+TEST_DRS = """
+x[i] <<= 1 / 2 * sum((i, R), m[i] * v[i])
+y = sum_(range(10))
+"""
+
+
+def test_simple_drs(free_alg):
+    """Test a simple drudge script."""
+    dr = free_alg
+    p = dr.names
+    env = dr.exec_drs(TEST_DRS)
+
+    x = Vec('x')
+    i = p.i
+    def_ = dr.define_einst(x[i], Rational(1, 2) * p.m[i] * p.v[i])
+    assert env['x'] == def_
+    assert env['_x'] == x
+    assert env['y'] == 45

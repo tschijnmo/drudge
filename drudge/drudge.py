@@ -16,6 +16,7 @@ from pyspark import RDD, SparkContext
 from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols, sympify
 
 from .canonpy import Perm, Group
+from .drs import compile_drs, DrsEnv, DrsSymbol
 from .report import Report
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
@@ -1562,6 +1563,12 @@ class Drudge:
 
         self._tensor_methods = {}
 
+        self._drs_specials = types.SimpleNamespace()
+        self._drs_specials.S = DrsSymbol
+        self._drs_specials.sum_ = sum
+
+        self._inside_drs = False
+
     @property
     def ctx(self):
         """The Spark context of the drudge.
@@ -2599,6 +2606,29 @@ class Drudge:
                 pickle.dump(res, fp)
 
         return res
+
+    #
+    # Drudge scripts support
+    #
+
+    @property
+    def inside_drs(self):
+        """If we are currently inside a drudge script."""
+        return self._inside_drs
+
+    def exec_drs(self, src, filename='<unknown>'):
+        """Execute the drudge script.
+
+        Drudge script are Python scripts tweaked to be executed in special
+        environments.
+
+        """
+        code = compile_drs(src, filename)
+        env = DrsEnv(self, specials=self._drs_specials)
+        self._inside_drs = True
+        exec(code, env)
+        self._inside_drs = False
+        return env
 
 
 #
