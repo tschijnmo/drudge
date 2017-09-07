@@ -72,6 +72,27 @@ def test_basic_drs_indexed():
                 assert sympy_key(ref) == sympy_key(i)
 
 
+def test_drs_symb_call():
+    """Test calling methods by drs symbols."""
+
+    class TestCls:
+        def meth(self):
+            return 'meth'
+
+        @property
+        def prop(self):
+            return 'prop'
+
+    obj = TestCls()
+    meth = DrsSymbol(None, 'meth')
+    assert meth(obj) == 'meth'
+    prop = DrsSymbol(None, 'prop')
+    assert prop(obj) == 'prop'
+    invalid = DrsSymbol(None, 'invalid')
+    with pytest.raises(NameError):
+        invalid(obj)
+
+
 def test_drs_tensor_def_dispatch(spark_ctx):
     """Tests the dispatch to drudge for tensor definitions."""
 

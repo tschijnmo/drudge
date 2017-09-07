@@ -2,6 +2,7 @@
 
 import ast
 import collections
+import inspect
 
 from sympy import Symbol, Indexed, IndexedBase
 
@@ -89,6 +90,28 @@ class DrsSymbol(_Definable, Symbol):
         objects.
         """
         raise TypeError('Drudge script symbol cannot be iterated over.')
+
+    def __call__(self, *args, **kwargs):
+        """Make a call to a tensor method."""
+        name = self.name
+
+        if len(args) == 0:
+            raise NameError('Undefined function', name)
+        else:
+            target = args[0]
+            rest = args[1:]
+            err = NameError('Invalid method', name, 'for', str(type(target)))
+            if not hasattr(target, name):
+                raise err
+            meth = getattr(target, name)
+            if inspect.ismethod(meth):
+                # It has a caveat that static methods might not be able to be
+                # called.
+                return meth(*rest, **kwargs)
+            elif len(rest) == 0 and len(kwargs) == 0:
+                return meth
+            else:
+                raise err
 
 
 class DrsIndexed(_Definable, Indexed):

@@ -717,6 +717,7 @@ def test_memoise(free_alg, tmpdir):
 TEST_DRS = """
 x[i] <<= 1 / 2 * sum((i, R), m[i] * v[i])
 y = sum_(range(10))
+n = n_terms(x)
 """
 
 
@@ -732,3 +733,4 @@ def test_simple_drs(free_alg):
     assert env['x'] == def_
     assert env['_x'] == x
     assert env['y'] == 45
+    assert env['n'] == 1
