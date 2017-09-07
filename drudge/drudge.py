@@ -1845,7 +1845,7 @@ class Drudge:
 
         base
             The SymPy indexed base object or vectors whose symmetry is to be
-            set.
+            set.  Their label can be used as well.
 
         symms
             The generators of the symmetry.  It can be a single None to remove

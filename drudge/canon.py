@@ -193,12 +193,22 @@ def _build_eldag(sums, factors, symms):
 
         if n_indices < 2:
             factor_symms = None
-        elif (base, n_indices) in symms:
-            factor_symms = symms[base, n_indices]
-        elif base in symms:
-            factor_symms = symms[base]
         else:
-            factor_symms = None
+            prim_keys = [base]
+            if hasattr(base, 'label'):
+                prim_keys.append(base.label)
+            keys = itertools.chain(
+                ((i, n_indices) for i in prim_keys),
+                prim_keys
+            )
+            for i in keys:
+                if i in symms:
+                    factor_symms = symms[i]
+                    break
+                else:
+                    continue
+            else:
+                factor_symms = None
 
         index_nodes = _proc_indices(indices, dumms, eldag)
         idx = eldag.add_node(
@@ -255,7 +265,7 @@ def _proc_indices(indices, dumms, eldag):
             substs = {
                 involved[v]: _placeholders[i]
                 for i, v in enumerate(edges)
-                }
+            }
             form = expr.xreplace(substs)
 
             order = sympy_key(form)
