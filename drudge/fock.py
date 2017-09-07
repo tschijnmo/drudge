@@ -6,9 +6,9 @@ and annihilation operators acting on fermion or boson Fock spaces.
 """
 
 import functools
+import typing
 import warnings
 
-import typing
 from pyspark import RDD
 from sympy import (
     KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols, conjugate
@@ -227,6 +227,9 @@ class FockDrudge(WickDrudge):
 
         """
 
+        # Normalize the type of n_body.
+        n_body = int(n_body)
+
         # No symmetry going to be added for less than two body.
         if n_body < 2:
             return
@@ -259,13 +262,15 @@ class FockDrudge(WickDrudge):
         be zero, which gives one chunk of symmetric slots only.
         """
 
+        n_body = int(n_body)
+
         if n_body < 2:
             raise ValueError(
                 'Invalid body count', n_body,
                 'expecting a number greater than one'
             )
 
-        n_body2 = n_body if n_body2 is None else n_body2
+        n_body2 = n_body if n_body2 is None else int(n_body2)
         n_slots = n_body + n_body2
 
         transp_acc = NEG if self._exch == FERMI else IDENT
