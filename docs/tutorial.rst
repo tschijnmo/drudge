@@ -481,6 +481,12 @@ or degradation to finite-precision floating-point numbers for Python integers.
 To access built-in integers, which is normally unnecessary, we can explicitly
 write something like ``int(1)``.
 
+For convenience of users, some drudge functions has got slightly different
+behaviour inside drudge scripts.  For instance, the :py:meth:`Tensor.simplify`
+method will eagerly compute the result and repartition the terms among the
+workers.  And tensors also have more readable string representation inside
+drudge scripts.
+
 
 Examples on real-world applications
 -----------------------------------
