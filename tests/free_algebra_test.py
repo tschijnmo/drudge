@@ -674,15 +674,17 @@ def test_tensor_can_be_added_summation(free_alg):
 
 
 def test_pickling_tensors(free_alg):
-    """Test tensors can be correctly pickled and unpickled."""
+    """Test tensors and definitions can be correctly pickled and unpickled."""
 
     dr = free_alg
     p = dr.names
     x = IndexedBase('x')
     v = Vec('v')
+    b = Vec('b')
 
     tensor = dr.einst(x[p.i] * v[p.i])
-    serialized = pickle.dumps(tensor)
+    def_ = dr.define(b, tensor)
+    serialized = pickle.dumps([tensor, def_])
 
     with pytest.raises(ValueError):
         pickle.loads(serialized)
@@ -690,7 +692,8 @@ def test_pickling_tensors(free_alg):
     with dr.pickle_env():
         res = pickle.loads(serialized)
 
-    assert res == tensor
+    assert res[0] == tensor
+    assert res[1] == def_
 
 
 def test_memoise(free_alg, tmpdir):

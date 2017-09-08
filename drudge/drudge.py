@@ -13,7 +13,7 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols, sympify
+from sympy import IndexedBase, Symbol, Indexed, Wild, symbols, sympify
 
 from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
@@ -337,7 +337,9 @@ class Tensor:
             )
 
         assert isinstance(drudge, Drudge)
-        self.__init__(drudge, drudge.ctx.parallelize(state))
+
+        # Subclasses might be of __init__ function of a different signature.
+        Tensor.__init__(self, drudge, drudge.ctx.parallelize(state))
         return
 
     #
@@ -1527,6 +1529,22 @@ class TensorDef(Tensor):
             )
 
         return self.act(self._base[item])
+
+    #
+    # Pickling support
+    #
+
+    def __getstate__(self):
+        """Get the current state of the definition.
+        """
+        return self._base, self._exts, self.local_terms
+
+    def __setstate__(self, state):
+        """Set the state for the new definition.
+        """
+        super().__setstate__(state[2])
+        self.__init__(state[0], state[1], self)
+        return
 
 
 class Drudge:
