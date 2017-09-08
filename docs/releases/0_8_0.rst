@@ -16,5 +16,8 @@ added to the name archive by the ``Drudge.set_name`` method.
 
 Also the LaTeX formatting has been improved with the option to suppress
 summations and the capability of using the LaTeX ``breqn`` package to
-automatically format long terms with a lot of factors.
+automatically format long terms with a lot of factors.  Also the LaTeX printing
+of tensors whose base is parsed by SymPy to have a subscript is fixed.
+Previously we get double subscripts for a base, which crashes both the original
+TeX and MathJAX.
 
