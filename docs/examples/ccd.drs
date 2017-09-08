@@ -1,0 +1,42 @@
+# A simple example on using drudge script for CCD theory
+#
+# In this example, the most basic aspects of using drudge scripts is
+# illustrated.  It should be understandable for new-comers without much
+# previous Python background.
+
+# Define the cluster excitation operator.  Note that we need to inform the
+# drudge that the t amplitude tensor has the double bar symmetry of
+# t_{abij} = -t_{baij} = -t_{abji} = t_{baji}
+set_dbbar_base(t, 2)
+
+# Einstein summation convention can be used for easy tensor creation.
+t2 = einst(
+    t[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i] / 4
+)
+
+# Get the similarity-transformed Hamiltonian.  Note that ``|`` operator
+# computes the commutator between operators.
+c0 = ham
+c1 = simplify(c0 | t2)
+c2 = simplify(c1 | t2)
+c3 = simplify(c2 | t2)
+c4 = simplify(c3 | t2)
+h_bar = simplify(
+    c0 + c1 + (1/2) * c2 + (1/6) * c3 + (1/24) * c4
+)
+
+print('Similarity-transformed Hamiltonian has {} terms'.format(
+    n_terms(h_bar)
+))
+
+# Derive the working equations by projection.
+en_eqn = simplify(eval_fermi_vev(h_bar))
+proj = c_dag[i] * c_dag[j] * c_[b] * c_[a]
+t2_eqn = simplify(eval_fermi_vev(proj * h_bar))
+
+print('Working equation derived!')
+
+with report('ccd.html', 'CCD theory') as rep:
+    rep.add('Energy equation', en_eqn)
+    rep.add('Doubles amplitude equation', t2_eqn)
+

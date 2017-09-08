@@ -1,0 +1,63 @@
+# An advanced example on using drudge script for CCD theory
+#
+# In this example, it is emphasized that drudge scripts are just Python scripts
+# with special execution.  So all Python constructions can be used for our
+# convenience.  At the same time, by using drudge scripts, we can have all the
+# syntactical sugar for making symbolic computation easy.
+#
+
+set_dbbar_base(t, 2)
+t2 = einst(
+    t[a, b, i, j] * c_dag[a] * c_dag[b] * c_[j] * c_[i] / 4
+)
+
+def compute_h_bar():
+    """Compute the similarity transformed Hamiltonian."""
+    # Here we use a Python loop to get the nested commutators.
+    curr = ham
+    h_bar = ham
+    for order in range(0, 4):
+        curr = simplify(curr | t2) / (order + 1)
+        h_bar += curr
+    return simplify(h_bar)
+
+# By using the `memoise` function, the result can be automatically dumped into
+# the given pickle file, and read from it if it is already available.  This can
+# be convenient for large multi-step jobs.
+h_bar = memoize(compute_h_bar, 'h_bar.pickle')
+print('H-bar has {} terms'.format(n_terms(h_bar)))
+
+# Derive the working equations by projection.  Here we make them into tensor
+# definition with explicit left-hand side, so that they can be used for
+# optimization.
+e <<= simplify(eval_fermi_vev(h_bar))
+proj = c_dag[i] * c_dag[j] * c_[b] * c_[a]
+r2[a, b, i, j] <<= simplify(eval_fermi_vev(proj * h_bar))
+
+print('Working equation derived!')
+
+# When the gristmill package is also installed, the evaluation of the working
+# equations can also be optimized with it.
+eval_seq = optimize(
+    [e, r2], substs={no: 1000, nv: 10000}
+)
+
+# In addition to HTML report, we can also have LaTeX report.  Note that the
+# report can be structured into sections with descriptions.  For LaTeX output,
+# the `dmath` environment from the `breqn` package can be used to break lines
+# automatically inside large equations.
+
+# Long descriptions of contents can be put in Python multi-line strings.
+opt_description = """
+The optimization is based on 1000 occupied orbitals and 10000 virtual orbitals,
+which should be representative of common problems for CCD theory.
+"""
+
+with report('ccd.tex', 'CCD theory') as rep:
+    rep.add(title='Working equations')
+    rep.add(content=e, description='The energy equation')
+    rep.add(content=r2, description='Doubles amplitude equation', env='dmath')
+    rep.add(title='Optimized evaluation', description=opt_description)
+    for step in eval_seq:
+        rep.add(content=step, env='dmath')
+

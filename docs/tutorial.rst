@@ -492,14 +492,14 @@ Examples on real-world applications
 -----------------------------------
 
 In this tutorial, some simple examples are run directly inside a Python
-interpreter.  Actually drudge is designed to work well inside Jupyter
-notebooks.  By calling the :py:meth:`Tensor.display` method, tensor objects can
-be mathematically displayed in Jupyter sessions.  An example of interactive
-usage of drudge, we have a `sample notebook`_ in ``docs/examples/ccsd.ipynb``
-in the project source.  Also included is a `general script`_ ``gencc.py`` for
-the automatic derivation of coupled-cluster theories, mostly to demonstrate
-using drudge programmatically.  And we also have a `script for RCCSD theory`_
-to demonstrate its usage in large-scale spin-explicit coupled-cluster theories.
+interpreter.  Actually drudge is designed to work inside Jupyter notebooks as
+well.  By calling the :py:meth:`Tensor.display` method, tensor objects can be
+mathematically displayed in Jupyter sessions.  An example of interactive usage
+of drudge, we have a `sample notebook`_ in ``docs/examples/ccsd.ipynb`` in the
+project source.  Also included is a `general script`_ ``gencc.py`` for the
+automatic derivation of coupled-cluster theories, mostly to demonstrate using
+drudge programmatically.  And we also have a `script for RCCSD theory`_ to
+demonstrate its usage in large-scale spin-explicit coupled-cluster theories.
 
 
 .. _sample notebook: https://github.com/tschijnmo/drudge/blob/master/docs/examples/ccsd.ipynb
@@ -507,6 +507,69 @@ to demonstrate its usage in large-scale spin-explicit coupled-cluster theories.
 .. _general script: https://github.com/tschijnmo/drudge/blob/master/docs/examples/gencc.py
 
 .. _script for RCCSD theory: https://github.com/tschijnmo/drudge/blob/master/docs/examples/rccsd.py
+
+
+For drudge scripts, we have two example scripts both deriving the classical CCD
+theory.  Both of them is based on the following configuration script
+``conf_ph.py``,
+
+.. literalinclude:: examples/conf_ph.py
+
+Here we only set a simple :py:class:`PartHoleDrudge` without much modification.
+To illustrate the most basic usage of drudge scripts, we have example
+``ccd.drs``,
+
+.. literalinclude:: examples/ccd.drs
+    :language: Python
+
+With the comment described in the above script, we can see that drudge script
+can bare a lot of resemblance to the mathematical notation.  To make a
+derivation of the many-body theory, we basically just use the operators like
+``+``, ``*``, and ``|`` to do arithmetic operations on the tensors and use
+``simplify`` to get the result simplified.
+
+For another more advanced example, we have the ``ccd_adv.drs`` script,
+
+.. literalinclude:: examples/ccd_adv.drs
+    :language: Python
+
+In the example ``ccd.drs``, it is attempted to be emphasized that drudge scripts
+are very similar to common mathematical notation and should be easy to get
+started.  In this ``ccd_adv.drs`` example, the power and flexibility of drudge
+scripts being actually Python scripts is emphasized.  Foremost, rather than
+spelling each order of commutation out, here the similarity-transformed
+Hamiltonian :math:`\bar{\mathbf{H}}` is computed by using a Python loop.  This
+can be helpful for repetitive tasks.  Also the computation of
+:math:`\bar{\mathbf{H}}` is put inside a function.  Being able to define and
+execute functions makes it easy to reuse code inside drudge scripts. Here, the
+function is given to the :py:meth:`Drudge.memoize` function.  So its result is
+automatically dumped into the given pickle file.  When the file is already
+there, the result will be directly read and used with the execution of the
+function skipped.  This can be helpful for large multi-step jobs.
+
+Note that ``<<=`` is used to make the working equations as tensor definitions of
+class :py:class:`TensorDef`.  In drudge scripts,::
+
+    variable = tensor
+
+assigns the tensor ``tensor`` to the variable ``variable``.  The variable is a
+normal Python variable and works in the normal Python way.  And the tensor is
+just a static expression of its mathematical content, with all the free symbols
+being free.  At the same time,::
+
+    lhs <<= tensor
+
+defines the ``lhs`` as the tensor, with the definition pushed into the name
+archive of the drudge.  By using :py:class:`TensorDef` objects, we also have a
+left-hand side, which enables the accompanying `gristmill`_ package to optimize
+the evaluation of the entire array by its advanced algorithms.
+
+.. _gristmill: https://github.com/tschijnmo/gristmill
+
+For the result, here they are written into a very structured LaTeX output, which
+can be easily compiled into PDF files.  Note that by using the
+:py:meth:`Report.add` function with different arguments, we can create
+structured report with sections and descriptions for the equations.
 
 
 Note about importing drudge
