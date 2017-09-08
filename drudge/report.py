@@ -1,9 +1,11 @@
 """Utility to write simple reports in HTML format."""
 
+import re
 import subprocess
 import sys
 
 from jinja2 import Environment, PackageLoader
+from sympy.printing.latex import LatexPrinter
 
 
 class Report:
@@ -137,3 +139,27 @@ class Report:
                     filename, stat.stdout, stat.stderr
                 )
                 print(err_msg, file=sys.stderr)
+
+
+class ScalarLatexPrinter(LatexPrinter):
+    """Specialized LaTeX printers for usage in drudge.
+
+    Basically this class tries to fix some problems with using the original
+    LaTeX printer from SymPy in common drudge tasks.
+
+    Specifically, for indexed objects, if the base already contains a subscript,
+    it will be raised into a superscript wrapped inside a pair of parenthesis.
+    """
+
+    def _print_Indexed(self, expr):
+        base = self._print(expr.base)
+        match = re.match(r'(.*)_\{(.*)\}', base)
+        if match:
+            base = ''.join([
+                match.group(1), '^{(', match.group(2), ')}'
+            ])
+
+        indices = ','.join(self._print(i) for i in expr.indices)
+        return ''.join([
+            base, '_{', indices, '}'
+        ])

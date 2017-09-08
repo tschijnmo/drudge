@@ -17,7 +17,7 @@ from sympy import IndexedBase, Symbol, Indexed, Wild, latex, symbols, sympify
 
 from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
-from .report import Report
+from .report import Report, ScalarLatexPrinter
 from .term import (
     Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
@@ -2441,10 +2441,11 @@ class Drudge:
     def _latex_sympy(expr):
         """Get the LaTeX form of SymPy expressions.
 
-        The default SymPy method will be used, subclasses can override this
-        method for fine tuning of the form.
+        By default, the printing by :py:class:`ScalarLatexPrinter` will be used.
+        Subclasses can override this method for fine tuning of the form.
+
         """
-        return latex(expr)
+        return ScalarLatexPrinter().doprint(expr)
 
     def _latex_vec(self, vec):
         """Get the LaTeX form of a vector.

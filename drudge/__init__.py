@@ -17,7 +17,7 @@ from .fock import (
 from .genquad import GenQuadDrudge
 from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
-from .report import Report
+from .report import Report, ScalarLatexPrinter
 from .utils import sum_, prod_, Stopwatch
 
 __version__ = '0.8.0dev'
@@ -67,5 +67,6 @@ __all__ = [
     'sum_',
     'prod_',
     'Stopwatch',
-    'Report'
+    'Report',
+    'ScalarLatexPrinter'
 ]

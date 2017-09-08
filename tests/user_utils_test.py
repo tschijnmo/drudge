@@ -4,7 +4,9 @@ import time
 import types
 from unittest.mock import MagicMock
 
-from drudge import Vec, sum_, prod_, Stopwatch
+from sympy import IndexedBase, symbols
+
+from drudge import Vec, sum_, prod_, Stopwatch, ScalarLatexPrinter
 from drudge.term import parse_terms
 
 
@@ -49,3 +51,12 @@ def test_stopwatch():
     stamper.tock_total()
     res = res_holder[0]
     assert float(res.split()[-2]) - 1.0 < 0.1
+
+
+def test_scalar_latex_printing():
+    """Test the printing of scalars into LaTeX form."""
+
+    x1 = IndexedBase('x1')
+    i, j = symbols('i j')
+    expr = x1[i, j]
+    assert ScalarLatexPrinter().doprint(expr) == 'x^{(1)}_{i,j}'

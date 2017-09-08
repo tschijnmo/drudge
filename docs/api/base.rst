@@ -83,4 +83,8 @@ Miscellaneous utilities
     :members:
     :special-members:
 
+.. autoclass:: ScalarLatexPrinter
+    :members:
+    :special-members:
+
 
