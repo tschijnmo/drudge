@@ -20,7 +20,7 @@ from .clifford import CliffordDrudge, inner_by_delta
 from .report import Report, ScalarLatexPrinter
 from .utils import sum_, prod_, Stopwatch
 
-__version__ = '0.8.0dev'
+__version__ = '0.8.0'
 
 __all__ = [
     # Canonpy.
