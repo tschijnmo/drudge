@@ -2710,7 +2710,8 @@ class Drudge:
         code = compile_drs(src, filename)
         env = DrsEnv(self, specials=self._drs_specials)
         self._inside_drs = True
-        exec(code, env)
+        with self.pickle_env():
+            exec(code, env)
         self._inside_drs = False
         return env
 
