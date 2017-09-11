@@ -329,7 +329,8 @@ class Tensor:
         is set in the :py:meth:`Drudge.pickle_env` method.
         """
 
-        drudge = _default_drudge
+        global current_drudge
+        drudge = current_drudge
         if drudge is None:
             raise ValueError(
                 'Tensor objects cannot be unpickled, '
@@ -2559,11 +2560,10 @@ class Drudge:
 
         """
 
-        global _default_drudge
-
-        _default_drudge = self
+        global current_drudge
+        current_drudge = self
         yield None
-        _default_drudge = None
+        current_drudge = None
 
     def memoize(self, comput, filename, log=None, log_header='Memoize:'):
         """Preserve/lookup result of computation into/from pickle file.
@@ -2731,7 +2731,7 @@ class Drudge:
 #
 
 
-_default_drudge = None
+current_drudge = None
 
 
 #
