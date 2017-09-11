@@ -331,4 +331,5 @@ def main(argv=None):
             _DRUDGE_MAGIC, args.conf
         ))
 
-    return drudge.exec_drs(script_src, args.script)
+    env = drudge.exec_drs(script_src, args.script)
+    return 0 if argv is None else env
