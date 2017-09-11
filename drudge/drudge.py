@@ -2561,9 +2561,10 @@ class Drudge:
         """
 
         global current_drudge
+        prev_drudge = current_drudge
         current_drudge = self
         yield None
-        current_drudge = None
+        current_drudge = prev_drudge
 
     def memoize(self, comput, filename, log=None, log_header='Memoize:'):
         """Preserve/lookup result of computation into/from pickle file.
