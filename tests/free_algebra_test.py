@@ -717,7 +717,7 @@ def test_memoise(free_alg, tmpdir):
         assert len(log.getvalue().splitlines()) == 2
 
 
-TEST_DRS = """
+TEST_SIMPLE_DRS = """
 x[i] <<= 1 / 2 * sum((i, R), m[i] * v[i])
 y = sum_(range(10))
 n = n_terms(x)
@@ -728,7 +728,7 @@ def test_simple_drs(free_alg):
     """Test a simple drudge script."""
     dr = free_alg
     p = dr.names
-    env = dr.exec_drs(TEST_DRS)
+    env = dr.exec_drs(TEST_SIMPLE_DRS)
 
     x = Vec('x')
     i = p.i
@@ -737,7 +737,34 @@ def test_simple_drs(free_alg):
     assert env['_x'] == x
     assert env['y'] == 45
     assert env['n'] == 1
+    dr.unset_name(def_)
 
     # Test some drudge script specials about the free algebra environment.
     assert env['DRUDGE'] is dr
     assert env['sum_'] is sum
+
+
+TEST_PICKLE_DRS = """
+import pickle
+
+symb = pickle.loads(pickle.dumps(f))
+good_symb = symb == f
+
+indexed = pickle.loads(pickle.dumps(f[i, j]))
+good_indexed = indexed == f[i, j]
+
+def_ = x[i] <= einst(f[i] * v[i]) / 2
+def_serial = pickle.dumps(def_)
+def_back = pickle.loads(def_serial)
+"""
+
+
+def test_pickle_within_drs(free_alg):
+    """Test pickling inside drudge scripts."""
+
+    dr = free_alg
+    env = dr.exec_drs(TEST_PICKLE_DRS)
+
+    assert env['good_symb']
+    assert env['good_indexed']
+    assert env['def_'] == env['def_back']
