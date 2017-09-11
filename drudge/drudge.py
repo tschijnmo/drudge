@@ -2536,6 +2536,8 @@ class Drudge:
         have to have a single tensor object.  Anything containing tensor objects
         needs to be loaded within the context.
 
+        Note that this context is unnecessary inside drudge scripts.
+
         .. warning::
 
             All tensors read within this environment will have the current
@@ -2703,6 +2705,8 @@ class Drudge:
            inside drudge scripts.  For developers, the :py:meth:`inside_drs`
            property can be used to query if the function is called inside a
            drudge script.
+
+        6. The pickling environment is set.
 
         For a non-technical introduction to drudge script, please see
         :ref:`drs intro`.
