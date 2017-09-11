@@ -737,3 +737,7 @@ def test_simple_drs(free_alg):
     assert env['_x'] == x
     assert env['y'] == 45
     assert env['n'] == 1
+
+    # Test some drudge script specials about the free algebra environment.
+    assert env['DRUDGE'] is dr
+    assert env['sum_'] is sum

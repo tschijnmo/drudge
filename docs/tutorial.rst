@@ -439,7 +439,8 @@ drudge scripts.  For instance, in the base :py:class:`Drudge` class, we have a
 simple constructor ``S``, for converting strings to the special kind of symbols
 that can be indexed and used in ``<<=`` in drudge scripts.  Also have ``sum_``
 for the actual Python built-in ``sum`` function, which is shadowed by the
-:py:meth:`Drudge.sum` method.
+:py:meth:`Drudge.sum` method.  And the drudge object used for the execution can
+be accessed by ``DRUDGE``.
 
 For the taste of users without much object-oriented programming, inside drudge
 scripts, method calling like ``obj.meth(args)`` can also be written as

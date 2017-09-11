@@ -1606,6 +1606,7 @@ class Drudge:
         self._drs_specials = types.SimpleNamespace()
         self._drs_specials.S = DrsSymbol
         self._drs_specials.sum_ = sum
+        self._drs_specials.DRUDGE = self
 
         self._inside_drs = False
 
