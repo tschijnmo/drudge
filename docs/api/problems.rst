@@ -35,3 +35,7 @@ problem as well, like some commonly used ranges, dummies.
 .. autoclass:: SpinOneHalfPartHoleDrudge
     :members:
     :special-members:
+
+.. autoclass:: RestrictedPartHoleDrudge
+    :members:
+    :special-members:
