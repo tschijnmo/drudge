@@ -114,6 +114,23 @@ class DrsSymbol(_Definable, Symbol):
             else:
                 raise err
 
+    # Pickle support.
+
+    def __getnewargs__(self):
+        """Get the arguments for __new__."""
+        return None, self.name
+
+    def __getstate__(self):
+        """Get the state for pickling."""
+        return None
+
+    def __setstate__(self, state):
+        """Set the state according to pickled content."""
+        from .drudge import current_drudge
+        if current_drudge is None:
+            raise ValueError(_PICKLE_ENV_ERR)
+        self.__init__(current_drudge, self.name)
+
 
 class DrsIndexed(_Definable, Indexed):
     """Indexed objects for drudge scripts."""
@@ -148,6 +165,27 @@ class DrsIndexed(_Definable, Indexed):
     @classmethod
     def class_key(cls):
         return Indexed.class_key()
+
+    def __getnewargs__(self):
+        """Get the arguments for __new__."""
+        return (None, self.base) + self.indices
+
+    def __getstate__(self):
+        """Get the state for pickling."""
+        return None
+
+    def __setstate__(self, state):
+        """Set the state according to pickled content."""
+        from .drudge import current_drudge
+        if current_drudge is None:
+            raise ValueError(_PICKLE_ENV_ERR)
+        self.__init__(current_drudge, self.base, *self.indices)
+
+
+_PICKLE_ENV_ERR = '''
+Failed to unpickle,
+not inside a pickling environment from pickle_env or inside a drudge script.
+'''
 
 
 #
