@@ -38,6 +38,7 @@ def test_basic_drs_symb():
         assert hash(ref) == hash(i)
         assert dict_[i] == 1
         assert sympy_key(ref) == sympy_key(i)
+        assert not hasattr(i, '__dict__')
 
     ref = Symbol(name + 'x')
     for i in symbs:

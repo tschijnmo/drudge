@@ -18,6 +18,8 @@ class _Definable:
     """Mixin for definable objects in drudge scripts.
     """
 
+    __slots__ = []
+
     def def_as(self, rhs):
         """Define itself as a tensor.
 
