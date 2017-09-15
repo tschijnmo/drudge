@@ -12,3 +12,4 @@ Release history
    releases/0_6_0
    releases/0_7_0
    releases/0_8_0
+   releases/0_9_0
