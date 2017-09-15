@@ -1284,8 +1284,52 @@ class TensorDef(Tensor):
     being a tensor, a tensor definition also has a left-hand side.  When the
     tensor is zero-order, the left-hand side is simply a symbol.  When it has
     external indices, the base and external indices for the it are both
-    stored.  Explicit storage of a left-hand side can be convenient in many
-    cases.
+    stored.  The base is a :py:class:`Vec` instance for tensors with vector
+    part or it is an SymPy IndexedBase for scalar tensors.  For instance,
+
+    .. math::
+
+        \sum_j o_{i, j} f_j
+
+    can be construed as a tensor.  By storing it as an :py:class:`Tensor`
+    object, we can have mathematical manipulations on it.  With an explicit
+    left-hand side,
+
+    .. math::
+
+        t_j = \sum_j o_{i, j} f_j
+
+    it is now an tensor definition, which can be handled by the current class.
+
+    A tensor definition is a subclass of tensor.  With explicit storage of a
+    left-hand side, it can be convenient to be used for :py:meth:`Tensor.subst`
+    or :py:meth:`Tensor.subst_all` method, or it can be directly indexed.  For
+    example, with the above definition stored in ``t_def``, for tensor ``v``
+    holding :math:`\sum_j u_{i, j} t_j`,
+
+    ::
+
+        v.subst(t_def.lhs, t_def.rhs)
+
+    or ::
+
+        v.subst_all([t_def])
+
+    or, with the :py:meth:`act` method, ::
+
+        t_def.act(v)
+
+    we can get
+
+    .. math::
+
+        \sum_{j, k} u_{i, j} o_{j, k} f_k
+
+    Tensor definition can also be directly subscripts, like ``t_def[1]``
+    gives :math:`sum_i o_{1, i} f_i`.
+
+    By being :py:class:`Tensor` subclass, all tensor manipulations are
+    supported.  Just the result will not be an automatically a definition.
 
     """
 
@@ -1300,16 +1344,17 @@ class TensorDef(Tensor):
         In the same way as the initializer for the :py:class:`Tensor` class,
         this initializer is also unlikely to be used directly in user code.
         Drudge methods :py:meth:`Drudge.define` and
-        :py:meth:`Drudge.define_einst` can be more convenient.
+        :py:meth:`Drudge.define_einst`, and their wrapper
+        :py:meth:`Drudge.def_` can be more convenient.  Inside drudge
+        scripts, operators ``<<=`` or ``<=`` can be used, see:ref:`drs intro`
+        and :py:meth:`Drudge.exec_drs`.
 
         Parameters
         ----------
 
         base
-            The base for the definition.  It should be a :py:class:`Vec`
-            instance for tensors with vector part.  Or it should be SymPy
-            IndexedBase or Symbol instance for scalar tensors, depending on the
-            presence or absence of external indices.
+            The base for the definition.  It will be normalized to the correct
+            type depending on the external indices and the right-hand side.
 
         exts
             The iterable for external indices.  They can be either symbol/range
