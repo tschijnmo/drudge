@@ -1219,27 +1219,52 @@ class Tensor:
         return self._simplify_deltas(diff, False)
 
     #
-    # Term filter and cherry picking
+    # Advanced manipulations.
     #
 
     def filter(self, crit):
-        """Filter out terms satisfying the given criterion."""
+        """Filter out terms satisfying the given criterion.
+
+        The criterion needs to be a callable accepting :py:class:`Term`
+        objects.  In the result, only terms for which the given criterion
+        function evaluates to True will be retained.
+        """
         return self.apply(
             lambda terms: terms.filter(crit),
             free_vars=None, repartitioned=False
         )
 
-    #
-    # Advanced manipulations.
-    #
+    def map(self, func):
+        """Map the given function to the terms in the tensor.
+
+        The given function should take a :py:class:`Term` object and return a
+        :py:class:`Term` object.  The resulted tensor has the result of the
+        application of the given callable to each of the terms as its terms.
+        """
+        return Tensor(self._drudge, self._terms.map(func))
+
+    def bind(self, func):
+        """Map the given function to the terms and flatten.
+
+        The given callable need to return an iterable of :py:class:`Term`
+        objects for each of the terms in the current tensor.  It is going to
+        be applied to each of the terms, all the terms from all the results
+        is going to form the terms of the resulted tensor.  This is the
+        ``bind`` operation for the monad of lists in Haskell, or ``flatMap``
+        in Java/Scala/Spark collection API.
+
+        :py:meth:`filter` and :py:meth:`map` can be understood as special
+        case of this method.
+        """
+        return Tensor(self._drudge, self._terms.flatMap(func))
 
     def map2scalars(self, action, skip_vecs=False):
         """Map the given action to the scalars in the tensor.
 
         The given action should return SymPy expressions for SymPy expressions,
         the amplitude for each terms and the indices to the vectors, in the
-        tensor.  Note that this function does not change the summations in the
-        terms and the dummies.
+        tensor.  Note that this function is more supposed for free variables and
+        does not change the summations in the terms and the dummies.
 
         Parameters
         ----------

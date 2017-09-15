@@ -476,6 +476,58 @@ def test_tensors_can_be_rewritten(free_alg):
     assert defs[r[b]] == dr.sum(z[b])
 
 
+def test_advanced_manipulations(free_alg):
+    """Test advanced manipulations of tensors."""
+    dr = free_alg
+    p = dr.names
+    i, j, k = p.i, p.j, p.k
+
+    u = IndexedBase('u')
+    v = IndexedBase('v')
+    f = Vec('f')
+
+    tensor = dr.einst(u[i, j] * f[j] + v[i, j] * f[j])
+    assert tensor.n_terms == 2
+
+    def has_u(term):
+        """Test if a term have u tensor."""
+        return term.amp.has(u)
+
+    expect = dr.sum((j, p.R), u[i, j] * f[j])
+    for res in [
+        tensor.filter(has_u),
+        tensor.bind(lambda x: [x] if has_u(x) else [])
+    ]:
+        assert res.n_terms == 1
+        assert res == expect
+
+    def subst_i(term):
+        """Substitute i index in the terms."""
+        return Term(term.sums, term.amp.xreplace({i: k}), term.vecs)
+
+    expect = dr.sum((j, p.R), u[k, j] * f[j] + v[k, j] * f[j])
+    for res in [
+        tensor.map(subst_i),
+        tensor.bind(lambda x: [subst_i(x)]),
+        tensor.map2scalars(lambda x: x.xreplace({i: k}))
+    ]:
+        assert res.n_terms == 2
+        assert res == expect
+
+    alpha, beta = symbols('alpha beta')
+    assert tensor.bind(
+        lambda x: [Term(x.sums, x.amp * i_, x.vecs) for i_ in [alpha, beta]]
+    ) == (tensor * alpha + tensor * beta)
+
+    assert tensor.map2scalars(
+        lambda x: x.xreplace({j: k})
+    ) == dr.sum((j, p.R), u[i, k] * f[k] + v[i, k] * f[k])
+
+    assert tensor.map2scalars(
+        lambda x: x.xreplace({j: k}), skip_vecs=True
+    ) == dr.sum((j, p.R), u[i, k] * f[j] + v[i, k] * f[j])
+
+
 def test_tensor_method(free_alg):
     """Test tensor method can be injected."""
 
