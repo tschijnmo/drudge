@@ -10,13 +10,25 @@ to any tensor and noncommutative algebra system.
 Building blocks of the basic drudge data structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+Symbolic ranges
++++++++++++++++
+
 .. autoclass:: Range
     :members:
     :special-members:
 
+
+Noncommutative quantities
++++++++++++++++++++++++++
+
 .. autoclass:: Vec
     :members:
     :special-members:
+
+
+Single-term with noncommutative quantities and symbolic summations
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. autoclass:: Term
     :members:
@@ -55,13 +67,25 @@ bitwise or operator ``|``.
 Primary interface
 ~~~~~~~~~~~~~~~~~
 
+
+The primary drudge class
+++++++++++++++++++++++++
+
 .. autoclass:: Drudge
     :members:
     :special-members:
 
+
+Tensors
++++++++
+
 .. autoclass:: Tensor
     :members:
     :special-members:
+
+
+Tensor definitions
+++++++++++++++++++
 
 .. autoclass:: TensorDef
     :members:
@@ -71,13 +95,25 @@ Primary interface
 Miscellaneous utilities
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+
+Mathematical manipulations
+++++++++++++++++++++++++++
+
 .. autofunction:: sum_
 
 .. autofunction:: prod_
 
+
+Timing utilities
+++++++++++++++++
+
 .. autoclass:: Stopwatch
     :members:
     :special-members:
+
+
+Output generation
++++++++++++++++++
 
 .. autoclass:: Report
     :members:

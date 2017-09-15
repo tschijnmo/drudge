@@ -492,6 +492,9 @@ drudge scripts.
 Examples on real-world applications
 -----------------------------------
 
+In Python interface
+~~~~~~~~~~~~~~~~~~~
+
 In this tutorial, some simple examples are run directly inside a Python
 interpreter.  Actually drudge is designed to work inside Jupyter notebooks as
 well.  By calling the :py:meth:`Tensor.display` method, tensor objects can be
@@ -509,6 +512,9 @@ demonstrate its usage in large-scale spin-explicit coupled-cluster theories.
 
 .. _script for RCCSD theory: https://github.com/tschijnmo/drudge/blob/master/docs/examples/rccsd.py
 
+
+As drudge scripts
+~~~~~~~~~~~~~~~~~
 
 For drudge scripts, we have two example scripts both deriving the classical CCD
 theory.  Both of them is based on the following configuration script

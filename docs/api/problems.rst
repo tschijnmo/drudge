@@ -12,13 +12,24 @@ knowledge like commutation rules, but more detailed information about the
 problem as well, like some commonly used ranges, dummies.
 
 
+General problems for many-body theories
++++++++++++++++++++++++++++++++++++++++
+
 .. autoclass:: GenMBDrudge
     :members:
     :special-members:
 
+
+Problems for many-body theories based the particle-hold picture
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 .. autoclass:: PartHoleDrudge
     :members:
     :special-members:
+
+
+Many-body theories with explicit spin
++++++++++++++++++++++++++++++++++++++
 
 .. data:: UP
 
