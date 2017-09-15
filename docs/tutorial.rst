@@ -579,8 +579,17 @@ can be easily compiled into PDF files.  Note that by using the
 structured report with sections and descriptions for the equations.
 
 
-Note about importing drudge
----------------------------
+Common caveats
+--------------
+
+When using drudge, there are some common pitfalls that might confuse
+beginning users, here we attempt a small summary of the prominent ones for
+convenience.  Note that users are encouraged to go through SymPy tutorial
+first, where some common caveats about using SymPy is summarized.
+
+
+Importing drudge
+~~~~~~~~~~~~~~~~
 
 In this tutorial, ``import drudge`` and ``import sympy`` is used and we need to
 give fully-qualified name to refer to objects in them.  Normally, it can be
@@ -588,3 +597,18 @@ convenient to use ``from drudge import *`` to import everything from drudge. For
 these cases, it needs to be careful that the importation of all objects from
 drudge needs to follow the importation of all objects from SymPy, or the SymPy
 ``Range`` class will shallow the actual class for symbolic range in drudge.
+
+
+Wrong names in drudge scripts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In drudge scripts, all unresolved names evaluates to symbols with the given
+name, similar to the behaviour of dedicated computer algebra systems like
+Mathematica or Maple.  In this way, extra care need to be taken for names inside
+drudge scripts.  Although drudge attempts to give as sensible error message as
+possible, sometimes quite confusing errors can be given for a wrongly typed
+name.  For this cases, running drudge scripts inside a debugger can be helpful.
+Whenever the error comes from an object that is an ``DrsSymbol`` instance, it is
+highly-likely there is a typo in the drudge script at this place.  Inside the
+debugger, ``up`` command can be used to move the stack to the place in the
+drudge script, then the trouble-maker can be attempted to be identified.
