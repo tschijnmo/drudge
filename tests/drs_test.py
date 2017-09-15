@@ -94,6 +94,9 @@ def test_drs_symb_call():
     invalid = DrsSymbol(None, 'invalid')
     with pytest.raises(NameError):
         invalid(obj)
+    with pytest.raises(AttributeError) as exc:
+        prop.lhs
+    assert exc.value.args[0].find('prop') > 0
 
 
 def test_drs_tensor_def_dispatch(spark_ctx):

@@ -133,6 +133,15 @@ class DrsSymbol(_Definable, Symbol):
             raise ValueError(_PICKLE_ENV_ERR)
         self.__init__(current_drudge, self.name)
 
+    # Better error reporting.
+    def __getattr__(self, item):
+        """Report undefined attributes."""
+        raise AttributeError(
+            'Invalid operation `{}` on Drudge symbol `{}`'.format(
+                item, self.name
+            )
+        )
+
 
 class DrsIndexed(_Definable, Indexed):
     """Indexed objects for drudge scripts."""
