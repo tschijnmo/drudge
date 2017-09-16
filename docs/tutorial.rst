@@ -588,8 +588,7 @@ convenience.  Note that users are encouraged to go through SymPy tutorial
 first, where some common caveats about using SymPy is summarized.
 
 
-Importing drudge
-~~~~~~~~~~~~~~~~
+.. rubric:: Importing drudge
 
 In this tutorial, ``import drudge`` and ``import sympy`` is used and we need to
 give fully-qualified name to refer to objects in them.  Normally, it can be
@@ -599,8 +598,7 @@ drudge needs to follow the importation of all objects from SymPy, or the SymPy
 ``Range`` class will shallow the actual class for symbolic range in drudge.
 
 
-Wrong names in drudge scripts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. rubric:: Wrong names in drudge scripts
 
 In drudge scripts, all unresolved names evaluates to symbols with the given
 name, similar to the behaviour of dedicated computer algebra systems like
@@ -612,3 +610,36 @@ Whenever the error comes from an object that is an ``DrsSymbol`` instance, it is
 highly-likely there is a typo in the drudge script at this place.  Inside the
 debugger, ``up`` command can be used to move the stack to the place in the
 drudge script, then the trouble-maker can be attempted to be identified.
+
+
+.. rubric:: Name clashing, symbol names and variable names
+
+In Python scripts, normally we would bind atomic symbols to variables named
+the same as the symbol itself, like::
+
+    i = Symbol('i')
+
+Sometimes we would later accidentally bind the variable with something else,
+this could stop the symbol being accessible by its name any more.  For
+example, after ::
+
+    for i in range(10):
+        print(i)
+
+``i`` can no longer be used for the symbol :math:`i`.  This can give some highly
+obscure bugs.  Similarly, in drudge scripts, whenever a variable is created with
+a given name, symbols with the same name cannot be access by simply spelling the
+name out any more.  For example, with the above ``for`` loop, symbol :math:`i`,
+might not be accessed by ``i`` any more, which is actually bound to integer
+number 9 now.
+
+To resolve these issues, generally the variable name can be mangled some how,
+for instance, by appending an underscore in the variable name.
+
+Very similarly, sometimes obscure error could occur when symbolic objects like
+indexed bases and symbols are named in the same way.  For instance, when an
+indexed base is named in the same way as an index, it could be changed when the
+index is substituted.  So it is highly recommended that indexed bases and
+symbols are free from any name clashing.  For cases with clashing, the indexed
+base names could be mangled with something like trailing underscore to avoid
+problems.
