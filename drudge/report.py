@@ -154,10 +154,12 @@ class ScalarLatexPrinter(LatexPrinter):
     def _print_Indexed(self, expr):
         base = self._print(expr.base)
         match = re.match(r'(.*)_\{(.*)\}', base)
-        if match:
+        if match and len(match.group(2)) > 0:
             base = ''.join([
                 match.group(1), '^{(', match.group(2), ')}'
             ])
+        if base.startswith('_'):
+            base = base[1:]
 
         indices = ','.join(self._print(i) for i in expr.indices)
         return ''.join([
