@@ -13,7 +13,7 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Wild, symbols, sympify
+from sympy import IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr
 
 from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
@@ -786,6 +786,13 @@ class Tensor:
 
     def _comm(self, other, right=False):
         """Compute the commutator."""
+
+        if isinstance(other, Expr):
+            msg = 'Taking commutator with commutative expression `{}`'.format(
+                other
+            )
+            warnings.warn(msg)
+
         prod, free_vars, expanded = self._cartesian_terms(other, right)
 
         dumms = self._drudge.dumms
