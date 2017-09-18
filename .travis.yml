@@ -2,10 +2,20 @@ language: python
 python:
     - 3.6
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-7.2
+    - g++-7.2
+
 before_install:
     - git clone https://github.com/tschijnmo/DummyRDD.git
     - cd DummyRDD; python3 setup.py install; cd ..
 install:
+    - export CC=gcc-7
+    - export CXX=g++-7
     - python3 setup.py install
 
 script:
