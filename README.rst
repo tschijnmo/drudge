@@ -13,21 +13,22 @@ objects, like strings and graphs, in `libcanon`_, drudge is able to find a
 canonical form for mathematical expressions with tensors with symmetries and
 symbolic summations.  For instance, for a 4th-order tensor *u* with symmetry
 
-.. image:: https://latex.codecogs.com/svg.latex?u_%7Babcd%7D%3D-u_%7Bbacd%7D%3D-u_%7Babdc%7D%3Du_%7Bbadc%7D
-    :align: center
-    :alt: u_{abcd}=-u_{bacd}=-u_{abdc}=u_{badc}
+.. math::
+
+    u_{abcd} = -u_{bacd} = -u_{abdc} = u_{badc}
 
 expression like
 
-.. image:: https://latex.codecogs.com/svg.latex?%5Csum_%7Bcd%7Du_%7Bacbd%7D%5Crho_%7Bdc%7D-%5Csum_%7Bcd%7Du_%7Bcabd%7D%5Crho_%7Bdc%7D%5Csum_%7Bcd%7Du_%7Bcdbc%7D%5Crho_%7Bcd%7D
-    :align: center
-    :alt: \sum_{cd}u_{acbd}\rho_{dc}-\sum_{cd}u_{cabd}\rho_{dc}+\sum_{cd}u_{cdbc}\rho_{cd}
+.. math::
+
+    \sum_{cd} u_{acbd} \rho_{dc} - \sum_{cd} u_{cabd} \rho_{dc}
+    + \sum_{cd} u_{cdbc} \rho_{cd}
 
 can be automatically simplified into a single term like,
 
-.. image:: https://latex.codecogs.com/svg.latex?3%5Csum_%7Bcd%7Du_%7Bacbd%7D%5Crho_%7Bdc%7D
-    :align: center
-    :alt: 3\sum_{cd}u_{acbd}\rho_{dc}
+.. math::
+
+    3 \sum_{cd} u_{acbd} \rho_{dc}
 
 despite the initial different placement of the indices to the symmetric *u*
 tensor and different naming of the dummy indices for summations.
