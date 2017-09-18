@@ -2,6 +2,9 @@
 Drudge, for symbolic noncommutative and tensor algebra
 ======================================================
 
+.. include:: ../README.rst
+
+
 .. toctree::
    :maxdepth: 4
    :caption: Contents:

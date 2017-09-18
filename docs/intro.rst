@@ -2,9 +2,6 @@ Introduction
 ============
 
 
-.. include:: ../README.rst
-
-
 Getting started
 ---------------
 
