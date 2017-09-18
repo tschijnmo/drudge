@@ -42,6 +42,12 @@ in its Cartan-Killing basis.  Other non-commutative algebraic systems should be
 able to be added with ease.
 
 
+Based on the symbolic results from drudge, a companion package `gristmill`_ is
+able to automatically optimize and generate numerical code.  For computations
+with heavy dependence on tensor contraction and sums of tensor contractions,
+substantial optimization could be given.
+
+
 Drudge is developed by Jinmo Zhao and Prof Gustavo E Scuseria at Rice
 University, and was supported as part of the Center for the Computational Design
 of Functional Layered Materials, an Energy Frontier Research Center funded by
@@ -54,3 +60,4 @@ Award DE-SC0012575.
 .. _CCR and CAR algebra: https://en.wikipedia.org/wiki/CCR_and_CAR_algebras
 .. _Clifford algebras: https://en.wikipedia.org/wiki/Clifford_algebra
 .. _su(2) algebra: https://en.m.wikipedia.org/wiki/Special_unitary_group#Lie_Algebra
+.. _gristmill: https://github.com/tschijnmo/gristmill
