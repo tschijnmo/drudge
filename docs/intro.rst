@@ -1,10 +1,18 @@
 Introduction
 ============
 
-Drudge is a computer algebra system based on SymPy for noncommutative and tensor
-algebras, with a specific emphasis on many-body theory.  To get started, Python
-of version at least 3.6 and a C++ compiler with good C++14 support are needed.
-In the development of drudge, Clang++ 3.9 and g++ 6.3 has been fully tested.
+
+.. include:: ../README.rst
+
+
+Getting started
+---------------
+
+
+Drudge is built on several important pieces of existing technologies.  To get
+started, Python of version at least 3.6 and a C++ compiler with good C++14
+support are needed. In the development of drudge, Clang++ 3.9 and g++ 6.3 has
+been fully tested.
 
 Also Apache Spark of version later than 2.2 is needed for the parallel execution
 of drudge.  For small tasks without requirement on parallelization, a fork of
