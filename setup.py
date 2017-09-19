@@ -51,7 +51,7 @@ setup(
     packages=find_packages(),
     ext_modules=[canonpy, wickcore],
     package_data={'drudge': ['templates/*']},
-    install_requires=['sympy', 'ipython', 'Jinja2'],
+    install_requires=['sympy', 'ipython', 'Jinja2', 'pyspark'],
     entry_points={
         'console_scripts': [
             'drudge = drudge.drs:main'
