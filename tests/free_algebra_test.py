@@ -4,6 +4,7 @@ import io
 import os
 import os.path
 import pickle
+import shutil
 
 import pytest
 from sympy import (
@@ -696,7 +697,8 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
                 no_sum=True, scalar_mul=r'\invismult'
             )
         assert os.path.isfile('freealg.tex')
-        assert os.path.isfile(filename)
+        if shutil.which('pdflatex') is not None:
+            assert os.path.isfile(filename)
 
 
 def test_drudge_has_default_properties(free_alg):
