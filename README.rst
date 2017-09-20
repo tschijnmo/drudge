@@ -1,3 +1,7 @@
+.. image:: https://travis-ci.org/tschijnmo/drudge.svg?branch=master
+    :target: https://travis-ci.org/tschijnmo/drudge
+
+
 Drudge
 ------
 
