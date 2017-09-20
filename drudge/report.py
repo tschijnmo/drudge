@@ -1,8 +1,9 @@
 """Utility to write simple reports in HTML format."""
 
 import re
+import shutil
 import subprocess
-import sys
+import warnings
 
 from jinja2 import Environment, PackageLoader
 from sympy.printing.latex import LatexPrinter
@@ -128,17 +129,22 @@ class Report:
             templ.stream(self._ctx).dump(fp)
 
         if self._ext == 'pdf':
-            stat = subprocess.run(
-                ['pdflatex', filename],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
-
-            # Do not crash program only because LaTeX does not compile.
-            if stat.returncode != 0:
-                err_msg = 'pdflatex failed for {}.  Error: \n{}\n{}'.format(
-                    filename, stat.stdout, stat.stderr
+            if shutil.which(_PDFLATEX) is not None:
+                stat = subprocess.run(
+                    [_PDFLATEX, filename],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
-                print(err_msg, file=sys.stderr)
+                # Do not crash program only because LaTeX does not compile.
+                if stat.returncode != 0:
+                    err_msg = '{} failed for {}.  Error: \n{}\n{}'.format(
+                        _PDFLATEX, filename, stat.stdout, stat.stderr
+                    )
+                    warnings.warn(err_msg)
+            else:
+                warnings.warn('{} cannot be found.'.format(_PDFLATEX))
+
+
+_PDFLATEX = 'pdflatex'
 
 
 class ScalarLatexPrinter(LatexPrinter):
