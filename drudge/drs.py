@@ -161,6 +161,13 @@ class DrsIndexed(_Definable, Indexed):
         self._drudge = drudge
         self._orig = Indexed(base, *args, **kwargs)
 
+        # Keep the SymPy invariant for func(*args) == self.
+        def func(*args, **kwargs):
+            """Creater for indexed objects in drudge scripts."""
+            return DrsIndexed(drudge, *args, **kwargs)
+
+        self._func = func
+
     def __eq__(self, other):
         """Make equality comparison."""
         return self._orig == other
@@ -176,6 +183,10 @@ class DrsIndexed(_Definable, Indexed):
     @classmethod
     def class_key(cls):
         return Indexed.class_key()
+
+    @property
+    def func(self):
+        return self._func
 
     def __getnewargs__(self):
         """Get the arguments for __new__."""
