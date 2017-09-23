@@ -1,6 +1,9 @@
 .. image:: https://travis-ci.org/tschijnmo/drudge.svg?branch=master
     :target: https://travis-ci.org/tschijnmo/drudge
 
+.. image:: https://coveralls.io/repos/github/tschijnmo/drudge/badge.svg?branch=master
+    :target: https://coveralls.io/github/tschijnmo/drudge?branch=master
+
 
 Drudge
 ------
