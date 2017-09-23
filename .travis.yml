@@ -11,6 +11,7 @@ addons:
     - g++-7
 
 before_install:
+    - pip3 install coveralls
     - git clone https://github.com/tschijnmo/DummyRDD.git
     - cd DummyRDD; python3 setup.py install; cd ..
 install:
@@ -21,5 +22,8 @@ install:
 script:
     - export DUMMY_SPARK=1
     - cd tests
-    - pytest -sv
+    - coverage run --source=drudge -m pytest -sv
+
+after_success:
+  - coveralls
 
