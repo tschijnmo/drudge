@@ -4,3 +4,5 @@ title: Drudge / gristmill
 description: >
     Symbolic tensor and non-commutative algebra with powerful automatic code
     generation and optimization
+
+include: ['_static']
