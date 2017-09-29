@@ -1,0 +1,11 @@
+0.9.0
+-----
+
+This is a relatively small release fixing problems found in the initial lessons
+of using the drudge script.  Specifically, bugs with pickling symbols in drudge
+scripts has been fixed.  Also, generally better error handling and reporting
+can be seen in using drudge scripts.  To facilitate advanced manipulation
+inside drudge scripts, tensors are also given a full pack of three core
+manipulation functions, ``map``, ``filter``, and ``bind``.  Also, the
+documentation has been improved.
+

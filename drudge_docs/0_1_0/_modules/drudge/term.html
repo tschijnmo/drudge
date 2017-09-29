@@ -1,0 +1,1710 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.term &#8212; drudge 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.term</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tensor term definition and utility.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="k">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">sympify</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">KroneckerDelta</span><span class="p">,</span> <span class="n">Eq</span><span class="p">,</span> <span class="n">solve</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Add</span><span class="p">,</span> <span class="n">Mul</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">,</span>
+    <span class="n">IndexedBase</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">Basic</span><span class="p">,</span> <span class="n">Pow</span><span class="p">,</span> <span class="n">Wild</span><span class="p">,</span> <span class="n">conjugate</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sympy.core.sympify</span> <span class="k">import</span> <span class="n">CantSympify</span>
+
+<span class="kn">from</span> <span class="nn">.canon</span> <span class="k">import</span> <span class="n">canon_factors</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">ensure_symb</span><span class="p">,</span> <span class="n">ensure_expr</span><span class="p">,</span> <span class="n">sympy_key</span><span class="p">,</span> <span class="n">is_higher</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span>
+<span class="p">)</span>
+
+<span class="c1">#</span>
+<span class="c1"># Utility constants</span>
+<span class="c1"># -----------------</span>
+<span class="c1">#</span>
+
+<span class="n">_UNITY</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">_NEG_UNITY</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">_NAUGHT</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Fundamental classes</span>
+<span class="c1"># --------------------</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="Range"><a class="viewcode-back" href="../../api.html#drudge.Range">[docs]</a><span class="k">class</span> <span class="nc">Range</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A symbolic range that can be summed over.</span>
+
+<span class="sd">    This class is for symbolic ranges that is going to be summed over in</span>
+<span class="sd">    tensors.  Each range should have a label, and optionally lower and upper</span>
+<span class="sd">    bounds, which should be both given or absent.  The label can be any hashable</span>
+<span class="sd">    and ordered Python type.  The bounds will not be directly used for symbolic</span>
+<span class="sd">    computation, but rather designed for printers and conversion to SymPy</span>
+<span class="sd">    summation.  Note that ranges are assumed to be atomic and disjoint.  Even in</span>
+<span class="sd">    the presence of lower and upper bounds, unequal ranges are assumed to be</span>
+<span class="sd">    disjoint.</span>
+
+<span class="sd">    .. warning::</span>
+
+<span class="sd">        Bounds with the same label but different bounds will be considered</span>
+<span class="sd">        unequal.  Although no error be given, using different bounds with</span>
+<span class="sd">        identical label is strongly advised against.</span>
+
+<span class="sd">    .. warning::</span>
+
+<span class="sd">         Unequal ranges are always assumed to be disjoint.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;_label&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_lower&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_upper&#39;</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="Range.__init__"><a class="viewcode-back" href="../../api.html#drudge.Range.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the symbolic range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">=</span> <span class="n">label</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ensure_expr</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="s1">&#39;lower bound&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lower</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;lower range has not been given.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;upper range has not been given.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">=</span> <span class="n">ensure_expr</span><span class="p">(</span><span class="n">upper</span><span class="p">,</span> <span class="s1">&#39;upper bound&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The label of the range.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The lower bound of the range.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">upper</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The upper bound of the range.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bounded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;If the range is explicitly bounded.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The arguments for range creation.</span>
+
+<span class="sd">        When the bounds are present, we have a triple, or we have a singleton</span>
+<span class="sd">        tuple of only the label.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounded</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span>
+
+<div class="viewcode-block" id="Range.__hash__"><a class="viewcode-back" href="../../api.html#drudge.Range.__hash__">[docs]</a>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Hash the symbolic range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Range.__eq__"><a class="viewcode-back" href="../../api.html#drudge.Range.__eq__">[docs]</a>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compare equality of two ranges.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Range.__repr__"><a class="viewcode-back" href="../../api.html#drudge.Range.__repr__">[docs]</a>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the representative string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="s1">&#39;Range(&#39;</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">),</span> <span class="s1">&#39;)&#39;</span>
+        <span class="p">])</span></div>
+
+<div class="viewcode-block" id="Range.__str__"><a class="viewcode-back" href="../../api.html#drudge.Range.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form readable string representation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sort_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The sort key for the range.&quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounded</span><span class="p">:</span>
+            <span class="n">key</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">key</span></div>
+
+
+<span class="k">class</span> <span class="nc">ATerms</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Abstract base class for terms.</span>
+
+<span class="sd">    This abstract class is meant for things that can be interpreted as a local</span>
+<span class="sd">    collection of some tensor terms, mostly used for user input of tensor terms.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">terms</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="s1">&#39;Term&#39;</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Get an list for the terms.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="c1">#</span>
+    <span class="c1"># Mathematical operations.</span>
+    <span class="c1">#</span>
+
+    <span class="n">_op_priority</span> <span class="o">=</span> <span class="mf">19.0</span>  <span class="c1"># Just less than the full tensor.</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply something on the right.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span> <span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply something on the left.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_mul</span><span class="p">(</span><span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply the left terms with the right terms.</span>
+
+<span class="sd">        Note that the terms should not have any conflict in dummies.  Actually,</span>
+<span class="sd">        by the common scheme in user input by drudge, the terms should normally</span>
+<span class="sd">        have no summations at all.  So this function has different semantics</span>
+<span class="sd">        than the term multiplication function from the Terms class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">prod_terms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
+            <span class="c1"># A shallow checking on sums, normally we have no sums by design.</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="n">_cat_sums</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">j</span><span class="o">.</span><span class="n">sums</span><span class="p">)</span>
+            <span class="n">amp</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span> <span class="o">*</span> <span class="n">j</span><span class="o">.</span><span class="n">amp</span>
+            <span class="n">vecs</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">vecs</span> <span class="o">+</span> <span class="n">j</span><span class="o">.</span><span class="n">vecs</span>
+
+            <span class="n">prod_terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Term</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp</span><span class="p">,</span> <span class="n">vecs</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">Terms</span><span class="p">(</span><span class="n">prod_terms</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add something on the right.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span> <span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add something on the left.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Subtract something on the right.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="n">other_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neg_terms</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span> <span class="n">other_terms</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Be subtracted from something on the left.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">is_higher</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_priority</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="n">self_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neg_terms</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="n">other</span><span class="p">),</span> <span class="n">self_terms</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Negate the terms.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Terms</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_neg_terms</span><span class="p">(</span><span class="n">parse_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_add</span><span class="p">(</span><span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add the terms together.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Terms</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_neg_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="s1">&#39;Term&#39;</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Negate the given terms.</span>
+
+<span class="sd">        The resulted terms are lazily evaluated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">Term</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span> <span class="o">*</span> <span class="n">_NEG_UNITY</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">terms</span>
+        <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Terms</span><span class="p">(</span><span class="n">ATerms</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A local collection of terms.</span>
+
+<span class="sd">    This class is a concrete collection of terms.  Any mathematical operation on</span>
+<span class="sd">    the abstract terms objects will be elevated to instances of this class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;_terms&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="s1">&#39;Term&#39;</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the terms object.</span>
+
+<span class="sd">        The possibly lazy iterable of terms will be instantiated here.  And zero</span>
+<span class="sd">        terms will be filtered out.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_terms</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">terms</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the terms in the collection.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_terms</span>
+
+
+<span class="k">def</span> <span class="nf">parse_terms</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="s1">&#39;Term&#39;</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Parse the object into a list of terms.&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">ATerms</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">terms</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">ensure_expr</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Term</span><span class="p">((),</span> <span class="n">expr</span><span class="p">,</span> <span class="p">())]</span>
+
+
+<div class="viewcode-block" id="Vec"><a class="viewcode-back" href="../../api.html#drudge.Vec">[docs]</a><span class="k">class</span> <span class="nc">Vec</span><span class="p">(</span><span class="n">ATerms</span><span class="p">,</span> <span class="n">CantSympify</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Vectors.</span>
+
+<span class="sd">    Vectors are the basic non-commutative quantities.  Its objects consist of an</span>
+<span class="sd">    label for its base and some indices.  The label is allowed to be any</span>
+<span class="sd">    hashable and ordered Python object, although small objects, like string, are</span>
+<span class="sd">    advised.  The indices are always sympified into SymPy expressions.</span>
+
+<span class="sd">    Its objects can be created directly by giving the label and indices, or</span>
+<span class="sd">    existing vector objects can be subscribed to get new ones.  The semantics is</span>
+<span class="sd">    similar to Haskell functions.</span>
+
+<span class="sd">    Note that users cannot directly assign to the attributes of this class.</span>
+
+<span class="sd">    This class can be used by itself, it can also be subclassed for special</span>
+<span class="sd">    use cases.</span>
+
+<span class="sd">    Despite very different internal data structure, the this class is attempted</span>
+<span class="sd">    to emulate the behaviour of the SymPy ``IndexedBase`` class</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;_label&#39;</span><span class="p">,</span> <span class="s1">&#39;_indices&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Vec.__init__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="p">()):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize a vector.</span>
+
+<span class="sd">        Atomic indices are added as the only index.  Iterable values will</span>
+<span class="sd">        have all of its entries added.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">=</span> <span class="n">label</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="p">(</span><span class="n">indices</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ensure_expr</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;vector index&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The label for the base of the vector.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">base</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The base of the vector.</span>
+
+<span class="sd">        This base can be subscribed to get other vectors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Vec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">indices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The indices to the vector.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span>
+
+<div class="viewcode-block" id="Vec.__getitem__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__getitem__">[docs]</a>    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Append the given indices to the vector.</span>
+
+<span class="sd">        When multiple new indices are to be given, they have to be given as a</span>
+<span class="sd">        tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="p">(</span><span class="n">item</span><span class="p">,)</span>
+
+        <span class="c1"># Pay attention to subclassing.</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">,</span> <span class="n">item</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Vec.__repr__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__repr__">[docs]</a>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form repr string form the vector.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="s1">&#39;(&#39;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">),</span> <span class="s1">&#39;, (&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">),</span>
+            <span class="s1">&#39;))&#39;</span>
+        <span class="p">])</span></div>
+
+<div class="viewcode-block" id="Vec.__str__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form a more readable string representation.&quot;&quot;&quot;</span>
+
+        <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+                <span class="s1">&#39;[&#39;</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">),</span> <span class="s1">&#39;]&#39;</span>
+            <span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="k">return</span> <span class="n">label</span> <span class="o">+</span> <span class="n">indices</span></div>
+
+<div class="viewcode-block" id="Vec.__hash__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__hash__">[docs]</a>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute the hash value of a vector.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Vec.__eq__"><a class="viewcode-back" href="../../api.html#drudge.Vec.__eq__">[docs]</a>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compares the equality of two vectors.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span> <span class="ow">and</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">label</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">indices</span>
+        <span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sort_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The sort key for the vector.</span>
+
+<span class="sd">        This is a generic sort key for vectors.  Note that this is only useful</span>
+<span class="sd">        for sorting the simplified terms and should not be used in the</span>
+<span class="sd">        normal-ordering operations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">]</span>
+        <span class="n">key</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">key</span>
+
+    <span class="c1">#</span>
+    <span class="c1"># Misc facilities</span>
+    <span class="c1">#</span>
+
+<div class="viewcode-block" id="Vec.map"><a class="viewcode-back" href="../../api.html#drudge.Vec.map">[docs]</a>    <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Map the given function to indices.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Vec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">))</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the terms from the vector.</span>
+
+<span class="sd">        This is for the user input.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">Term</span><span class="p">((),</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,))]</span></div>
+
+
+<div class="viewcode-block" id="Term"><a class="viewcode-back" href="../../api.html#drudge.Term">[docs]</a><span class="k">class</span> <span class="nc">Term</span><span class="p">(</span><span class="n">ATerms</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Terms in tensor expression.</span>
+
+<span class="sd">    This is the core class for storing symbolic tensor expressions.  The</span>
+<span class="sd">    actual symbolic tensor type is just a shallow wrapper over a list of</span>
+<span class="sd">    terms.  It is basically comprised of three fields, a list of summations,</span>
+<span class="sd">    a SymPy expression giving the amplitude, and a list of non-commutative</span>
+<span class="sd">    vectors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;_sums&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_amp&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_vecs&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_free_vars&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_dumms&#39;</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="Term.__init__"><a class="viewcode-back" href="../../api.html#drudge.Term.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">sums</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Symbol</span><span class="p">,</span> <span class="n">Range</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">amp</span><span class="p">:</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">vecs</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">free_vars</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">FrozenSet</span><span class="p">[</span><span class="n">Symbol</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">dumms</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Symbol</span><span class="p">,</span> <span class="n">Range</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the tensor term.</span>
+
+<span class="sd">        Users seldom have the need to create terms directly by this function.</span>
+<span class="sd">        So this constructor is mostly a developer function, no sanity checking</span>
+<span class="sd">        is performed on the input for performance.  Most importantly, this</span>
+<span class="sd">        constructor does **not** copy either the summations or the vectors and</span>
+<span class="sd">        directly expect them to be tuples (for hashability).  And the amplitude</span>
+<span class="sd">        is **not** simpyfied.</span>
+
+<span class="sd">        Also, it is important that the free variables and dummies dictionary be</span>
+<span class="sd">        given only when they really satisfy what we got for them.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># For performance reason, no checking is done.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Uncomment for debugging.</span>
+        <span class="c1"># valid = (</span>
+        <span class="c1">#     isinstance(sums, tuple) and isinstance(amp, Expr)</span>
+        <span class="c1">#     and isinstance(vecs, tuple)</span>
+        <span class="c1"># )</span>
+        <span class="c1"># if not valid:</span>
+        <span class="c1">#     raise TypeError(&#39;Invalid argument to term creation&#39;)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span> <span class="o">=</span> <span class="n">sums</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span> <span class="o">=</span> <span class="n">amp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span> <span class="o">=</span> <span class="n">vecs</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_free_vars</span> <span class="o">=</span> <span class="n">free_vars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dumms</span> <span class="o">=</span> <span class="n">dumms</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sums</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The summations of the term.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">amp</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Expr</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The amplitude expression.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">vecs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The vectors in the term.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_scalar</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;If the term is a scalar.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The triple of summations, amplitude, and vectors.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span>
+
+<div class="viewcode-block" id="Term.__hash__"><a class="viewcode-back" href="../../api.html#drudge.Term.__hash__">[docs]</a>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute the hash of the term.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.__eq__"><a class="viewcode-back" href="../../api.html#drudge.Term.__eq__">[docs]</a>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate the equality with another term.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span></div>
+
+<div class="viewcode-block" id="Term.__repr__"><a class="viewcode-back" href="../../api.html#drudge.Term.__repr__">[docs]</a>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the representative string of a term.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;Term(sums=[</span><span class="si">{}</span><span class="s1">], amp=</span><span class="si">{}</span><span class="s1">, vecs=[</span><span class="si">{}</span><span class="s1">])&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">),</span>
+            <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amp</span><span class="p">),</span>
+            <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.__str__"><a class="viewcode-back" href="../../api.html#drudge.Term.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the readable string representation of a term.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="s1">&#39;sum_{{</span><span class="si">{}</span><span class="s1">}} &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">factors</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amp</span><span class="p">)]</span>
+        <span class="n">factors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">header</span> <span class="o">+</span> <span class="s1">&#39; * &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">factors</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sort_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The sort key for a term.</span>
+
+<span class="sd">        This key attempts to sort the terms by complexity, with simpler terms</span>
+<span class="sd">        coming earlier.  This capability of sorting the terms will make the</span>
+<span class="sd">        equality comparison of multiple terms easier.</span>
+
+<span class="sd">        This sort key also ensures that terms that can be merged are always put</span>
+<span class="sd">        into adjacent positions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">vec_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">sort_key</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">]</span>
+        <span class="n">sum_keys</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">sort_key</span><span class="p">,</span> <span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">vec_keys</span><span class="p">),</span> <span class="n">vec_keys</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">sum_keys</span><span class="p">),</span> <span class="n">sum_keys</span><span class="p">,</span>
+            <span class="n">sympy_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amp</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The singleton list of the current term.</span>
+
+<span class="sd">        This property is for the rare cases where direct construction of tensor</span>
+<span class="sd">        inputs from SymPy expressions and vectors are not sufficient.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Term.scale"><a class="viewcode-back" href="../../api.html#drudge.Term.scale">[docs]</a>    <span class="k">def</span> <span class="nf">scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Scale the term by a factor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Term</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span> <span class="o">*</span> <span class="n">factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.mul_term"><a class="viewcode-back" href="../../api.html#drudge.Term.mul_term">[docs]</a>    <span class="k">def</span> <span class="nf">mul_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">dumms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply with another tensor term.</span>
+
+<span class="sd">        Note that by this function, the free symbols in the two operands are not</span>
+<span class="sd">        automatically excluded.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconcile_dumms</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">excl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Term</span><span class="p">(</span>
+            <span class="n">lhs</span><span class="o">.</span><span class="n">sums</span> <span class="o">+</span> <span class="n">rhs</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">lhs</span><span class="o">.</span><span class="n">amp</span> <span class="o">*</span> <span class="n">rhs</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="n">lhs</span><span class="o">.</span><span class="n">vecs</span> <span class="o">+</span> <span class="n">rhs</span><span class="o">.</span><span class="n">vecs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.comm_term"><a class="viewcode-back" href="../../api.html#drudge.Term.comm_term">[docs]</a>    <span class="k">def</span> <span class="nf">comm_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">dumms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Commute with another tensor term.</span>
+
+<span class="sd">        In ths same way as the multiplication operation, here the free symbols</span>
+<span class="sd">        in the operands are not automatically excluded.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconcile_dumms</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">excl</span><span class="p">)</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="n">lhs</span><span class="o">.</span><span class="n">sums</span> <span class="o">+</span> <span class="n">rhs</span><span class="o">.</span><span class="n">sums</span>
+        <span class="n">amp0</span> <span class="o">=</span> <span class="n">lhs</span><span class="o">.</span><span class="n">amp</span> <span class="o">*</span> <span class="n">rhs</span><span class="o">.</span><span class="n">amp</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">Term</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp0</span><span class="p">,</span> <span class="n">lhs</span><span class="o">.</span><span class="n">vecs</span> <span class="o">+</span> <span class="n">rhs</span><span class="o">.</span><span class="n">vecs</span><span class="p">),</span>
+            <span class="n">Term</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="o">-</span><span class="n">amp0</span><span class="p">,</span> <span class="n">rhs</span><span class="o">.</span><span class="n">vecs</span> <span class="o">+</span> <span class="n">lhs</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+<div class="viewcode-block" id="Term.reconcile_dumms"><a class="viewcode-back" href="../../api.html#drudge.Term.reconcile_dumms">[docs]</a>    <span class="k">def</span> <span class="nf">reconcile_dumms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">excl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reconcile the dummies in two terms.&quot;&quot;&quot;</span>
+        <span class="n">lhs</span><span class="p">,</span> <span class="n">dummbegs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_dumms</span><span class="p">(</span><span class="n">dumms</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="n">excl</span><span class="p">)</span>
+        <span class="n">rhs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">reset_dumms</span><span class="p">(</span><span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="o">=</span><span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="n">excl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span></div>
+
+    <span class="c1">#</span>
+    <span class="c1"># SymPy related</span>
+    <span class="c1">#</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">exprs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Loop over the sympy expression in the term.</span>
+
+<span class="sd">        Note that the summation dummies are not looped over.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span>
+        <span class="k">for</span> <span class="n">vec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">:</span>
+            <span class="k">yield from</span> <span class="n">vec</span><span class="o">.</span><span class="n">indices</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">free_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The free symbols used in the term.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_free_vars</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dumms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_free_vars</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+                <span class="n">i</span> <span class="k">for</span> <span class="n">expr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exprs</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">expr</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dumms</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_free_vars</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dumms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the mapping from dummies to their range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dumms</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dumms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dumms</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">amp_factors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The factors in the amplitude expression.</span>
+
+<span class="sd">        The indexed factors and factors involving dummies will be returned as a</span>
+<span class="sd">        list, with the rest returned as a single SymPy expression.</span>
+
+<span class="sd">        Error will be raised if the amplitude is not a monomial.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">amp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">amp</span><span class="p">,</span> <span class="n">Add</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid amplitude: &#39;</span><span class="p">,</span> <span class="n">amp</span><span class="p">,</span> <span class="s1">&#39;expecting monomial&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">amp</span><span class="p">,</span> <span class="n">Mul</span><span class="p">):</span>
+            <span class="n">all_factors</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">args</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">all_factors</span> <span class="o">=</span> <span class="p">(</span><span class="n">amp</span><span class="p">,)</span>
+
+        <span class="n">dumms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span>
+
+        <span class="n">factors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">coeff</span> <span class="o">=</span> <span class="n">_UNITY</span>
+        <span class="k">for</span> <span class="n">factor</span> <span class="ow">in</span> <span class="n">all_factors</span><span class="p">:</span>
+            <span class="n">need_treatment</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="n">i</span> <span class="ow">in</span> <span class="n">dumms</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">factor</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">)</span>
+            <span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">need_treatment</span><span class="p">:</span>
+                <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">coeff</span> <span class="o">*=</span> <span class="n">factor</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">factors</span><span class="p">,</span> <span class="n">coeff</span>
+
+<div class="viewcode-block" id="Term.map"><a class="viewcode-back" href="../../api.html#drudge.Term.map">[docs]</a>    <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">sums</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vecs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_vecs</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Map the given function to the SymPy expressions in the term.</span>
+
+<span class="sd">        The given function will **not** be mapped to the dummies in the</span>
+<span class="sd">        summations.  When operations on summations are needed, a **tuple**</span>
+<span class="sd">        for the new summations can be given.</span>
+
+<span class="sd">        By passing the identity function, this function can also be used to</span>
+<span class="sd">        replace the summation list, the amplitude expression, or the vector</span>
+<span class="sd">        part.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">Term</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span> <span class="k">if</span> <span class="n">sums</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">sums</span><span class="p">,</span>
+            <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amp</span> <span class="k">if</span> <span class="n">amp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">amp</span><span class="p">),</span>
+            <span class="p">(</span><span class="nb">tuple</span><span class="p">(</span>
+                <span class="n">i</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">func</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span> <span class="k">if</span> <span class="n">vecs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vecs</span><span class="p">)</span>
+            <span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_vecs</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.subst"><a class="viewcode-back" href="../../api.html#drudge.Term.subst">[docs]</a>    <span class="k">def</span> <span class="nf">subst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">sums</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vecs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">purge_sums</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Perform symbol substitution on the SymPy expressions.</span>
+
+<span class="sd">        After the replacement of the fields given, the given substitutions are</span>
+<span class="sd">        going to be performed using SymPy ``xreplace`` method simultaneously.</span>
+
+<span class="sd">        If purge sums is set, the summations whose dummy is substituted is going</span>
+<span class="sd">        to be removed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">sums</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span>
+        <span class="k">if</span> <span class="n">purge_sums</span><span class="p">:</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sums</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">substs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">xreplace</span><span class="p">(</span><span class="n">substs</span><span class="p">),</span> <span class="n">sums</span><span class="o">=</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="n">amp</span><span class="p">,</span> <span class="n">vecs</span><span class="o">=</span><span class="n">vecs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.reset_dumms"><a class="viewcode-back" href="../../api.html#drudge.Term.reset_dumms">[docs]</a>    <span class="k">def</span> <span class="nf">reset_dumms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reset the dummies in the term.</span>
+
+<span class="sd">        The term with dummies reset will be returned alongside with the new</span>
+<span class="sd">        dummy begins dictionary.  Note that the dummy begins dictionary will be</span>
+<span class="sd">        mutated if one is given.</span>
+
+<span class="sd">        ValueError will be raised when no more dummies are available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">new_sums</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">dummbegs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_sums</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">substs</span><span class="p">,</span> <span class="n">new_sums</span><span class="p">),</span> <span class="n">dummbegs</span></div>
+
+<div class="viewcode-block" id="Term.reset_sums"><a class="viewcode-back" href="../../api.html#drudge.Term.reset_sums">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">reset_sums</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">excl</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reset the given summations.</span>
+
+<span class="sd">        The new summation list, substitution dictionary, and the new dummy begin</span>
+<span class="sd">        dictionary will be returned.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">dummbegs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dummbegs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">new_sums</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">dumm_i</span><span class="p">,</span> <span class="n">range_i</span> <span class="ow">in</span> <span class="n">sums</span><span class="p">:</span>
+
+            <span class="c1"># For linter.</span>
+            <span class="n">new_dumm</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">new_beg</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="n">beg</span> <span class="o">=</span> <span class="n">dummbegs</span><span class="p">[</span><span class="n">range_i</span><span class="p">]</span> <span class="k">if</span> <span class="n">range_i</span> <span class="ow">in</span> <span class="n">dummbegs</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">beg</span><span class="p">):</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">tentative</span> <span class="o">=</span> <span class="n">dumms</span><span class="p">[</span><span class="n">range_i</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Dummies for range&#39;</span><span class="p">,</span> <span class="n">range_i</span><span class="p">,</span>
+                                     <span class="s1">&#39;is not given&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Dummies for range&#39;</span><span class="p">,</span> <span class="n">range_i</span><span class="p">,</span> <span class="s1">&#39;is used up&#39;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">excl</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">tentative</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excl</span><span class="p">:</span>
+                    <span class="n">new_dumm</span> <span class="o">=</span> <span class="n">tentative</span>
+                    <span class="n">new_beg</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+            <span class="n">new_sums</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">new_dumm</span><span class="p">,</span> <span class="n">range_i</span><span class="p">))</span>
+            <span class="n">substs</span><span class="p">[</span><span class="n">dumm_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_dumm</span>
+            <span class="n">dummbegs</span><span class="p">[</span><span class="n">range_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_beg</span>
+
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">new_sums</span><span class="p">),</span> <span class="n">substs</span><span class="p">,</span> <span class="n">dummbegs</span></div>
+
+    <span class="c1">#</span>
+    <span class="c1"># Amplitude simplification</span>
+    <span class="c1">#</span>
+
+<div class="viewcode-block" id="Term.simplify_deltas"><a class="viewcode-back" href="../../api.html#drudge.Term.simplify_deltas">[docs]</a>    <span class="k">def</span> <span class="nf">simplify_deltas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Simplify deltas in the amplitude of the expression.&quot;&quot;&quot;</span>
+
+        <span class="n">new_amp</span><span class="p">,</span> <span class="n">substs</span> <span class="o">=</span> <span class="n">simplify_deltas_in_expr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amp</span><span class="p">,</span> <span class="n">resolvers</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Note that here the substitutions needs to be performed in order.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">substs</span><span class="p">,</span> <span class="n">purge_sums</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="n">new_amp</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Term.expand"><a class="viewcode-back" href="../../api.html#drudge.Term.expand">[docs]</a>    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Expand the term into many terms.&quot;&quot;&quot;</span>
+        <span class="n">expanded_amp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp</span><span class="o">.</span><span class="n">expand</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">expanded_amp</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expanded_amp</span><span class="p">,</span> <span class="n">Add</span><span class="p">):</span>
+            <span class="n">amp_terms</span> <span class="o">=</span> <span class="n">expanded_amp</span><span class="o">.</span><span class="n">args</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">amp_terms</span> <span class="o">=</span> <span class="p">(</span><span class="n">expanded_amp</span><span class="p">,)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">amp_terms</span><span class="p">]</span></div>
+
+    <span class="c1">#</span>
+    <span class="c1"># Canonicalization.</span>
+    <span class="c1">#</span>
+
+<div class="viewcode-block" id="Term.canon"><a class="viewcode-back" href="../../api.html#drudge.Term.canon">[docs]</a>    <span class="k">def</span> <span class="nf">canon</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">symms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vec_colour</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Canonicalize the term.</span>
+
+<span class="sd">        The given vector colour should be a callable accepting the index</span>
+<span class="sd">        within vector list (under the keyword ``idx``) and the vector itself</span>
+<span class="sd">        (under keyword ``vec``).  By default, vectors has colour the same as</span>
+<span class="sd">        its index within the list of vectors.</span>
+
+<span class="sd">        Note that whether or not colours for the vectors are given, the vectors</span>
+<span class="sd">        are never permuted in the result.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Factors to canonicalize.</span>
+        <span class="n">factors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Additional information for factor reconstruction.</span>
+        <span class="c1">#</span>
+        <span class="c1"># It has integral placeholders for vectors and scalar factors without</span>
+        <span class="c1"># any indexed quantity, the expression with (the only) indexed replaced</span>
+        <span class="c1"># by the placeholder for factors with indexed.</span>
+        <span class="n">factors_info</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">vec_factor</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">unindexed_factor</span> <span class="o">=</span> <span class="mi">2</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Get the factors in the amplitude.</span>
+        <span class="c1">#</span>
+
+        <span class="c1"># Cache globals for performance.</span>
+        <span class="n">wrapper_base</span> <span class="o">=</span> <span class="n">_WRAPPER_BASE</span>
+        <span class="n">indexed_placeholder</span> <span class="o">=</span> <span class="n">_INDEXED_PLACEHOLDER</span>
+
+        <span class="c1"># Extractors for the indexed, defined here to avoid repeated list and</span>
+        <span class="c1"># function creation for each factor.</span>
+        <span class="n">indexed</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">def</span> <span class="nf">replace_indexed</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="o">*</span><span class="n">indices</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Replace the indexed quantity inside the factor.&quot;&quot;&quot;</span>
+            <span class="n">indexed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="n">indices</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">indexed_placeholder</span>
+
+        <span class="n">amp_factors</span><span class="p">,</span> <span class="n">coeff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp_factors</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">amp_factors</span><span class="p">:</span>
+
+            <span class="n">amp_no_indexed</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                <span class="n">Indexed</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span><span class="p">(</span><span class="n">replace_indexed</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">n_indexed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">indexed</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">n_indexed</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;Invalid amplitude factor containing multiple indexed&#39;</span><span class="p">,</span> <span class="n">i</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">n_indexed</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+
+                <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+                    <span class="n">indexed</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span>
+                        <span class="n">_COMMUTATIVE</span><span class="p">,</span>
+                        <span class="n">indexed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="n">sympy_key</span><span class="p">(</span><span class="n">amp_no_indexed</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="p">))</span>
+                <span class="n">factors_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">amp_no_indexed</span><span class="p">)</span>
+
+                <span class="n">indexed</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>  <span class="c1"># Clean the container for the next factor.</span>
+
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># No indexed.</span>
+
+                <span class="c1"># When the factor never has an indexed base, we treat it as</span>
+                <span class="c1"># indexing a uni-valence internal indexed base.</span>
+                <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+                    <span class="n">wrapper_base</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="p">(</span><span class="n">_COMMUTATIVE</span><span class="p">,)</span>
+                <span class="p">))</span>
+                <span class="n">factors_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">unindexed_factor</span><span class="p">)</span>
+
+            <span class="k">continue</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Get the factors in the vectors.</span>
+        <span class="c1">#</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vecs</span><span class="p">):</span>
+            <span class="n">colour</span> <span class="o">=</span> <span class="n">i</span> <span class="k">if</span> <span class="n">vec_colour</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vec_colour</span><span class="p">(</span>
+                <span class="n">idx</span><span class="o">=</span><span class="n">i</span><span class="p">,</span> <span class="n">vec</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="bp">self</span>
+            <span class="p">)</span>
+            <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+                <span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">_NON_COMMUTATIVE</span><span class="p">,</span> <span class="n">colour</span><span class="p">)</span>
+            <span class="p">))</span>
+            <span class="n">factors_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec_factor</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Invoke the core simplification.</span>
+        <span class="c1">#</span>
+
+        <span class="n">res_sums</span><span class="p">,</span> <span class="n">canoned_factors</span><span class="p">,</span> <span class="n">canon_coeff</span> <span class="o">=</span> <span class="n">canon_factors</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sums</span><span class="p">,</span> <span class="n">factors</span><span class="p">,</span> <span class="n">symms</span> <span class="k">if</span> <span class="n">symms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="p">)</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Reconstruct the result</span>
+        <span class="c1">#</span>
+
+        <span class="n">res_amp</span> <span class="o">=</span> <span class="n">coeff</span> <span class="o">*</span> <span class="n">canon_coeff</span>
+        <span class="n">res_vecs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">canoned_factors</span><span class="p">,</span> <span class="n">factors_info</span><span class="p">):</span>
+
+            <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">vec_factor</span><span class="p">:</span>
+                <span class="c1"># When we have a vector.</span>
+                <span class="n">res_vecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">j</span> <span class="o">==</span> <span class="n">unindexed_factor</span><span class="p">:</span>
+                <span class="n">res_amp</span> <span class="o">*=</span> <span class="n">i</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res_amp</span> <span class="o">*=</span> <span class="n">j</span><span class="o">.</span><span class="n">xreplace</span><span class="p">({</span><span class="n">indexed_placeholder</span><span class="p">:</span> <span class="n">i</span><span class="p">})</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">Term</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">res_sums</span><span class="p">),</span> <span class="n">res_amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">res_vecs</span><span class="p">))</span></div></div>
+
+
+<span class="n">_WRAPPER_BASE</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span>
+    <span class="s1">&#39;internalWrapper&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;internalShape&#39;</span><span class="p">,)</span>
+<span class="p">)</span>
+<span class="n">_INDEXED_PLACEHOLDER</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalIndexedPlaceholder&#39;</span><span class="p">)</span>
+
+<span class="c1"># For colour of factors in a term.</span>
+
+<span class="n">_COMMUTATIVE</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">_NON_COMMUTATIVE</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Substitution by tensor definition</span>
+<span class="c1"># ---------------------------------</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">subst_vec_in_term</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="n">lhs</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">rhs_terms</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Term</span><span class="p">],</span>
+                      <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Substitute a matching vector in the given term.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sums</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">sums</span>
+    <span class="n">vecs</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span>
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vecs</span><span class="p">):</span>
+        <span class="n">substs</span> <span class="o">=</span> <span class="n">_match_indices</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">lhs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">substs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">substed_vec_idx</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">break</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Based on nest bind protocol.</span>
+
+    <span class="n">subst_states</span> <span class="o">=</span> <span class="n">_prepare_subst_states</span><span class="p">(</span>
+        <span class="n">rhs_terms</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span>
+    <span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">subst_states</span><span class="p">:</span>
+        <span class="n">new_vecs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span>
+        <span class="n">new_vecs</span><span class="p">[</span><span class="n">substed_vec_idx</span><span class="p">:</span><span class="n">substed_vec_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">vecs</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+            <span class="n">Term</span><span class="p">(</span><span class="n">sums</span> <span class="o">+</span> <span class="n">i</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp</span> <span class="o">*</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">new_vecs</span><span class="p">)),</span> <span class="n">j</span>
+        <span class="p">))</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">def</span> <span class="nf">subst_factor_in_term</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs_terms</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Term</span><span class="p">],</span>
+                         <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Substitute a scalar factor in the term.</span>
+
+<span class="sd">    While vectors are always flattened lists of vectors.  The amplitude part can</span>
+<span class="sd">    be a lot more complex.  Here we strive to replace only one instance of the</span>
+<span class="sd">    LHS by two placeholders, the substitution is possible only if the result</span>
+<span class="sd">    expands to two terms, each containing only one of the placeholders.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span>
+
+    <span class="n">placeholder1</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalSubstPlaceholder1&#39;</span><span class="p">)</span>
+    <span class="n">placeholder2</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalSubstPlaceholder2&#39;</span><span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span>
+    <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lhs</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">lhs</span>
+
+        <span class="k">def</span> <span class="nf">query_func</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Filter for the given symbol.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="ow">not</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">expr</span> <span class="o">==</span> <span class="n">lhs</span>
+
+        <span class="k">def</span> <span class="nf">replace_func</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Replace the symbol.&quot;&quot;&quot;</span>
+            <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="n">placeholder1</span> <span class="o">+</span> <span class="n">placeholder2</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lhs</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">lhs</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">label</span>
+
+        <span class="c1"># Here, in order to avoid the matching being called twice, we separate</span>
+        <span class="c1"># the actual checking into both the query and the replace call-back.</span>
+
+        <span class="k">def</span> <span class="nf">query_func</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Query for a reference to a given indexed base.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="ow">not</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">replace_func</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Replace the reference to the indexed base.&quot;&quot;&quot;</span>
+            <span class="n">match_res</span> <span class="o">=</span> <span class="n">_match_indices</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">lhs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match_res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">expr</span>
+            <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">substs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="n">substs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">match_res</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">placeholder1</span> <span class="o">+</span> <span class="n">placeholder2</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s1">&#39;Invalid LHS for substitution&#39;</span><span class="p">,</span> <span class="n">lhs</span><span class="p">,</span>
+            <span class="s1">&#39;expecting symbol or indexed quantity&#39;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Some special treatment is needed for powers.</span>
+    <span class="n">pow_placeholder</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalSubstPowPlaceholder&#39;</span><span class="p">)</span>
+    <span class="n">pow_val</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">decouple_pow</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Decouple a power.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pow_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">base</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+            <span class="n">pow_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">base</span>
+            <span class="k">return</span> <span class="n">base</span> <span class="o">*</span> <span class="n">Pow</span><span class="p">(</span><span class="n">pow_placeholder</span><span class="p">,</span> <span class="n">e</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Pow</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">Pow</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span><span class="p">(</span><span class="n">decouple_pow</span><span class="p">))</span>
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">query_func</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span><span class="p">(</span><span class="n">replace_func</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">pow_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">amp</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">pow_placeholder</span><span class="p">,</span> <span class="n">pow_val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span><span class="o">.</span><span class="n">expand</span><span class="p">()</span>
+
+    <span class="c1"># It is called nonlinear error, but some nonlinear forms, like conjugation,</span>
+    <span class="c1"># can be handled.</span>
+    <span class="n">nonlinear_err</span> <span class="o">=</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="s1">&#39;Invalid amplitude&#39;</span><span class="p">,</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="s1">&#39;not expandable in&#39;</span><span class="p">,</span> <span class="n">lhs</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">amp</span><span class="p">,</span> <span class="n">Add</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">amp</span><span class="o">.</span><span class="n">args</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">nonlinear_err</span>
+
+    <span class="n">amp_term1</span><span class="p">,</span> <span class="n">amp_term2</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">args</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">amp_term1</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">)</span> <span class="o">^</span> <span class="n">amp_term2</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">diff</span> <span class="o">!=</span> <span class="p">{</span><span class="n">placeholder1</span><span class="p">,</span> <span class="n">placeholder2</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="n">nonlinear_err</span>
+
+    <span class="k">if</span> <span class="n">amp_term1</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">placeholder1</span><span class="p">):</span>
+        <span class="n">amp</span> <span class="o">=</span> <span class="n">amp_term1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">amp</span> <span class="o">=</span> <span class="n">amp_term2</span>
+
+    <span class="n">subst_states</span> <span class="o">=</span> <span class="n">_prepare_subst_states</span><span class="p">(</span>
+        <span class="n">rhs_terms</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span>
+    <span class="p">)</span>
+
+    <span class="n">sums</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">sums</span>
+    <span class="n">vecs</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">subst_states</span><span class="p">:</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+            <span class="n">Term</span><span class="p">(</span><span class="n">sums</span> <span class="o">+</span> <span class="n">i</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">placeholder1</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span><span class="p">),</span> <span class="n">vecs</span><span class="p">),</span> <span class="n">j</span>
+        <span class="p">))</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">def</span> <span class="nf">_match_indices</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Match the target against the give expression for the indices.</span>
+
+<span class="sd">    Both arguments must be scalar or vector indexed quantities.  The second</span>
+<span class="sd">    argument should contain Wilds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">base</span> <span class="o">!=</span> <span class="n">expr</span><span class="o">.</span><span class="n">base</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">expr</span><span class="o">.</span><span class="n">indices</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">indices</span><span class="p">,</span> <span class="n">expr</span><span class="o">.</span><span class="n">indices</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">substs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">substs</span>
+
+
+<span class="k">def</span> <span class="nf">_prepare_subst_states</span><span class="p">(</span><span class="n">rhs_terms</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">dumms</span><span class="p">,</span> <span class="n">dummbegs</span><span class="p">,</span> <span class="n">excl</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prepare the substitution states.</span>
+
+<span class="sd">    Here we only have partially-finished substitution state for the next loop,</span>
+<span class="sd">    where for each substituting term on the RHS, the given wild symbols in</span>
+<span class="sd">    it will be substituted, then its dummies are going to be resolved.  Pairs of</span>
+<span class="sd">    the prepared RHS terms and the corresponding dummbegs will be returned.  It</span>
+<span class="sd">    is the responsibility of the caller to assemble the terms into the actual</span>
+<span class="sd">    substitution state, by information in the term to be substituted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">subst_states</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rhs_terms</span><span class="p">):</span>
+
+        <span class="c1"># Reuse existing dummy begins only for the first term.</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">curr_dummbegs</span> <span class="o">=</span> <span class="n">dummbegs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">curr_dummbegs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dummbegs</span><span class="p">)</span>
+
+        <span class="n">curr_term</span><span class="p">,</span> <span class="n">curr_dummbegs</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">reset_dumms</span><span class="p">(</span><span class="n">dumms</span><span class="p">,</span> <span class="n">curr_dummbegs</span><span class="p">,</span> <span class="n">excl</span><span class="p">)</span>
+        <span class="n">subst_states</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+            <span class="n">curr_term</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">substs</span><span class="p">),</span> <span class="n">curr_dummbegs</span>
+        <span class="p">))</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">subst_states</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># User interface support</span>
+<span class="c1"># ----------------------</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">sum_term</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Term</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Sum the given expression.</span>
+
+<span class="sd">    This method is meant for easy creation of tensor terms.  The arguments</span>
+<span class="sd">    should start with summations and ends with the expression that is summed.</span>
+<span class="sd">    This core function is designed to be wrapped in functions working with full</span>
+<span class="sd">    symbolic tensors.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">summand</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Too many SymPy stuff are callable.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">summand</span><span class="p">,</span> <span class="n">Callable</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">summand</span><span class="p">,</span> <span class="n">Basic</span><span class="p">):</span>
+        <span class="n">inp_terms</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">inp_func</span> <span class="o">=</span> <span class="n">summand</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">inp_terms</span> <span class="o">=</span> <span class="n">parse_terms</span><span class="p">(</span><span class="n">summand</span><span class="p">)</span>
+        <span class="n">inp_func</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">inp_terms</span><span class="p">)</span>
+
+    <span class="n">sums</span><span class="p">,</span> <span class="n">substs</span> <span class="o">=</span> <span class="n">_parse_sums</span><span class="p">(</span><span class="n">args</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sum_i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">sums</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">subst_i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">substs</span><span class="p">):</span>
+
+            <span class="n">subst_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">subst_i</span><span class="p">)</span>
+
+            <span class="c1"># We alway assemble the call sequence here, since this part should</span>
+            <span class="c1"># never be performance critical.</span>
+            <span class="n">call_seq</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">sum_i</span><span class="p">)</span>
+            <span class="n">call_seq</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">subst_dict</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">predicate</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">predicate</span><span class="p">(</span><span class="n">call_seq</span><span class="p">)):</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">inp_terms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">curr_inp_terms</span> <span class="o">=</span> <span class="n">inp_terms</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">curr_inp_terms</span> <span class="o">=</span> <span class="n">parse_terms</span><span class="p">(</span><span class="n">inp_func</span><span class="p">(</span><span class="n">call_seq</span><span class="p">))</span>
+
+            <span class="n">curr_terms</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span>
+                <span class="n">subst_dict</span><span class="p">,</span> <span class="n">sums</span><span class="o">=</span><span class="n">_cat_sums</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">sum_i</span><span class="p">)</span>
+            <span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">curr_inp_terms</span><span class="p">]</span>
+
+            <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">curr_terms</span><span class="p">)</span>
+
+            <span class="k">continue</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_sums</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse the summation arguments passed to the sum interface.</span>
+
+<span class="sd">    The result will be the decomposed form of the summations and substitutions</span>
+<span class="sd">    from the arguments.  For either of them, each entry in the result is a list</span>
+<span class="sd">    of pairs of the dummy with the actual range or symbolic expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sums</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">substs</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid summation&#39;</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="s1">&#39;expecting a sequence&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid summation&#39;</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span>
+                             <span class="s1">&#39;expecting dummy and range&#39;</span><span class="p">)</span>
+
+        <span class="n">dumm</span> <span class="o">=</span> <span class="n">ensure_symb</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;dummy&#39;</span><span class="p">)</span>
+
+        <span class="n">flattened</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+                <span class="n">flattened</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">flattened</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">contents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">expecting_range</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">flattened</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Range</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">expecting_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">expecting_range</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">elif</span> <span class="ow">not</span> <span class="n">expecting_range</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid summation on&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span>
+                                     <span class="s1">&#39;expecting expression&#39;</span><span class="p">)</span>
+                <span class="n">contents</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dumm</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">expecting_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">expecting_range</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">elif</span> <span class="n">expecting_range</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid summation on&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span>
+                                     <span class="s1">&#39;expecting a range&#39;</span><span class="p">)</span>
+                <span class="n">expr</span> <span class="o">=</span> <span class="n">ensure_expr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">contents</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dumm</span><span class="p">,</span> <span class="n">expr</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">expecting_range</span><span class="p">:</span>
+            <span class="n">sums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">substs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sums</span><span class="p">,</span> <span class="n">substs</span>
+
+
+<span class="k">def</span> <span class="nf">_cat_sums</span><span class="p">(</span><span class="n">sums1</span><span class="p">,</span> <span class="n">sums2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Concatenate two summation lists.</span>
+
+<span class="sd">    This function forms the tuple and ensures that there is no conflicting</span>
+<span class="sd">    dummies in the two summations.  This function is mostly for sanitizing user</span>
+<span class="sd">    inputs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sums</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="n">sums1</span><span class="p">,</span> <span class="n">sums2</span><span class="p">))</span>
+
+    <span class="c1"># Construction of the counter is separate from the addition of</span>
+    <span class="c1"># content due to a PyCharm bug.</span>
+    <span class="n">dumm_counts</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span>
+    <span class="n">dumm_counts</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sums</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">i</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">dumm_counts</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;Invalid summations to be concatenated&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">sums1</span><span class="p">,</span> <span class="n">sums2</span><span class="p">),</span>
+            <span class="s1">&#39;expecting no conflict in dummies&#39;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sums</span>
+
+
+<span class="k">def</span> <span class="nf">einst_term</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add summations according to the Einstein convention to a term.</span>
+
+<span class="sd">    In order for problems easy to be detected for users, here we just add the</span>
+<span class="sd">    most certain Einstein summations, while give warnings when there is anything</span>
+<span class="sd">    looking like a summation but is not added because of something suspicious.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Strategy, find all indices to indexed bases, and replace them with</span>
+    <span class="c1"># placeholder symbols so that we can detect other free symbols in the</span>
+    <span class="c1"># amplitude as well.</span>
+
+    <span class="n">next_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">replace_cb</span><span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="o">*</span><span class="n">curr_indices</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Replace indexed quantities.&quot;&quot;&quot;</span>
+        <span class="n">indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">curr_indices</span><span class="p">)</span>
+        <span class="n">placeholder</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalEinstPlaceholder</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">next_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">next_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">placeholder</span>
+
+    <span class="n">res_amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">Indexed</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span><span class="p">(</span><span class="n">replace_cb</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">:</span>
+        <span class="n">indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+
+    <span class="c1"># Usage tally of the symbols, in bare form and in complex expressions.</span>
+    <span class="n">use_tally</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">):</span>
+            <span class="n">use_tally</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">):</span>
+                <span class="n">use_tally</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+        <span class="k">continue</span>
+
+    <span class="n">existing_dumms</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">dumms</span>
+    <span class="n">new_sums</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">symb</span><span class="p">,</span> <span class="n">use</span> <span class="ow">in</span> <span class="n">use_tally</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+        <span class="k">if</span> <span class="n">use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">use</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># No chance to be an Einstein summation.</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">use</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s1">&#39;Symbol </span><span class="si">{}</span><span class="s1"> is not summed due to its usage in complex indices&#39;</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">symb</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">res_amp</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">symb</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s1">&#39;Symbol </span><span class="si">{}</span><span class="s1"> is not summed due to its usage in the amplitude&#39;</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">symb</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">range_</span> <span class="o">=</span> <span class="n">try_resolve_range</span><span class="p">(</span><span class="n">symb</span><span class="p">,</span> <span class="p">{},</span> <span class="n">resolvers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">range_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s1">&#39;Symbol </span><span class="si">{}</span><span class="s1"> is not summed for the incapability to resolve range&#39;</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">symb</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Now we have an Einstein summation.</span>
+        <span class="k">if</span> <span class="n">symb</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_dumms</span><span class="p">:</span>
+            <span class="n">new_sums</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">symb</span><span class="p">,</span> <span class="n">range_</span><span class="p">))</span>
+        <span class="k">continue</span>
+
+    <span class="c1"># Make summation from Einstein convention deterministic.</span>
+    <span class="n">new_sums</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">sort_key</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">Term</span><span class="p">(</span><span class="n">_cat_sums</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">new_sums</span><span class="p">),</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">parse_term</span><span class="p">(</span><span class="n">term</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a term.</span>
+
+<span class="sd">    Other things that can be interpreted as a term are also accepted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">Term</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">term</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">Vec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Term</span><span class="p">((),</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="p">(</span><span class="n">term</span><span class="p">,))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Term</span><span class="p">((),</span> <span class="n">sympify</span><span class="p">(</span><span class="n">term</span><span class="p">),</span> <span class="p">())</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Delta simplification utilities.</span>
+<span class="c1"># -------------------------------</span>
+<span class="c1">#</span>
+<span class="c1"># The core idea of delta simplification is that a delta can be replaced by a</span>
+<span class="c1"># new, possibly simpler, expression, with a possible substitution on a dummy.</span>
+<span class="c1"># The functions here aim to find and compose them.</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">simplify_deltas_in_expr</span><span class="p">(</span><span class="n">sums_dict</span><span class="p">,</span> <span class="n">amp</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Simplify the deltas in the given expression.</span>
+
+<span class="sd">    A new amplitude will be returned with all the deltas simplified, along with</span>
+<span class="sd">    a dictionary giving the substitutions from the deltas.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">amp</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">amp</span><span class="p">,</span> <span class="n">substs</span>
+
+    <span class="n">new_amp</span> <span class="o">=</span> <span class="n">amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">KroneckerDelta</span><span class="p">,</span> <span class="n">NonsympifiableFunc</span><span class="p">(</span><span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">_proc_delta_in_amp</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">,</span> <span class="n">substs</span>
+    <span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">new_amp</span><span class="p">,</span> <span class="n">substs</span>
+
+
+<span class="k">def</span> <span class="nf">compose_simplified_delta</span><span class="p">(</span><span class="n">amp</span><span class="p">,</span> <span class="n">new_substs</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compose delta simplification result with existing substitutions.</span>
+
+<span class="sd">    This function can be interpreted as follows.  First we have a delta that has</span>
+<span class="sd">    been resolved to be equivalent to an amplitude expression and some</span>
+<span class="sd">    substitutions.  Then by this function, we get what it is equivalent to when</span>
+<span class="sd">    we already have an existing bunch of earlier substitutions.</span>
+
+<span class="sd">    The new substitutions should be given as an iterable of old/new pairs. Then</span>
+<span class="sd">    the new amplitude and substitution from delta simplification can be composed</span>
+<span class="sd">    with existing substitution dictionary.  New amplitude will be returned as</span>
+<span class="sd">    the first return value. The given substitution dictionary will be mutated</span>
+<span class="sd">    and returned as the second return value.  When the new substitution is</span>
+<span class="sd">    incompatible with existing ones, the first return value will be a plain</span>
+<span class="sd">    zero.</span>
+
+<span class="sd">    The amplitude is a local thing in the expression tree, while the</span>
+<span class="sd">    substitutions is always global among the entire term.  This function</span>
+<span class="sd">    aggregate and expands it.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">subst</span> <span class="ow">in</span> <span class="n">new_substs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">subst</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="n">subst</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">subst</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">xreplace</span><span class="p">(</span><span class="n">substs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">old</span> <span class="ow">in</span> <span class="n">substs</span><span class="p">:</span>
+            <span class="n">comp_amp</span><span class="p">,</span> <span class="n">new_substs</span> <span class="o">=</span> <span class="n">proc_delta</span><span class="p">(</span>
+                <span class="n">substs</span><span class="p">[</span><span class="n">old</span><span class="p">],</span> <span class="n">new</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span>
+            <span class="p">)</span>
+            <span class="n">amp</span> <span class="o">=</span> <span class="n">amp</span> <span class="o">*</span> <span class="n">comp_amp</span>
+            <span class="k">if</span> <span class="n">new_substs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># The new substitution cannot involve substituted symbols.</span>
+                <span class="n">substs</span><span class="p">[</span><span class="n">new_substs</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">new_substs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="c1"># amp could now be zero.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Easier case, a new symbol is tried to be added.</span>
+            <span class="n">replace_old</span> <span class="o">=</span> <span class="p">{</span><span class="n">old</span><span class="p">:</span> <span class="n">new</span><span class="p">}</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">substs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">substs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">substs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">xreplace</span><span class="p">(</span><span class="n">replace_old</span><span class="p">)</span>
+            <span class="n">substs</span><span class="p">[</span><span class="n">old</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span>
+
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">amp</span><span class="p">,</span> <span class="n">substs</span>
+
+
+<span class="k">def</span> <span class="nf">proc_delta</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Processs a delta.</span>
+
+<span class="sd">    An amplitude and a substitution pair is going to be returned.  The given</span>
+<span class="sd">    delta will be equivalent to the returned amplitude factor with the</span>
+<span class="sd">    substitution performed.  None will be returned for the substitution when no</span>
+<span class="sd">    substitution is needed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">dumms</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">),</span> <span class="n">arg2</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sums_dict</span>
+        <span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dumms</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">)</span>
+
+    <span class="n">eqn</span> <span class="o">=</span> <span class="n">Eq</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">)</span>
+
+    <span class="c1"># We try to solve for each of the dummies.  Most likely this will only be</span>
+    <span class="c1"># executed for one loop.</span>
+
+    <span class="k">for</span> <span class="n">dumm</span> <span class="ow">in</span> <span class="n">dumms</span><span class="p">:</span>
+        <span class="n">range_</span> <span class="o">=</span> <span class="n">sums_dict</span><span class="p">[</span><span class="n">dumm</span><span class="p">]</span>
+        <span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="p">(</span><span class="n">eqn</span><span class="p">,</span> <span class="n">dumm</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sol</span> <span class="ow">is</span> <span class="n">S</span><span class="o">.</span><span class="n">true</span><span class="p">:</span>
+            <span class="c1"># Now we can be sure that we got an identity.</span>
+            <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sol</span><span class="p">:</span>
+                <span class="c1"># Try to get the range of the substituting expression.</span>
+                <span class="n">range_of_i</span> <span class="o">=</span> <span class="n">try_resolve_range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">range_of_i</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">range_of_i</span> <span class="o">==</span> <span class="n">range_</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="p">(</span><span class="n">dumm</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># We assume atomic and disjoint ranges!</span>
+                    <span class="k">return</span> <span class="n">_NAUGHT</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="c1"># We cannot resolve the range of any of the solutions.  Try next</span>
+            <span class="c1"># dummy.</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># No solution.</span>
+            <span class="k">return</span> <span class="n">_NAUGHT</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="c1"># When we got here, all the solutions we found have undetermined range, we</span>
+    <span class="c1"># have to return the unprocessed form.</span>
+    <span class="k">return</span> <span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">),</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">_proc_delta_in_amp</span><span class="p">(</span><span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">,</span> <span class="n">substs</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Process a delta in the amplitude expression.</span>
+
+<span class="sd">    The partial application of this function is going to be used as the</span>
+<span class="sd">    call-back to SymPy replace function.  This function only returns SymPy</span>
+<span class="sd">    expressions to satisfy SymPy replace interface.  All actions on the</span>
+<span class="sd">    substitution are handled by an input/output argument.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># We first perform the substitutions found thus far.</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">xreplace</span><span class="p">(</span><span class="n">substs</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+
+    <span class="c1"># Process the new delta.</span>
+    <span class="n">amp</span><span class="p">,</span> <span class="n">subst</span> <span class="o">=</span> <span class="n">proc_delta</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">sums_dict</span><span class="o">=</span><span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span><span class="p">)</span>
+
+    <span class="n">new_amp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">compose_simplified_delta</span><span class="p">(</span>
+        <span class="n">amp</span><span class="p">,</span> <span class="p">[</span><span class="n">subst</span><span class="p">],</span> <span class="n">substs</span><span class="p">,</span> <span class="n">sums_dict</span><span class="o">=</span><span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_amp</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Gradient computation</span>
+<span class="c1"># --------------------</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">diff_term</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="n">variable</span><span class="p">,</span> <span class="n">real</span><span class="p">,</span> <span class="n">wirtinger_conj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Differentiate a term.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">symb</span> <span class="o">=</span> <span class="n">_GRAD_REAL_SYMB</span> <span class="k">if</span> <span class="n">real</span> <span class="k">else</span> <span class="n">_GRAD_SYMB</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">):</span>
+
+        <span class="n">lhs</span> <span class="o">=</span> <span class="n">variable</span>
+        <span class="n">rhs</span> <span class="o">=</span> <span class="n">lhs</span> <span class="o">+</span> <span class="n">symb</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">):</span>
+
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">indices</span>
+        <span class="n">wilds</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">Wild</span><span class="p">(</span><span class="n">_GRAD_WILD_FMT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">lhs</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">base</span><span class="p">[</span><span class="n">wilds</span><span class="p">]</span>
+        <span class="n">rhs</span> <span class="o">=</span> <span class="n">lhs</span> <span class="o">+</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span>
+            <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">wilds</span><span class="p">,</span> <span class="n">indices</span><span class="p">)),</span> <span class="n">symb</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid differentiation variable&#39;</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">real</span><span class="p">:</span>
+        <span class="n">orig_amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">conjugate</span><span class="p">(</span><span class="n">lhs</span><span class="p">),</span> <span class="n">lhs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">orig_amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span>
+    <span class="n">replaced_amp</span> <span class="o">=</span> <span class="p">(</span><span class="n">orig_amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span><span class="p">))</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">real</span><span class="p">:</span>
+        <span class="n">eval_substs</span> <span class="o">=</span> <span class="p">{</span><span class="n">symb</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">replaced_amp</span> <span class="o">=</span> <span class="n">replaced_amp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="n">conjugate</span><span class="p">(</span><span class="n">symb</span><span class="p">),</span> <span class="n">_GRAD_CONJ_SYMB</span>
+        <span class="p">)</span>
+        <span class="n">eval_substs</span> <span class="o">=</span> <span class="p">{</span><span class="n">_GRAD_CONJ_SYMB</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">symb</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">wirtinger_conj</span><span class="p">:</span>
+        <span class="n">diff_var</span> <span class="o">=</span> <span class="n">_GRAD_CONJ_SYMB</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">diff_var</span> <span class="o">=</span> <span class="n">symb</span>
+
+    <span class="c1"># Core evaluation.</span>
+    <span class="n">res_amp</span> <span class="o">=</span> <span class="n">replaced_amp</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">diff_var</span><span class="p">)</span><span class="o">.</span><span class="n">xreplace</span><span class="p">(</span><span class="n">eval_substs</span><span class="p">)</span>
+    <span class="n">res_amp</span> <span class="o">=</span> <span class="n">res_amp</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">term</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="n">res_amp</span><span class="p">)</span>
+
+
+<span class="c1"># Internal symbols for gradients.</span>
+<span class="n">_GRAD_SYMB_FMT</span> <span class="o">=</span> <span class="s1">&#39;internalGradient</span><span class="si">{tag}</span><span class="s1">Placeholder&#39;</span>
+<span class="n">_GRAD_SYMB</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">_GRAD_SYMB_FMT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+<span class="n">_GRAD_CONJ_SYMB</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">_GRAD_SYMB_FMT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s1">&#39;Conj&#39;</span><span class="p">))</span>
+<span class="n">_GRAD_REAL_SYMB</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span>
+    <span class="n">_GRAD_SYMB_FMT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s1">&#39;Real&#39;</span><span class="p">),</span> <span class="n">real</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="n">_GRAD_WILD_FMT</span> <span class="o">=</span> <span class="s1">&#39;InternalWildSymbol</span><span class="si">{}</span><span class="s1">&#39;</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Misc public functions</span>
+<span class="c1"># ---------------------</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">try_resolve_range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Attempt to resolve the range of an expression.</span>
+
+<span class="sd">    None will be returned if it cannot be resolved.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">resolver</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">([</span><span class="n">sums_dict</span><span class="p">],</span> <span class="n">resolvers</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">resolver</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">resolver</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">resolver</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">resolver</span><span class="p">,</span> <span class="n">Callable</span><span class="p">):</span>
+            <span class="n">range_</span> <span class="o">=</span> <span class="n">resolver</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">range_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">range_</span><span class="p">,</span> <span class="n">Range</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">range_</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid range: &#39;</span><span class="p">,</span> <span class="n">range_</span><span class="p">,</span>
+                                    <span class="s1">&#39;from resolver&#39;</span><span class="p">,</span> <span class="n">resolver</span><span class="p">,</span>
+                                    <span class="s1">&#39;expecting range or None&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid resolver: &#39;</span><span class="p">,</span> <span class="n">resolver</span><span class="p">,</span>
+                            <span class="s1">&#39;expecting callable or mapping&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Never resolved nor error found.</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

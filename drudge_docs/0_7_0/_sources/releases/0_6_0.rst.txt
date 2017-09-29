@@ -1,0 +1,21 @@
+0.6.0
+-----
+
+In the previous release, ``RestrictedPartHoleDrudge`` is narrower in scope than
+the ``SpinOneHalfPartHoleDrudge``.  After some internal revision, now all
+problems for ``SpinOneHalfPartHoleDrudge`` should be able to be handled with
+``RestrictedPartHoleDrudge``.  For expressions with many terms coming from
+concrete spin summation, significant speed up can be brought.
+
+To update to the new drudge,
+
+* When your theory is already based on unitary group generators, just remove
+  your definition and use the definition from the drudge.
+
+* When your theory is not written in terms of unitary group generators, it is
+  strongly advised that your theory is rewritten in terms of them.  If it
+  really cannot, use symbolic summation over spin values as much as possible.
+
+* Even when the spin values are never summed abstractly, simply change the
+  drudge to this new one might still be beneficial.
+

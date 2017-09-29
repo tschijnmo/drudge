@@ -1,0 +1,13 @@
+0.4.0
+-----
+
+This is mainly a bug-fix release.
+
+* The incomplete simplification problem for Fock drudge is fixed.  Thanks to
+  Ethan Qiu for pointing this out.
+
+* The incompetent script for running Spark inside SLURM is removed and got
+  improved in the separate `spark-in-slurm` project.
+
+* Spin-1/2 particle-hole drudge now has explicit orbital range sizes.  Thanks to
+  Roman Schutski for fixing this.

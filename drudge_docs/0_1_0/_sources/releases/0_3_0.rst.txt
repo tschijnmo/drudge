@@ -1,0 +1,13 @@
+0.3.0
+-----
+
+In this release, in addition to various performance optimization, small bug
+fixing, and some internal cleaning-up, the most significant enhancement is the
+handling of algebraic systems other than the fermion/boson algebra.  Currently,
+Clifford algebra and :math:`\mathfrak{su}(2)` algebra are supported.  Other
+algebraic systems should be able to be added with ease.
+
+Also the documentation has been expanded, especially with more examples in the
+API reference guide.  Also the utilities are added for convenient pickling of
+tensors.
+

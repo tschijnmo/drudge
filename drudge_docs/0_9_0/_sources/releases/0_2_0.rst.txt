@@ -1,0 +1,23 @@
+0.2.0
+-----
+
+In this release, major revisions and enhancements have been made to the drudge
+package.  Primarily,
+
+1. TensorDef class are added to support better substitution and direct indexing.
+
+2. Drudge.einst and Drudge.sum has been revised to work with existing tensors.
+
+3. Variable-valence symmetry are supported and used in many-body drudges.
+
+4. The timing facility has been renamed to Matlab convention.
+
+Since the code has not yet been widely deployed, a few changes might break
+backward compatibility,
+
+1. act method of tensor is removed.
+
+2. set_name method of drudge is updated to a new interface.
+
+3. Timing facility is renamed.
+

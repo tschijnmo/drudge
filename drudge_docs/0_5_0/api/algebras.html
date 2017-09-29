@@ -1,0 +1,553 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Support of different algebraic systems &#8212; drudge 0.5.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Direct support of different problems" href="problems.html" />
+    <link rel="prev" title="Base drudge system" href="base.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="support-of-different-algebraic-systems">
+<h1>Support of different algebraic systems<a class="headerlink" href="#support-of-different-algebraic-systems" title="Permalink to this headline">¶</a></h1>
+<p>The base system does not assume any commutation rules amongst the generators of
+the algebra, <em>ie</em> free algebra or tensor algebra is assumed.  However, by
+subclassing the <a class="reference internal" href="base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> class, domain specific knowledge about the
+algebraic system in the problem can be given.  Inside drudge, we have some
+algebraic systems that is already built in.</p>
+<div class="section" id="abstract-wick-alegbra">
+<h2>Abstract Wick alegbra<a class="headerlink" href="#abstract-wick-alegbra" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="drudge.WickDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">WickDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>wick_parallel=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/wick.html#WickDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.WickDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for Wick-style algebras.</p>
+<p>A Wick-style algebra is an algebraic system where the commutator between any
+generators of the algebra is a simple scalar value.  This drudge will
+attempt to put the vectors into normal order based on the given comparator
+and contractor by Wick theorem.</p>
+<p>Normally, subclasses need to override the properties <a class="reference internal" href="#drudge.WickDrudge.phase" title="drudge.WickDrudge.phase"><code class="xref py py-attr docutils literal"><span class="pre">phase</span></code></a>,
+<a class="reference internal" href="#drudge.WickDrudge.contractor" title="drudge.WickDrudge.contractor"><code class="xref py py-attr docutils literal"><span class="pre">contractor</span></code></a>, and <a class="reference internal" href="#drudge.WickDrudge.comparator" title="drudge.WickDrudge.comparator"><code class="xref py py-attr docutils literal"><span class="pre">comparator</span></code></a> with domain-specific
+knowledge.</p>
+<dl class="method">
+<dt id="drudge.WickDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>wick_parallel=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/wick.html#WickDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.WickDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the Wick drudge.</p>
+<p>This level just have one option to handle, the parallelism option.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.WickDrudge.wick_parallel">
+<code class="descname">wick_parallel</code><a class="headerlink" href="#drudge.WickDrudge.wick_parallel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the Wick parallelism level.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.WickDrudge.contractor">
+<code class="descname">contractor</code><a class="headerlink" href="#drudge.WickDrudge.contractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the contractor for the algebraic system.</p>
+<p>The contractor is going to be called with two vectors to return the
+value of their contraction.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.WickDrudge.phase">
+<code class="descname">phase</code><a class="headerlink" href="#drudge.WickDrudge.phase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the phase for the commutation rule.</p>
+<p>The phase should be a constant defining the phase of the commutation
+rule.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.WickDrudge.comparator">
+<code class="descname">comparator</code><a class="headerlink" href="#drudge.WickDrudge.comparator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the comparator for the canonicalized vectors.</p>
+<p>The normal ordering operation will be performed according to this
+comparator.  It will be called with two <strong>canonicalized vectors</strong> for a
+boolean value.  True should be returned if the first given vector is
+less than the second vector.  The two vectors will be attempted to be
+transposed when False is returned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.WickDrudge.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><em>terms: pyspark.rdd.RDD</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/wick.html#WickDrudge.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.WickDrudge.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal order the terms according to generalized Wick theorem.</p>
+<p>The actual expansion is based on the information given in the subclasses
+by the abstract properties.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="concrete-wick-algebras">
+<h2>Concrete Wick algebras<a class="headerlink" href="#concrete-wick-algebras" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="fermion-boson-ccr-car-algebra">
+<h3>Fermion-boson CCR/CAR algebra<a class="headerlink" href="#fermion-boson-ccr-car-algebra" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="drudge.FockDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">FockDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>exch=-1</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for doing fermion/boson operator algebra on Fock spaces.</p>
+<p>This is the general base class for drudges working on fermion/boson operator
+algebras.  Here general methods are defined for working on these algebraic
+systems, but no problem specific information, like ranges or operator base,
+is defined.  Generally, operators for Fock space problems has either
+<a class="reference internal" href="#drudge.CR" title="drudge.CR"><code class="xref py py-data docutils literal"><span class="pre">CR</span></code></a> or <a class="reference internal" href="#drudge.AN" title="drudge.AN"><code class="xref py py-data docutils literal"><span class="pre">AN</span></code></a> as the first index to give their creation or
+annihilation character.</p>
+<p>To customize the details of the commutation rules, properties
+<a class="reference internal" href="#drudge.FockDrudge.op_parser" title="drudge.FockDrudge.op_parser"><code class="xref py py-attr docutils literal"><span class="pre">op_parser</span></code></a> and <a class="reference internal" href="#drudge.FockDrudge.ancr_contractor" title="drudge.FockDrudge.ancr_contractor"><code class="xref py py-attr docutils literal"><span class="pre">ancr_contractor</span></code></a> can be overridden.</p>
+<dl class="method">
+<dt id="drudge.FockDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>exch=-1</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exch</strong> (<em>{1</em><em>, </em><em>-1}</em>) – The exchange symmetry for the Fock space.  Constants
+<a class="reference internal" href="#drudge.FERMI" title="drudge.FERMI"><code class="xref py py-data docutils literal"><span class="pre">FERMI</span></code></a> and <a class="reference internal" href="#drudge.BOSE" title="drudge.BOSE"><code class="xref py py-data docutils literal"><span class="pre">BOSE</span></code></a> can be used.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.contractor">
+<code class="descname">contractor</code><a class="headerlink" href="#drudge.FockDrudge.contractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the contractor for the algebra.</p>
+<p>The operations are read here on-the-fly so that possibly customized
+behaviour from the subclasses can be read.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.phase">
+<code class="descname">phase</code><a class="headerlink" href="#drudge.FockDrudge.phase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the phase for the commutation rules.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.comparator">
+<code class="descname">comparator</code><a class="headerlink" href="#drudge.FockDrudge.comparator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the comparator for the normal ordering operation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.vec_colour">
+<code class="descname">vec_colour</code><a class="headerlink" href="#drudge.FockDrudge.vec_colour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the vector colour evaluator.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.OP_PARSER">
+<code class="descname">OP_PARSER</code><a class="headerlink" href="#drudge.FockDrudge.OP_PARSER" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Callable</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.op_parser">
+<code class="descname">op_parser</code><a class="headerlink" href="#drudge.FockDrudge.op_parser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the parser for field operators.</p>
+<p>The result should be a callable taking an vector and return a triple of
+operator base, operator character, and the actual indices to the
+operator.  This can be helpful for cases where the interpretation of the
+operators needs to be tweeked.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.ANCR_CONTRACTOR">
+<code class="descname">ANCR_CONTRACTOR</code><a class="headerlink" href="#drudge.FockDrudge.ANCR_CONTRACTOR" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Callable</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.FockDrudge.ancr_contractor">
+<code class="descname">ancr_contractor</code><a class="headerlink" href="#drudge.FockDrudge.ancr_contractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the contractor for annihilation and creation operators.</p>
+<p>In this drudge, the contraction between creation/creation,
+annihilation/annihilation, and creation/annihilation operators are
+fixed.  By this property, a callable for contracting annihilation
+operators with a creation operator can be given.  It will be called with
+the base and indices (excluding the character) of the annihilation
+operators and the base and indices of the creation operator.  A simple
+SymPy expression is expected in the result.</p>
+<p>By default, the result will be a simple delta.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.FockDrudge.eval_vev">
+<code class="descname">eval_vev</code><span class="sig-paren">(</span><em>tensor: drudge.drudge.Tensor</em>, <em>contractor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.eval_vev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.eval_vev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate vacuum expectation value.</p>
+<p>The contractor needs to be given as a callable accepting two operators.
+And this function is also set as a tensor method by the same name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.FockDrudge.eval_phys_vev">
+<code class="descname">eval_phys_vev</code><span class="sig-paren">(</span><em>tensor: drudge.drudge.Tensor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.eval_phys_vev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.eval_phys_vev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate expectation value with respect to the physical vacuum.</p>
+<p>Here the contractor from normal-ordering will be used.  And this
+function is also set as a tensor method by the same name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.FockDrudge.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><em>terms: pyspark.rdd.RDD</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal order the field operators.</p>
+<p>Here the normal-ordering operation of general Wick drudge will be
+invoked twice to ensure full simplification.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="drudge.FockDrudge.dagger">
+<em class="property">static </em><code class="descname">dagger</code><span class="sig-paren">(</span><em>tensor: drudge.drudge.Tensor</em>, <em>real=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.dagger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.dagger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the Hermitian adjoint of the given operator.</p>
+<p>This method is also set to be a tensor method with the same name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>tensor</strong> – The operator to take the Hermitian adjoint for.</li>
+<li><strong>real</strong> – If the amplitude is assumed to be real.  Note that this need not be
+set if the amplitude is concrete real numbers.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.FockDrudge.set_n_body_base">
+<code class="descname">set_n_body_base</code><span class="sig-paren">(</span><em>base: sympy.tensor.indexed.IndexedBase</em>, <em>n_body: int</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.set_n_body_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.set_n_body_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an indexed base as an n-body interaction.</p>
+<p>The symmetry of an n-body interaction has full permutation symmetry
+among the corresponding slots in the first and second half.</p>
+<p>When the body count if less than two, no symmetry is added.  And the
+added symmetry is for the given valence only.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.FockDrudge.set_dbbar_base">
+<code class="descname">set_dbbar_base</code><span class="sig-paren">(</span><em>base: sympy.tensor.indexed.IndexedBase</em>, <em>n_body: int</em>, <em>n_body2=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#FockDrudge.set_dbbar_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.FockDrudge.set_dbbar_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an indexed base as a double-bar interaction.</p>
+<p>A double barred interaction has full permutation symmetry among its
+first half of slots and its second half individually.  For fermion
+field, the permutation is assumed to be anti-commutative.</p>
+<p>The size of the second half can be given by another optional argument,
+or it is assumed to have the same size as the first half.  It can also
+be zero, which gives one chunk of symmetric slots only.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.CR">
+<code class="descclassname">drudge.</code><code class="descname">CR</code><a class="headerlink" href="#drudge.CR" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label for creation operators.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.AN">
+<code class="descclassname">drudge.</code><code class="descname">AN</code><a class="headerlink" href="#drudge.AN" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label for annihilation operators.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.FERMI">
+<code class="descclassname">drudge.</code><code class="descname">FERMI</code><a class="headerlink" href="#drudge.FERMI" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label for fermion exchange symmetry.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.BOSE">
+<code class="descclassname">drudge.</code><code class="descname">BOSE</code><a class="headerlink" href="#drudge.BOSE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label for boson exchange symmetry.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="clifford-algebra">
+<h3>Clifford algebra<a class="headerlink" href="#clifford-algebra" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="drudge.CliffordDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">CliffordDrudge</code><span class="sig-paren">(</span><em>ctx, inner: typing.Callable[[drudge.term.Vec, drudge.term.Vec], sympy.core.expr.Expr] = &lt;function inner_by_delta&gt;, **kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/clifford.html#CliffordDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.CliffordDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for Clifford algebras.</p>
+<p>A Clifford algebra over a inner product space <span class="math">\(V\)</span> is an algebraic
+system with</p>
+<div class="math">
+\[uv + vu = 2 \langle u, v \rangle\]</div>
+<p>for all <span class="math">\(u, v \in V\)</span>.</p>
+<p>This drudge should work for any Clifford algebra with given inner product
+function.</p>
+<dl class="attribute">
+<dt id="drudge.CliffordDrudge.Inner">
+<code class="descname">Inner</code><a class="headerlink" href="#drudge.CliffordDrudge.Inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Callable</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.CliffordDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>ctx, inner: typing.Callable[[drudge.term.Vec, drudge.term.Vec], sympy.core.expr.Expr] = &lt;function inner_by_delta&gt;, **kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/clifford.html#CliffordDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.CliffordDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ctx</strong> – The context for Spark.</li>
+<li><strong>inner</strong> – The callable to compute the inner product of two vectors.  By
+default, the inner product of vectors of the same base and the same
+number of indices will be computed to be the delta, or
+<code class="docutils literal"><span class="pre">ValueError</span></code> will be raised.</li>
+<li><strong>kwargs</strong> – All other keyword arguments will be forwarded to the base class
+<a class="reference internal" href="#drudge.WickDrudge" title="drudge.WickDrudge"><code class="xref py py-class docutils literal"><span class="pre">WickDrudge</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.CliffordDrudge.phase">
+<code class="descname">phase</code><a class="headerlink" href="#drudge.CliffordDrudge.phase" title="Permalink to this definition">¶</a></dt>
+<dd><p>The phase for Clifford algebra, negative unity.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.CliffordDrudge.comparator">
+<code class="descname">comparator</code><a class="headerlink" href="#drudge.CliffordDrudge.comparator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Comparator for Clifford algebra.</p>
+<p>Here we just compare vectors by the default sort key for vectors.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.CliffordDrudge.contractor">
+<code class="descname">contractor</code><a class="headerlink" href="#drudge.CliffordDrudge.contractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contractor for Clifford algebra.</p>
+<p>The inner product function will be invoked.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.CliffordDrudge.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><em>terms: pyspark.rdd.RDD</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/clifford.html#CliffordDrudge.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.CliffordDrudge.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put vectors in Clifford algebra in normal-order.</p>
+<p>After the normal-ordering by Wick expansion, adjacent equal vectors will
+be collapsed by rules of Clifford algebra.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="abstract-quadratic-algebra">
+<h2>Abstract quadratic algebra<a class="headerlink" href="#abstract-quadratic-algebra" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="drudge.GenQuadDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">GenQuadDrudge</code><span class="sig-paren">(</span><em>ctx</em>, <em>full_balance=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/genquad.html#GenQuadDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.GenQuadDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for general quadratic algebra.</p>
+<p>This abstract base class encompasses a wide range of algebraic systems.  By
+a quadratic algebra, we mean any algebraic system with commutation rules</p>
+<div class="math">
+\[a b = \phi b a + \kappa\]</div>
+<p>for any two elements <span class="math">\(a\)</span> and <span class="math">\(b\)</span> in the algebra with
+<span class="math">\(\phi\)</span> a scalar and <span class="math">\(\kappa\)</span> any element in the algebra.  This
+includes all Lie algebra systems by fixing <span class="math">\(\phi\)</span> to plus unity.
+Other algebra systems with other <span class="math">\(\phi\)</span> can also be treated as long as
+it is a scalar.</p>
+<p>For the special case of <span class="math">\(\phi = \pm 1\)</span> and <span class="math">\(\kappa\)</span> being a
+scalar, <a class="reference internal" href="#drudge.WickDrudge" title="drudge.WickDrudge"><code class="xref py py-class docutils literal"><span class="pre">WickDrudge</span></code></a> should be used, which utilizes the special
+structure and has much better performance.</p>
+<dl class="method">
+<dt id="drudge.GenQuadDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>ctx</em>, <em>full_balance=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/genquad.html#GenQuadDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.GenQuadDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenQuadDrudge.full_balance">
+<code class="descname">full_balance</code><a class="headerlink" href="#drudge.GenQuadDrudge.full_balance" title="Permalink to this definition">¶</a></dt>
+<dd><p>If full load-balancing is to be performed during normal-ordering.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenQuadDrudge.Swapper">
+<code class="descname">Swapper</code><a class="headerlink" href="#drudge.GenQuadDrudge.Swapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Callable</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenQuadDrudge.swapper">
+<code class="descname">swapper</code><a class="headerlink" href="#drudge.GenQuadDrudge.swapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>The function to be called with two operators to commute.</p>
+<p>It is going to be called with two vectors.  When they are already in
+desired order, a <code class="docutils literal"><span class="pre">None</span></code> should be returned.  Or the phase of the
+commutation should be returned as a SymPy expression, along with the
+commutator, which can be anything that can be interpreted as terms.</p>
+<p>It is named as <code class="docutils literal"><span class="pre">swapper</span></code> is avoid any confusion about the established
+meaning of the word <code class="docutils literal"><span class="pre">commutator</span></code> in mathematics.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.GenQuadDrudge.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><em>terms: pyspark.rdd.RDD</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/genquad.html#GenQuadDrudge.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.GenQuadDrudge.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal order the terms in the RDD.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="concrete-quadratic-algebras">
+<h2>Concrete quadratic algebras<a class="headerlink" href="#concrete-quadratic-algebras" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="drudge.SU2LatticeDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">SU2LatticeDrudge</code><span class="sig-paren">(</span><em>ctx</em>, <em>cartan=Vec('J^z'</em>, <em>())</em>, <em>raise_=Vec('J^+'</em>, <em>())</em>, <em>lower=Vec('J^-'</em>, <em>())</em>, <em>root=1</em>, <em>norm=2</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/su2.html#SU2LatticeDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SU2LatticeDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for a lattice of SU(2) algebras.</p>
+<p>This drudge has the commutation rules for SU(2) algebras in Cartan-Weyl form
+(Ladder operators).  Here both the shift and Cartan operators can have
+additional <em>lattice indices</em>.  Operators on different lattice sites always
+commute.</p>
+<p>The the normal-ordering operation would try to put raising operators before
+the Cartan operators, which come before the lowering operators.</p>
+<dl class="method">
+<dt id="drudge.SU2LatticeDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>ctx</em>, <em>cartan=Vec('J^z'</em>, <em>())</em>, <em>raise_=Vec('J^+'</em>, <em>())</em>, <em>lower=Vec('J^-'</em>, <em>())</em>, <em>root=1</em>, <em>norm=2</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/su2.html#SU2LatticeDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SU2LatticeDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ctx</strong> – The Spark context for the drudge.</li>
+<li><strong>cartan</strong> – The basis operator for the Cartan subalgebra (<span class="math">\(J^z\)</span> operator
+for spin problem).  It is registered in the name archive by the
+first letter in its label followed by an underscore.</li>
+<li><strong>raise</strong> – The raising operator.  It is also also registered in the name
+archive by the first letter in its label followed by <code class="docutils literal"><span class="pre">_p</span></code>.</li>
+<li><strong>lower</strong> – The lowering operator, registered by the first letter followed by
+<code class="docutils literal"><span class="pre">_m</span></code>.</li>
+<li><strong>root</strong> – The coefficient for the commutator between the Cartan and shift
+operators.</li>
+<li><strong>norm</strong> – The coefficient for the commutator between the raising and lowering
+operators.</li>
+<li><strong>kwargs</strong> – All other keyword arguments are given to the base class
+<a class="reference internal" href="#drudge.GenQuadDrudge" title="drudge.GenQuadDrudge"><code class="xref py py-class docutils literal"><span class="pre">GenQuadDrudge</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.SU2LatticeDrudge.swapper">
+<code class="descname">swapper</code><a class="headerlink" href="#drudge.SU2LatticeDrudge.swapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>The swapper for the spin algebra.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Support of different algebraic systems</a><ul>
+<li><a class="reference internal" href="#abstract-wick-alegbra">Abstract Wick alegbra</a></li>
+<li><a class="reference internal" href="#concrete-wick-algebras">Concrete Wick algebras</a><ul>
+<li><a class="reference internal" href="#fermion-boson-ccr-car-algebra">Fermion-boson CCR/CAR algebra</a></li>
+<li><a class="reference internal" href="#clifford-algebra">Clifford algebra</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#abstract-quadratic-algebra">Abstract quadratic algebra</a></li>
+<li><a class="reference internal" href="#concrete-quadratic-algebras">Concrete quadratic algebras</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api.html">Drudge API reference guide</a><ul>
+      <li>Previous: <a href="base.html" title="previous chapter">Base drudge system</a></li>
+      <li>Next: <a href="problems.html" title="next chapter">Direct support of different problems</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/algebras.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/algebras.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

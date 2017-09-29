@@ -1,0 +1,1840 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Base drudge system &#8212; drudge 0.4.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Support of different algebraic systems" href="algebras.html" />
+    <link rel="prev" title="Drudge API reference guide" href="../api.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="base-drudge-system">
+<h1>Base drudge system<a class="headerlink" href="#base-drudge-system" title="Permalink to this headline">¶</a></h1>
+<p>The base drudge system handles the part of program logic universally applicable
+to any tensor and noncommutative algebra system.</p>
+<div class="section" id="building-blocks-of-the-basic-drudge-data-structure">
+<h2>Building blocks of the basic drudge data structure<a class="headerlink" href="#building-blocks-of-the-basic-drudge-data-structure" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="drudge.Range">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Range</code><span class="sig-paren">(</span><em>label</em>, <em>lower=None</em>, <em>upper=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range" title="Permalink to this definition">¶</a></dt>
+<dd><p>A symbolic range that can be summed over.</p>
+<p>This class is for symbolic ranges that is going to be summed over in
+tensors.  Each range should have a label, and optionally lower and upper
+bounds, which should be both given or absent.  The label can be any hashable
+and ordered Python type.  The bounds will not be directly used for symbolic
+computation, but rather designed for printers and conversion to SymPy
+summation.  Note that ranges are assumed to be atomic and disjoint.  Even in
+the presence of lower and upper bounds, unequal ranges are assumed to be
+disjoint.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Bounds with the same label but different bounds will be considered
+unequal.  Although no error be given, using different bounds with
+identical label is strongly advised against.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Unequal ranges are always assumed to be disjoint.</p>
+</div>
+<dl class="method">
+<dt id="drudge.Range.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>label</em>, <em>lower=None</em>, <em>upper=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the symbolic range.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.label">
+<code class="descname">label</code><a class="headerlink" href="#drudge.Range.label" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label of the range.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.lower">
+<code class="descname">lower</code><a class="headerlink" href="#drudge.Range.lower" title="Permalink to this definition">¶</a></dt>
+<dd><p>The lower bound of the range.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.upper">
+<code class="descname">upper</code><a class="headerlink" href="#drudge.Range.upper" title="Permalink to this definition">¶</a></dt>
+<dd><p>The upper bound of the range.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.size">
+<code class="descname">size</code><a class="headerlink" href="#drudge.Range.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>The size of the range.</p>
+<p>This property given None for unbounded ranges.  For bounded ranges, it
+is the difference between the lower and upper bound.  Note that this
+contradicts the deeply entrenched mathematical convention of including
+other ends for a range.  But it does gives a lot of convenience and
+elegance.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.bounded">
+<code class="descname">bounded</code><a class="headerlink" href="#drudge.Range.bounded" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the range is explicitly bounded.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.args">
+<code class="descname">args</code><a class="headerlink" href="#drudge.Range.args" title="Permalink to this definition">¶</a></dt>
+<dd><p>The arguments for range creation.</p>
+<p>When the bounds are present, we have a triple, or we have a singleton
+tuple of only the label.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.__hash__">
+<code class="descname">__hash__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__hash__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__hash__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hash the symbolic range.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare equality of two ranges.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.__repr__">
+<code class="descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__repr__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form the representative string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form readable string representation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Range.sort_key">
+<code class="descname">sort_key</code><a class="headerlink" href="#drudge.Range.sort_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>The sort key for the range.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.replace_label">
+<code class="descname">replace_label</code><span class="sig-paren">(</span><em>new_label</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.replace_label"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.replace_label" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace the label of a given range.</p>
+<p>The bounds will be the same as the original range.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Range.__lt__">
+<code class="descname">__lt__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Range.__lt__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Range.__lt__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two ranges.</p>
+<p>This method is meant to skip explicit calling of the sort key when it is
+not convenient.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Vec">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Vec</code><span class="sig-paren">(</span><em>label</em>, <em>indices=()</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vectors.</p>
+<p>Vectors are the basic non-commutative quantities.  Its objects consist of an
+label for its base and some indices.  The label is allowed to be any
+hashable and ordered Python object, although small objects, like string, are
+advised.  The indices are always sympified into SymPy expressions.</p>
+<p>Its objects can be created directly by giving the label and indices, or
+existing vector objects can be subscribed to get new ones.  The semantics is
+similar to Haskell functions.</p>
+<p>Note that users cannot directly assign to the attributes of this class.</p>
+<p>This class can be used by itself, it can also be subclassed for special
+use cases.</p>
+<p>Despite very different internal data structure, the this class is attempted
+to emulate the behaviour of the SymPy <code class="docutils literal"><span class="pre">IndexedBase</span></code> class</p>
+<dl class="method">
+<dt id="drudge.Vec.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>label</em>, <em>indices=()</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a vector.</p>
+<p>Atomic indices are added as the only index.  Iterable values will
+have all of its entries added.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Vec.label">
+<code class="descname">label</code><a class="headerlink" href="#drudge.Vec.label" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label for the base of the vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Vec.base">
+<code class="descname">base</code><a class="headerlink" href="#drudge.Vec.base" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base of the vector.</p>
+<p>This base can be subscribed to get other vectors.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Vec.indices">
+<code class="descname">indices</code><a class="headerlink" href="#drudge.Vec.indices" title="Permalink to this definition">¶</a></dt>
+<dd><p>The indices to the vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.__getitem__">
+<code class="descname">__getitem__</code><span class="sig-paren">(</span><em>item</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append the given indices to the vector.</p>
+<p>When multiple new indices are to be given, they have to be given as a
+tuple.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.__repr__">
+<code class="descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__repr__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form repr string form the vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form a more readable string representation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.__hash__">
+<code class="descname">__hash__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__hash__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__hash__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the hash value of a vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compares the equality of two vectors.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Vec.sort_key">
+<code class="descname">sort_key</code><a class="headerlink" href="#drudge.Vec.sort_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>The sort key for the vector.</p>
+<p>This is a generic sort key for vectors.  Note that this is only useful
+for sorting the simplified terms and should not be used in the
+normal-ordering operations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Vec.map">
+<code class="descname">map</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Vec.map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Vec.map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map the given function to indices.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Vec.terms">
+<code class="descname">terms</code><a class="headerlink" href="#drudge.Vec.terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the terms from the vector.</p>
+<p>This is for the user input.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Term">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Term</code><span class="sig-paren">(</span><em>sums: typing.Tuple[typing.Tuple[sympy.core.symbol.Symbol, drudge.term.Range], ...], amp: sympy.core.expr.Expr, vecs: typing.Tuple[drudge.term.Vec, ...], free_vars: typing.FrozenSet[sympy.core.symbol.Symbol] = None, dumms: typing.Mapping[sympy.core.symbol.Symbol, drudge.term.Range] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term" title="Permalink to this definition">¶</a></dt>
+<dd><p>Terms in tensor expression.</p>
+<p>This is the core class for storing symbolic tensor expressions.  The
+actual symbolic tensor type is just a shallow wrapper over a list of
+terms.  It is basically comprised of three fields, a list of summations,
+a SymPy expression giving the amplitude, and a list of non-commutative
+vectors.</p>
+<dl class="method">
+<dt id="drudge.Term.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>sums: typing.Tuple[typing.Tuple[sympy.core.symbol.Symbol, drudge.term.Range], ...], amp: sympy.core.expr.Expr, vecs: typing.Tuple[drudge.term.Vec, ...], free_vars: typing.FrozenSet[sympy.core.symbol.Symbol] = None, dumms: typing.Mapping[sympy.core.symbol.Symbol, drudge.term.Range] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the tensor term.</p>
+<p>Users seldom have the need to create terms directly by this function.
+So this constructor is mostly a developer function, no sanity checking
+is performed on the input for performance.  Most importantly, this
+constructor does <strong>not</strong> copy either the summations or the vectors and
+directly expect them to be tuples (for hashability).  And the amplitude
+is <strong>not</strong> simpyfied.</p>
+<p>Also, it is important that the free variables and dummies dictionary be
+given only when they really satisfy what we got for them.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.sums">
+<code class="descname">sums</code><a class="headerlink" href="#drudge.Term.sums" title="Permalink to this definition">¶</a></dt>
+<dd><p>The summations of the term.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.amp">
+<code class="descname">amp</code><a class="headerlink" href="#drudge.Term.amp" title="Permalink to this definition">¶</a></dt>
+<dd><p>The amplitude expression.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.vecs">
+<code class="descname">vecs</code><a class="headerlink" href="#drudge.Term.vecs" title="Permalink to this definition">¶</a></dt>
+<dd><p>The vectors in the term.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.is_scalar">
+<code class="descname">is_scalar</code><a class="headerlink" href="#drudge.Term.is_scalar" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the term is a scalar.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.args">
+<code class="descname">args</code><a class="headerlink" href="#drudge.Term.args" title="Permalink to this definition">¶</a></dt>
+<dd><p>The triple of summations, amplitude, and vectors.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.__hash__">
+<code class="descname">__hash__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.__hash__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.__hash__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the hash of the term.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the equality with another term.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.__repr__">
+<code class="descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.__repr__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form the representative string of a term.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form the readable string representation of a term.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.sort_key">
+<code class="descname">sort_key</code><a class="headerlink" href="#drudge.Term.sort_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>The sort key for a term.</p>
+<p>This key attempts to sort the terms by complexity, with simpler terms
+coming earlier.  This capability of sorting the terms will make the
+equality comparison of multiple terms easier.</p>
+<p>This sort key also ensures that terms that can be merged are always put
+into adjacent positions.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.terms">
+<code class="descname">terms</code><a class="headerlink" href="#drudge.Term.terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>The singleton list of the current term.</p>
+<p>This property is for the rare cases where direct construction of tensor
+inputs from SymPy expressions and vectors are not sufficient.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.scale">
+<code class="descname">scale</code><span class="sig-paren">(</span><em>factor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.scale"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scale the term by a factor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.mul_term">
+<code class="descname">mul_term</code><span class="sig-paren">(</span><em>other</em>, <em>dumms=None</em>, <em>excl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.mul_term"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.mul_term" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply with another tensor term.</p>
+<p>Note that by this function, the free symbols in the two operands are not
+automatically excluded.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.comm_term">
+<code class="descname">comm_term</code><span class="sig-paren">(</span><em>other</em>, <em>dumms=None</em>, <em>excl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.comm_term"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.comm_term" title="Permalink to this definition">¶</a></dt>
+<dd><p>Commute with another tensor term.</p>
+<p>In ths same way as the multiplication operation, here the free symbols
+in the operands are not automatically excluded.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.reconcile_dumms">
+<code class="descname">reconcile_dumms</code><span class="sig-paren">(</span><em>other</em>, <em>dumms</em>, <em>excl</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.reconcile_dumms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.reconcile_dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reconcile the dummies in two terms.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.exprs">
+<code class="descname">exprs</code><a class="headerlink" href="#drudge.Term.exprs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop over the sympy expression in the term.</p>
+<p>Note that the summation dummies are not looped over.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.free_vars">
+<code class="descname">free_vars</code><a class="headerlink" href="#drudge.Term.free_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>The free symbols used in the term.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.dumms">
+<code class="descname">dumms</code><a class="headerlink" href="#drudge.Term.dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the mapping from dummies to their range.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Term.amp_factors">
+<code class="descname">amp_factors</code><a class="headerlink" href="#drudge.Term.amp_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>The factors in the amplitude expression.</p>
+<p>This is a convenience wrapper over <a class="reference internal" href="#drudge.Term.get_amp_factors" title="drudge.Term.get_amp_factors"><code class="xref py py-meth docutils literal"><span class="pre">get_amp_factors()</span></code></a> for the
+case of no special additional symbols.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.get_amp_factors">
+<code class="descname">get_amp_factors</code><span class="sig-paren">(</span><em>special_symbs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.get_amp_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.get_amp_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the factors in the amplitude and the coefficient.</p>
+<p>The indexed factors and factors involving dummies or the symbols in the
+given special symbols set will be returned as a list, with the rest
+returned as a single SymPy expression.</p>
+<p>Error will be raised if the amplitude is not a monomial.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.map">
+<code class="descname">map</code><span class="sig-paren">(</span><em>func</em>, <em>sums=None</em>, <em>amp=None</em>, <em>vecs=None</em>, <em>skip_vecs=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map the given function to the SymPy expressions in the term.</p>
+<p>The given function will <strong>not</strong> be mapped to the dummies in the
+summations.  When operations on summations are needed, a <strong>tuple</strong>
+for the new summations can be given.</p>
+<p>By passing the identity function, this function can also be used to
+replace the summation list, the amplitude expression, or the vector
+part.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.subst">
+<code class="descname">subst</code><span class="sig-paren">(</span><em>substs</em>, <em>sums=None</em>, <em>amp=None</em>, <em>vecs=None</em>, <em>purge_sums=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.subst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.subst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform symbol substitution on the SymPy expressions.</p>
+<p>After the replacement of the fields given, the given substitutions are
+going to be performed using SymPy <code class="docutils literal"><span class="pre">xreplace</span></code> method simultaneously.</p>
+<p>If purge sums is set, the summations whose dummy is substituted is going
+to be removed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.reset_dumms">
+<code class="descname">reset_dumms</code><span class="sig-paren">(</span><em>dumms</em>, <em>dummbegs=None</em>, <em>excl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.reset_dumms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.reset_dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the dummies in the term.</p>
+<p>The term with dummies reset will be returned alongside with the new
+dummy begins dictionary.  Note that the dummy begins dictionary will be
+mutated if one is given.</p>
+<p>ValueError will be raised when no more dummies are available.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="drudge.Term.reset_sums">
+<em class="property">static </em><code class="descname">reset_sums</code><span class="sig-paren">(</span><em>sums</em>, <em>dumms</em>, <em>dummbegs=None</em>, <em>excl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.reset_sums"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.reset_sums" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the given summations.</p>
+<p>The new summation list, substitution dictionary, and the new dummy begin
+dictionary will be returned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.simplify_deltas">
+<code class="descname">simplify_deltas</code><span class="sig-paren">(</span><em>resolvers</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.simplify_deltas"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.simplify_deltas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplify deltas in the amplitude of the expression.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.expand">
+<code class="descname">expand</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.expand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.expand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expand the term into many terms.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.canon">
+<code class="descname">canon</code><span class="sig-paren">(</span><em>symms=None</em>, <em>vec_colour=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.canon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.canon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Canonicalize the term.</p>
+<p>The given vector colour should be a callable accepting the index
+within vector list (under the keyword <code class="docutils literal"><span class="pre">idx</span></code>) and the vector itself
+(under keyword <code class="docutils literal"><span class="pre">vec</span></code>).  By default, vectors has colour the same as
+its index within the list of vectors.</p>
+<p>Note that whether or not colours for the vectors are given, the vectors
+are never permuted in the result.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.canon4normal">
+<code class="descname">canon4normal</code><span class="sig-paren">(</span><em>symms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.canon4normal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.canon4normal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Canonicalize the term for normal-ordering.</p>
+<p>This is the preparation task for normal ordering.  The term will be
+canonicalized with all the vectors considered the same.  And the dummies
+will be reset internally according to the summation list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Term.has_base">
+<code class="descname">has_base</code><span class="sig-paren">(</span><em>base</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/term.html#Term.has_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Term.has_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test if the given base is present in the current term.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="canonicalization-of-indexed-quantities-with-symmetry">
+<h2>Canonicalization of indexed quantities with symmetry<a class="headerlink" href="#canonicalization-of-indexed-quantities-with-symmetry" title="Permalink to this headline">¶</a></h2>
+<p>Some actions are supported to accompany the permutation of indices to indexed
+quantities.  All of these accompanied action can be composed by using the
+bitwise or operator <code class="docutils literal"><span class="pre">|</span></code>.</p>
+<dl class="data">
+<dt id="drudge.IDENT">
+<code class="descclassname">drudge.</code><code class="descname">IDENT</code><a class="headerlink" href="#drudge.IDENT" title="Permalink to this definition">¶</a></dt>
+<dd><p>The identitiy action.  Nothing is performed for the permutation.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.NEG">
+<code class="descclassname">drudge.</code><code class="descname">NEG</code><a class="headerlink" href="#drudge.NEG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Negation.  When the given permutation is performed, the indexed quantity
+needs to be negated.  For instance, in anti-symmetric matrix.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.CONJ">
+<code class="descclassname">drudge.</code><code class="descname">CONJ</code><a class="headerlink" href="#drudge.CONJ" title="Permalink to this definition">¶</a></dt>
+<dd><p>Conjugation.  When the given permutation is performed, the indexed quantity
+needs to be taken it complex conjugate.  Note that this action can only be
+used in the symmetry of scalar indexed quantities.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Perm">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Perm</code><a class="headerlink" href="#drudge.Perm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Permutation of points with accompanied action.</p>
+<p>Permutations can be constructed from an iterable giving the pre-image of the
+points and an optional integral value for the accompanied action.  The
+accompanied action can be given positionally or by the keyword <code class="docutils literal"><span class="pre">acc</span></code>, and it
+will be manipulated according to the convention in libcanon.</p>
+<p>Querying the length of a Perm object gives the size of the permutation domain,
+while indexing it gives the pre-image of the given integral point.  The
+accompanied action can be obtained by getting the attribute <code class="docutils literal"><span class="pre">acc</span></code>.
+Otherwise, this data type is mostly opaque.</p>
+<dl class="attribute">
+<dt id="drudge.Perm.acc">
+<code class="descname">acc</code><a class="headerlink" href="#drudge.Perm.acc" title="Permalink to this definition">¶</a></dt>
+<dd><p>The accompanied action.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Group">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Group</code><a class="headerlink" href="#drudge.Group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Permutations groups.</p>
+<p>To create a permutation group, an iterable of Perm objects or pre-image array
+action pair can be given for the generators of the group.  Then the
+Schreier-Sims algorithm in libcanon will be invoked to generate the Sims
+transversal system, which will be stored internally for the group.  This class
+is mostly designed to be used to give input for the Eldag canonicalization
+facility.  So it is basically an opaque object after its creation.</p>
+<p>Internally, the transversal system can also be constructed directly from the
+transversal system, without going through the Schreier-Sims algorithm.
+However, that is more intended for serialization rather than direct user
+invocation.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="primary-interface">
+<h2>Primary interface<a class="headerlink" href="#primary-interface" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="drudge.Drudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Drudge</code><span class="sig-paren">(</span><em>ctx: pyspark.context.SparkContext</em>, <em>num_partitions=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main drudge class.</p>
+<p>A drudge is a robot who can help you with the menial tasks of symbolic
+manipulation for tensorial and noncommutative alegbras.  Due to the
+diversity and non-uniformity of tensor and noncommutative algebraic
+problems, to set up a drudge, domain-specific information about the problem
+needs to be given.  Here this is a base class, where the basic operations
+are defined. Different problems could subclass this base class with
+customized behaviour.  Most importantly, the method <a class="reference internal" href="#drudge.Drudge.normal_order" title="drudge.Drudge.normal_order"><code class="xref py py-meth docutils literal"><span class="pre">normal_order()</span></code></a>
+should be overridden to give the commutation rules for the algebraic system
+studied.</p>
+<dl class="method">
+<dt id="drudge.Drudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>ctx: pyspark.context.SparkContext</em>, <em>num_partitions=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ctx</strong> – The Spark context to be used.</li>
+<li><strong>num_partitions</strong> – The preferred number of partitions.  By default, it is the default
+parallelism of the given Spark environment.  Or an explicit integral
+value can be given.  It can be set to None, which disable all
+explicit load-balancing by shuffling.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.ctx">
+<code class="descname">ctx</code><a class="headerlink" href="#drudge.Drudge.ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Spark context of the drudge.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.num_partitions">
+<code class="descname">num_partitions</code><a class="headerlink" href="#drudge.Drudge.num_partitions" title="Permalink to this definition">¶</a></dt>
+<dd><p>The preferred number of partitions for data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.full_simplify">
+<code class="descname">full_simplify</code><a class="headerlink" href="#drudge.Drudge.full_simplify" title="Permalink to this definition">¶</a></dt>
+<dd><p>If full simplification is to be performed on amplitudes.</p>
+<p>It can be used to disable full simplification of the amplitude
+expression by SymPy.  For simple polynomial amplitude, this option is
+generally safe to be disabled.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.simple_merge">
+<code class="descname">simple_merge</code><a class="headerlink" href="#drudge.Drudge.simple_merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>If only simple merge is to be carried out.</p>
+<p>When it is set to true, only terms with same factors involving dummies
+are going to be merged.  This might be helpful for cases where the
+amplitude are all simple polynomials of tensorial quantities.  Note that
+this could disable some SymPy simplification.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This option might not give much more than disabling full
+simplification but taketh away many simplifications.  It is in
+general not recommended to be used.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.set_name">
+<code class="descname">set_name</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.set_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.set_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the object into the name archive of the drudge.</p>
+<p>For positional arguments, the str form of the given label is going to be
+used for the name of the object.  For keyword arguments, the keyword
+will be used for the name.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.names">
+<code class="descname">names</code><a class="headerlink" href="#drudge.Drudge.names" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name archive for the drudge.</p>
+<p>The name archive object can be used for convenient accessing of objects
+related to the problem.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.inject_names">
+<code class="descname">inject_names</code><span class="sig-paren">(</span><em>prefix=''</em>, <em>suffix=''</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.inject_names"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.inject_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inject the names in the name archive into the current global scope.</p>
+<p>This function is for the convenience of users, especially interactive
+users.  Itself is not used in official drudge code except its own tests.</p>
+<p>Note that this function injects the names in the name archive into the
+<strong>global</strong> scope of the caller, rather than the local scope, even when
+called inside a function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.set_dumms">
+<code class="descname">set_dumms</code><span class="sig-paren">(</span><em>range_: drudge.term.Range</em>, <em>dumms</em>, <em>set_range_name=True</em>, <em>dumms_suffix='_dumms'</em>, <em>set_dumm_names=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.set_dumms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.set_dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the dummies for a range.</p>
+<p>Note that this function overwrites the existing dummies if the range has
+already been given.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.dumms">
+<code class="descname">dumms</code><a class="headerlink" href="#drudge.Drudge.dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>The broadcast form of the dummies dictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.set_symm">
+<code class="descname">set_symm</code><span class="sig-paren">(</span><em>base</em>, <em>*symms</em>, <em>valence=None</em>, <em>set_base_name=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.set_symm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.set_symm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the symmetry for a given base.</p>
+<p>Permutation objects in the arguments are interpreted as single
+generators, other values will be attempted to be iterated over to get
+their entries, which should all be permutations.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>base</strong> – The SymPy indexed base object or vectors whose symmetry is to be
+set.</li>
+<li><strong>symms</strong> – The generators of the symmetry.  It can be a single None to remove
+the symmetry of the given base.</li>
+<li><strong>valence</strong> (<em>int</em>) – When it is set, only the indexed quantity of the base with the given
+valence will have the given symmetry.</li>
+<li><strong>set_base_name</strong> – If the base name is to be added to the name archive of the drudge.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.symms">
+<code class="descname">symms</code><a class="headerlink" href="#drudge.Drudge.symms" title="Permalink to this definition">¶</a></dt>
+<dd><p>The broadcast form of the symmetries.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.add_resolver">
+<code class="descname">add_resolver</code><span class="sig-paren">(</span><em>resolver</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.add_resolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.add_resolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append a resolver to the list of resolvers.</p>
+<p>The given resolver can be either a mapping from SymPy expression,
+including atomic symbols, to the corresponding ranges.  Or a callable to
+be called with SymPy expressions.  For callable resolvers, None can be
+returned to signal the incapability to resolve the expression.  Then the
+resolution will be dispatched to the next resolver.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.add_resolver_for_dumms">
+<code class="descname">add_resolver_for_dumms</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.add_resolver_for_dumms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.add_resolver_for_dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the resolver for the dummies for each range.</p>
+<p>With this method, the default dummies for each range will be resolved to
+be within the range for all of them.  This method should normally be
+called by all subclasses after the dummies for all ranges have been
+properly set.</p>
+<p>Note that dummies added later will not be automatically added.  This
+method can be called again.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.add_default_resolver">
+<code class="descname">add_default_resolver</code><span class="sig-paren">(</span><em>range_</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.add_default_resolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.add_default_resolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a default resolver.</p>
+<p>The default resolver will resolve <em>any</em> expression to the given range.
+Note that all later resolvers will not be invoked at all after this
+resolver is added.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.resolvers">
+<code class="descname">resolvers</code><a class="headerlink" href="#drudge.Drudge.resolvers" title="Permalink to this definition">¶</a></dt>
+<dd><p>The broadcast form of the resolvers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.set_tensor_method">
+<code class="descname">set_tensor_method</code><span class="sig-paren">(</span><em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.set_tensor_method"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.set_tensor_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a new tensor method under the given name.</p>
+<p>A tensor method is a method that can be called from tensors created from
+the current drudge as if it is a method of the given tensor. This could
+give cleaner and more consistent code for all tensor manipulations.</p>
+<p>The given function, or bounded method, should be able to accept the
+tensor as the first argument.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.get_tensor_method">
+<code class="descname">get_tensor_method</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.get_tensor_method"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.get_tensor_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a tensor method with given name.</p>
+<p>When the name cannot be resolved, KeyError will be raised.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.vec_colour">
+<code class="descname">vec_colour</code><a class="headerlink" href="#drudge.Drudge.vec_colour" title="Permalink to this definition">¶</a></dt>
+<dd><p>The vector colour function.</p>
+<p>Note that this accessor accesses the <strong>function</strong>, rather than directly
+computes the colour for any vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><em>terms</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal order the terms in the given tensor.</p>
+<p>This method should be called with the RDD of some terms, and another RDD
+of terms, where all the vector parts are normal ordered according to
+domain-specific rules, should be returned.</p>
+<p>By default, we work for the free algebra.  So nothing is done by this
+function.  For noncommutative algebraic system, this function needs to
+be overridden to return an RDD for the normal-ordered terms from the
+given terms.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.sum">
+<code class="descname">sum</code><span class="sig-paren">(</span><em>*args</em>, <em>predicate=None</em><span class="sig-paren">)</span> &#x2192; drudge.drudge.Tensor<a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.sum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.sum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a tensor for the given summation.</p>
+<p>This is the core function for creating tensors from scratch.  The
+arguments should start with the summations, each of which should be
+given as a sequence, normally a tuple, starting with a SymPy symbol for
+the summation dummy in the first entry.  Then comes possibly multiple
+domains that the dummy is going to be summed over, which can be symbolic
+range, SymPy expression, or iterable over them.  When symbolic ranges
+are given as <a class="reference internal" href="#drudge.Range" title="drudge.Range"><code class="xref py py-class docutils literal"><span class="pre">Range</span></code></a> objects, the given dummy will be set to
+be summed over the ranges symbolically.  When SymPy expressions are
+given, the given values will substitute all appearances of the dummy in
+the summand.  When we have multiple summations, terms in the result are
+generated from the Cartesian product of them.</p>
+<p>The last argument should give the actual thing to be summed, which can
+be something that can be interpreted as a collection of terms, or a
+callable that is going to return the summand when given a dictionary
+giving the action on each of the dummies.  The dictionary has an entry
+for all the dummies.  Dummies summed over symbolic ranges will have the
+actual range as its value, or the actual SymPy expression when it is
+given a concrete range.  In the returned summand, if dummies still
+exist, they are going to be treated in the same way as statically-given
+summands.</p>
+<p>The predicate can be a callable going to return a boolean when called
+with same dictionary.  False values can be used the skip some terms.  It
+is guaranteed that the same dictionary will be used for both predicate
+and the summand when they are given as callables.</p>
+<p>For instance, mostly commonly, we can create a tensor by having simple
+summations over symbolic ranges,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">Drudge</span><span class="p">(</span><span class="n">SparkContext</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;R&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v</span> <span class="o">=</span> <span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;sum_{a, b} x[a, b] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>And we can also give multiple symbolic ranges for a single dummy to sum
+over all of them,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">))</span>
+<span class="go">sum_{a} x[a] * v[a]</span>
+<span class="go"> + sum_{a} x[a] * v[a]</span>
+</pre></div>
+</div>
+<p>When the objects to sum over are not symbolic ranges, we are in the
+concrete summation mode, for instance,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">))</span>
+<span class="go">x[1] * v[1]</span>
+<span class="go"> + x[2] * v[2]</span>
+</pre></div>
+</div>
+<p>The concrete and symbolic summation mode can be put together freely in
+the same summation,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">))</span>
+<span class="go">sum_{a} x[1, a] * v[a]</span>
+<span class="go"> + sum_{a} x[2, a] * v[a]</span>
+<span class="go"> + sum_{a} x[1, a] * v[a]</span>
+<span class="go"> + sum_{a} x[2, a] * v[a]</span>
+</pre></div>
+</div>
+<p>Note that this function can also be called on existing tensor objects
+with the same semantics on the terms.  Existing summations are not
+touched by it.  For instance,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;x[a] * v[a]&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="n">tensor</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;sum_{a} x[a] * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>where we have used summation with only summand (no sums) to create
+simple tensor of only one term without any summation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.einst">
+<code class="descname">einst</code><span class="sig-paren">(</span><em>summand</em><span class="sig-paren">)</span> &#x2192; drudge.drudge.Tensor<a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.einst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.einst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a tensor from Einstein summation convention.</p>
+<p>By calling this function, summations according to the Einstein summation
+convention will be added to the terms.  Note that for a symbol to be
+recognized as a summation, it must appear exactly twice in its
+<strong>original form</strong> in indices, and its range needs to be able to be
+resolved.  When a symbol is suspiciously an Einstein summation dummy but
+does not satisfy the requirement precisely, it will <strong>not</strong> be added as
+a summation, but a warning will also be given for reference.</p>
+<p>For instance, we can have the following fairly conventional Einstein
+form,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">Drudge</span><span class="p">(</span><span class="n">SparkContext</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;R&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">set_dumms</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;a b c&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span><span class="o">.</span><span class="n">add_resolver_for_dumms</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;sum_{b} x[a, b]*x[b, c]&#39;</span>
+</pre></div>
+</div>
+<p>However, when a dummy is not in the most conventional form, the
+summations cannot be automatically added.  For instance,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;x[a, b]*x[b, b]&#39;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">b</span></code> is not summed over since it is repeated three times.  Note also
+that the symbol must be able to be resolved its range for it to be
+summed automatically.</p>
+<p>Note that in addition to creating tensors from scratch, this method can
+also be called on an existing tensor to add new summations.  In that
+case, no existing summations will be touched.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.create_tensor">
+<code class="descname">create_tensor</code><span class="sig-paren">(</span><em>terms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.create_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.create_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a tensor with the terms given in the argument.</p>
+<p>The terms should be given as an iterable of Term objects.  This function
+should not be necessary in user code.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.define">
+<code class="descname">define</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span> &#x2192; drudge.drudge.TensorDef<a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.define"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.define" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a tensor definition.</p>
+<p>This is a helper method for the creation of <a class="reference internal" href="#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a>
+instances.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>arguments</strong> (<em>initial</em>) – The left-hand side of the definition.  It can be given as an indexed
+quantity, either SymPy Indexed instances or an indexed vector, with
+all the indices being plain symbols whose range is able to be
+resolved.  Or a base can be given, followed by the symbol/range
+pairs for the external indices.</li>
+<li><strong>argument</strong> (<em>final</em>) – The definition of the LHS, can be tensor instances, or anything
+capable of being interpreted as such.  Note that no summation is
+going to be automatically added.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.define_einst">
+<code class="descname">define_einst</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span> &#x2192; drudge.drudge.TensorDef<a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.define_einst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.define_einst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a tensor definition based on Einstein summation convention.</p>
+<p>Basically the same function as the <a class="reference internal" href="#drudge.Drudge.define" title="drudge.Drudge.define"><code class="xref py py-meth docutils literal"><span class="pre">define()</span></code></a>, just the content
+will be interpreted according to the Einstein summation convention.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.format_latex">
+<code class="descname">format_latex</code><span class="sig-paren">(</span><em>inp</em>, <em>sep_lines=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.format_latex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.format_latex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the LaTeX form of a given tensor or tensor definition.</p>
+<p>Subclasses should fine-tune the appearance of the resulted LaTeX form by
+overriding methods <code class="docutils literal"><span class="pre">_latex_sympy</span></code>, <code class="docutils literal"><span class="pre">_latex_vec</span></code>, and
+<code class="docutils literal"><span class="pre">_latex_vec_mul</span></code>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Drudge.__weakref__">
+<code class="descname">__weakref__</code><a class="headerlink" href="#drudge.Drudge.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.report">
+<code class="descname">report</code><span class="sig-paren">(</span><em>filename</em>, <em>title</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.report"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.report" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a report for results.</p>
+<p>This function should be used within a <code class="docutils literal"><span class="pre">with</span></code> statement to open a
+report for results.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">Drudge</span><span class="p">(</span><span class="n">SparkContext</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)[</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">dr</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="s1">&#39;report.html&#39;</span><span class="p">,</span> <span class="s1">&#39;A simple tensor&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">report</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">report</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;Simple tensor&#39;</span><span class="p">,</span> <span class="n">tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Drudge.pickle_env">
+<code class="descname">pickle_env</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Drudge.pickle_env"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Drudge.pickle_env" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare the environment for unpickling contents with tensors.</p>
+<p>Pickled contents containing tensors cannot be directly unpickled by the
+functions from the pickle module directly.  They should be used within
+the context created by this function.  Note that the content does not
+have to have a single tensor object.  Anything containing tensor objects
+needs to be loaded within the context.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">All tensors read within this environment will have the current
+drudge as their drudge.  No checking is, or can be, done to make
+sure that the tensors are sensible for the current drudge.  Normally
+it should be the same drudge as the drudge used for their creation
+be used.</p>
+</div>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">Drudge</span><span class="p">(</span><span class="n">SparkContext</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)[</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pickle</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">serialized</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">dr</span><span class="o">.</span><span class="n">pickle_env</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">res</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">serialized</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tensor</span> <span class="o">==</span> <span class="n">res</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Tensor">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Tensor</code><span class="sig-paren">(</span><em>drudge: drudge.drudge.Drudge</em>, <em>terms: pyspark.rdd.RDD</em>, <em>free_vars: typing.Set[sympy.core.symbol.Symbol] = None</em>, <em>expanded=False</em>, <em>repartitioned=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main tensor class.</p>
+<p>A tensor is an aggregate of terms distributed and managed by Spark.  Here
+most operations needed for tensors are defined.</p>
+<p>Normally, tensor instances are created from drudge methods or tensor
+operations.  Direct invocation of its constructor is seldom in user scripts.</p>
+<dl class="method">
+<dt id="drudge.Tensor.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>drudge: drudge.drudge.Drudge</em>, <em>terms: pyspark.rdd.RDD</em>, <em>free_vars: typing.Set[sympy.core.symbol.Symbol] = None</em>, <em>expanded=False</em>, <em>repartitioned=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the tensor.</p>
+<p>This function is not designed to be called by users directly.  Tensor
+creation should be carried out by factory function inside drudges and
+the operations defined here.</p>
+<p>The default values for the keyword arguments are always the safest
+choice, for better performance, manipulations are encouraged to have
+proper consideration of all the keyword arguments.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.drudge">
+<code class="descname">drudge</code><a class="headerlink" href="#drudge.Tensor.drudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>The drudge created the tensor.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.terms">
+<code class="descname">terms</code><a class="headerlink" href="#drudge.Tensor.terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>The terms in the tensor, as an RDD object.</p>
+<p>Although for users, normally there is no need for direct manipulation of
+the terms, it is still exposed here for flexibility.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.local_terms">
+<code class="descname">local_terms</code><a class="headerlink" href="#drudge.Tensor.local_terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gather the terms locally into a list.</p>
+<p>The list returned by this is for read-only and should <strong>never</strong> be
+mutated.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This method will gather all terms into the memory of the driver.</p>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.n_terms">
+<code class="descname">n_terms</code><a class="headerlink" href="#drudge.Tensor.n_terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the number of terms.</p>
+<p>A zero number of terms signatures a zero tensor.  Accessing this
+property will make the tensor to be cached automatically.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.cache">
+<code class="descname">cache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cache the terms in the tensor.</p>
+<p>This method should be called when this tensor is an intermediate result
+that will be used multiple times.  The tensor itself will be returned
+for the ease of chaining.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.repartition">
+<code class="descname">repartition</code><span class="sig-paren">(</span><em>num_partitions=None</em>, <em>cache=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.repartition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.repartition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Repartition the terms across the Spark cluster.</p>
+<p>This function should be called when the terms need to be rebalanced
+among the workers.  Note that this incurs an Spark RDD shuffle operation
+and might be very expensive.  Its invocation and the number of
+partitions used need to be fine-tuned for different problems to achieve
+good performance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>num_partitions</strong> (<em>int</em>) – The number of partitions.  By default, the number is read from the
+drudge object.</li>
+<li><strong>cache</strong> (<em>bool</em>) – If the result is going to be cached.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.is_scalar">
+<code class="descname">is_scalar</code><a class="headerlink" href="#drudge.Tensor.is_scalar" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the tensor is a scalar.</p>
+<p>A tensor is considered a scalar when none of its terms has a vector
+part.  This property will make the tensor automatically cached.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.free_vars">
+<code class="descname">free_vars</code><a class="headerlink" href="#drudge.Tensor.free_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>The free variables in the tensor.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.expanded">
+<code class="descname">expanded</code><a class="headerlink" href="#drudge.Tensor.expanded" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the tensor is already expanded.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Tensor.repartitioned">
+<code class="descname">repartitioned</code><a class="headerlink" href="#drudge.Tensor.repartitioned" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the terms in the tensor is already repartitioned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.has_base">
+<code class="descname">has_base</code><span class="sig-paren">(</span><em>base: typing.Union[sympy.tensor.indexed.IndexedBase, sympy.core.symbol.Symbol, drudge.term.Vec]</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.has_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.has_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find if the tensor has the given scalar or vector base.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>base</strong> – The base whose presence is to be queried.  When it is indexed base
+or a plain symbol, its presence in the amplitude part is tested.
+When it is a vector, its presence in the vector part is tested.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the string representation of the tensor.</p>
+<p>Note that this function will <strong>gather</strong> all terms into the driver.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.latex">
+<code class="descname">latex</code><span class="sig-paren">(</span><em>sep_lines=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.latex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.latex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the latex form for the tensor.</p>
+<p>The actual printing is dispatched to the drudge object for the
+convenience of tuning the appearance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sep_lines</strong> (<em>bool</em>) – If terms should be put into separate lines by separating them with
+<code class="docutils literal"><span class="pre">\\</span></code>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.display">
+<code class="descname">display</code><span class="sig-paren">(</span><em>if_return=True</em>, <em>sep_lines=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.display"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.display" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display the tensor in interactive IPython notebook sessions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>if_return</strong> – If the resulted equation be returned rather than directly displayed.
+It can be disabled for displaying equation in the middle of a
+Jupyter cell.</li>
+<li><strong>sep_lines</strong> – If terms should be written into separate lines.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__getstate__">
+<code class="descname">__getstate__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__getstate__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__getstate__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current state of the tensor.</p>
+<p>Here we just have the local terms.  Other cached information are
+discarded.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__setstate__">
+<code class="descname">__setstate__</code><span class="sig-paren">(</span><em>state</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__setstate__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__setstate__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the state for the new tensor.</p>
+<p>This function reads the drudge to use from the module attribute, which
+is set in the <a class="reference internal" href="#drudge.Drudge.pickle_env" title="drudge.Drudge.pickle_env"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.pickle_env()</span></code></a> method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><em>func</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply the given function to the RDD of terms.</p>
+<p>This function is analogous to the replace function of Python named
+tuples, the same value from self for the tensor initializer is going to
+be used when it is not given.  The terms get special treatment since it
+is the centre of tensor objects.  The drudge is kept the same always.</p>
+<p>Users generally do not need this method.  It is exposed here just for
+flexibility and convenience.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p>For developers:  Note that the resulted tensor will inherit all
+unspecified keyword arguments from self.  This method can give
+<em>unexpected results</em> if certain arguments are not correctly reset
+when they need to.  For instance, when expanded is not reset when
+the result is no longer guaranteed to be in expanded form, later
+expansions could be skipped when they actually need to be performed.</p>
+<p class="last">So all functions using this methods need to be reviewed when new
+property are added to tensor class.  Direct invocation of the tensor
+constructor is a much safe alternative.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.reset_dumms">
+<code class="descname">reset_dumms</code><span class="sig-paren">(</span><em>excl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.reset_dumms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.reset_dumms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the dummies.</p>
+<p>The dummies will be set to the canonical dummies according to the order
+in the summation list.  This method is especially useful on
+canonicalized tensors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>excl</strong> – A set of symbols to be excluded in the dummy selection.  This option
+can be useful when some symbols already used as dummies are planned
+to be used for other purposes.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.simplify_amps">
+<code class="descname">simplify_amps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.simplify_amps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.simplify_amps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplify the amplitudes in the tensor.</p>
+<p>This method simplifies the amplitude in the terms of the tensor by using
+the facility from SymPy.  The zero terms will be filtered out as well.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.simplify_deltas">
+<code class="descname">simplify_deltas</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.simplify_deltas"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.simplify_deltas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplify the deltas in the tensor.</p>
+<p>Kronecker deltas whose operands contains dummies will be attempted to be
+simplified.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.expand">
+<code class="descname">expand</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.expand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.expand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expand the terms in the tensor.</p>
+<p>By calling this method, terms in the tensor whose amplitude is the
+addition of multiple parts will be expanded into multiple terms.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.sort">
+<code class="descname">sort</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.sort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.sort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort the terms in the tensor.</p>
+<p>The terms will generally be sorted according to increasing complexity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.merge">
+<code class="descname">merge</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge terms with the same vector and summation part.</p>
+<p>This function merges terms only when their summation list and vector
+part are <em>syntactically</em> the same.  So it is more useful when the
+canonicalization has been performed and the dummies reset.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.canon">
+<code class="descname">canon</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.canon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.canon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Canonicalize the terms in the tensor.</p>
+<p>This method will first expand the terms in the tensor.  Then the
+canonicalization algorithm is going to be applied to each of the terms.
+Note that this method does not rename the dummies.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.normal_order">
+<code class="descname">normal_order</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.normal_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.normal_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal order the terms in the tensor.</p>
+<p>The actual work is dispatched to the drudge, who has domain specific
+knowledge about the noncommutativity of the vectors.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.simplify">
+<code class="descname">simplify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.simplify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.simplify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplify the tensor.</p>
+<p>This is the master driver function for tensor simplification.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare the equality of tensors.</p>
+<p>Note that this function only compares the syntactical equality of
+tensors.  Mathematically equal tensors might be compared to be unequal
+by this function when they are not simplified.</p>
+<p>Note that only comparison with zero is performed by counting the number
+of terms distributed.  Or this function gathers all terms in both
+tensors and can be very expensive.  So direct comparison of two tensors
+is mostly suitable for testing and debugging on small problems only.
+For large scale problems, it is advised to compare the simplified
+difference with zero.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__add__">
+<code class="descname">__add__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__add__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__add__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the two tensors together.</p>
+<p>The terms in the two tensors will be concatenated together, without any
+further processing.</p>
+<p>In addition to full tensors, tensor inputs can also be directly added.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__radd__">
+<code class="descname">__radd__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__radd__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__radd__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add tensor with something in front.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__sub__">
+<code class="descname">__sub__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__sub__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__sub__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subtract another tensor from this tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__rsub__">
+<code class="descname">__rsub__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__rsub__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__rsub__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subtract the tensor from another quantity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__mul__">
+<code class="descname">__mul__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span> &#x2192; drudge.drudge.Tensor<a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__mul__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__mul__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply the tensor.</p>
+<p>This multiplication operation is done completely within the framework of
+free algebras.  The vectors are only concatenated without further
+processing.  The actual handling of the commutativity should be carried
+out at the normal ordering operation for different problems.</p>
+<p>In addition to full tensors, tensors can also be multiplied to user
+tensor input directly.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__rmul__">
+<code class="descname">__rmul__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__rmul__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__rmul__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply the tensor on the right.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__or__">
+<code class="descname">__or__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__or__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__or__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the commutator with another tensor.</p>
+<p>In the same way as multiplication, this can be used for both full
+tensors and local tensor input.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__ror__">
+<code class="descname">__ror__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__ror__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__ror__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the commutator with another tensor on the right.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.subst">
+<code class="descname">subst</code><span class="sig-paren">(</span><em>lhs</em>, <em>rhs</em>, <em>wilds=None</em>, <em>full_balance=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.subst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.subst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Substitute the all appearance of the defined tensor.</p>
+<p>When the given LHS is a plain SymPy symbol, all its appearances in the
+amplitude of the tensor will be replaced.  Or the LHS can also be
+indexed SymPy expression or indexed Vector, for which all of the
+appearances of the indexed base or vector base will be attempted to be
+matched against the indices on the LHS.  When a matching succeeds for
+all the indices, the RHS, with the substitution found in the matching
+performed, will be replace the indexed base in the amplitude, or the
+vector.  Note that for scalar LHS, the RHS must contain no vector.</p>
+<p>Since we do not commonly define tensors with wild symbols, an option
+<code class="docutils literal"><span class="pre">wilds</span></code> can be used to give a mapping translating plain symbols on the
+LHS and the RHS to the wild symbols that would like to be used.  The
+default value of None could make all <strong>plain</strong> symbols in the indices of
+the LHS to be translated into a wild symbol with the same name and no
+exclusion. And empty dictionary can be used to disable all such
+automatic translation.  The default value of None should satisfy most
+needs.</p>
+<p class="rubric">Examples</p>
+<p>For instance, we can have a very simple tensor, the outer product of the
+same vector,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">Drudge</span><span class="p">(</span><span class="n">SparkContext</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;R&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">set_dumms</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;a b c d e f&#39;</span><span class="p">))[:</span><span class="mi">2</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span><span class="o">.</span><span class="n">add_default_resolver</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v</span> <span class="o">=</span> <span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="go">&#39;sum_{a, b} x[a]*x[b] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>We can replace the indexed base by the product of a matrix with another
+indexed base,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">o</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span> <span class="o">=</span> <span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">b</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="go">&#39;sum_{a, b, c, d} y[c]*y[d]*o[a, c]*o[b, d] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>We can also make substitution on the vectors,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">w</span> <span class="o">=</span> <span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">b</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="go">&#39;sum_{a, b, c, d} x[a]*x[b]*o[a, c]*o[b, d] * w[c] * w[d]&#39;</span>
+</pre></div>
+</div>
+<p>After the substitution, we can always make a simplification, at least to
+make the naming of the dummies more aesthetically pleasing,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="go">&#39;sum_{a, b, c, d} x[c]*x[d]*o[c, a]*o[d, b] * w[a] * w[b]&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.subst_all">
+<code class="descname">subst_all</code><span class="sig-paren">(</span><em>defs</em>, <em>simplify=False</em>, <em>full_balance=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.subst_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.subst_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Substitute all given definitions serially.</p>
+<p>The definitions should be given as an iterable of either
+<a class="reference internal" href="#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a> instances or pairs of left-hand side and
+right-hand side of the substitutions.  Note that the substitutions are
+going to be performed <strong>according to the given order</strong> one-by-one,
+rather than simultaneously.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.rewrite">
+<code class="descname">rewrite</code><span class="sig-paren">(</span><em>vecs</em>, <em>new_amp</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.rewrite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.rewrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rewrite terms with the given vectors in terms of the new amplitude.</p>
+<p>This method will rewrite the terms whose vector part patches the given
+vectors in terms of the given new amplitude.  And all terms rewritten
+into the same form will be aggregated into a single term.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>vecs</strong> – A vector or a product of vectors.  They should be written in terms
+of SymPy wild symbols when they need to be matched against different
+actual vectors.</li>
+<li><strong>new_amp</strong> – The amplitude that the matched terms should have.  They are usually
+written in terms of the same wild symbols as the wilds in the
+vectors.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><em>rewritten</em> – The tensor with the requested terms rewritten in term of the given
+amplitude.</li>
+<li><em>defs</em> – The actual definitions of the rewritten amplitude.  One for each
+rewritten term in the result.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.diff">
+<code class="descname">diff</code><span class="sig-paren">(</span><em>variable</em>, <em>real=False</em>, <em>wirtinger_conj=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.diff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.diff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Differentiate the tensor to get the analytic gradient.</p>
+<p>By this function, support is provided for evaluating the derivative with
+respect to either a plain symbol or a tensor component.  This is
+achieved by leveraging the core differentiation operation to SymPy.  So
+very wide range of expressions are supported.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">For non-analytic complex functions, this function gives the
+Wittinger derivative with respect to the given variable only.  The
+other non-vanishing derivative with respect to the conjugate needs
+to be evaluated by another invocation with <code class="docutils literal"><span class="pre">wittinger_conj</span></code> set to
+true.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The differentiation algorithm currently does <strong>not</strong> take the
+symmetry of the tensor to be differentiated with respect to into
+account.  For differentiate with respect to symmetric tensor,
+further symmetrization of the result might be needed.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>variable</strong> – The variable to differentiate with respect to.  It should be either
+a plain SymPy symbol or a indexed quantity.  When it is an indexed
+quantity, the indices should be plain symbols with resolvable range.</li>
+<li><strong>real</strong> (<em>bool</em>) – If the variable is going to be assumed to be real.  Real variables
+has conjugate equal to themselves.</li>
+<li><strong>wirtinger_conj</strong> (<em>bool</em>) – If we evaluate the Wirtinger derivative with respect to the
+conjugate of the variable.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.filter">
+<code class="descname">filter</code><span class="sig-paren">(</span><em>crit</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter out terms satisfying the given criterion.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.map2scalars">
+<code class="descname">map2scalars</code><span class="sig-paren">(</span><em>action</em>, <em>skip_vecs=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.map2scalars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.map2scalars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map the given action to the scalars in the tensor.</p>
+<p>The given action should return SymPy expressions for SymPy expressions,
+the amplitude for each terms and the indices to the vectors, in the
+tensor.  Note that this function does not change the summations in the
+terms and the dummies.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>action</strong> – The callable to be applied to the scalars inside the tensor.</li>
+<li><strong>skip_vecs</strong> – When it is set, the callable will no longer be mapped to the indices
+to the vectors.  It could be used to boost the performance when we
+know that the action need no application on the indices.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Tensor.__getattr__">
+<code class="descname">__getattr__</code><span class="sig-paren">(</span><em>item</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#Tensor.__getattr__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Tensor.__getattr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to see if the item is a tensor method from the drudge.</p>
+<p>This enables individual drudges to dynamically add domain-specific
+operations on tensors.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.TensorDef">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">TensorDef</code><span class="sig-paren">(</span><em>base</em>, <em>exts</em>, <em>tensor: drudge.drudge.Tensor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef" title="Permalink to this definition">¶</a></dt>
+<dd><p>Definition of a tensor.</p>
+<dl class="method">
+<dt id="drudge.TensorDef.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>base</em>, <em>exts</em>, <em>tensor: drudge.drudge.Tensor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the tensor definition.</p>
+<p>In the same way as the initializer for the <a class="reference internal" href="#drudge.Tensor" title="drudge.Tensor"><code class="xref py py-class docutils literal"><span class="pre">Tensor</span></code></a> class,
+this initializer is also unlikely to be used directly in user code.
+Drudge methods <a class="reference internal" href="#drudge.Drudge.define" title="drudge.Drudge.define"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.define()</span></code></a> and
+<a class="reference internal" href="#drudge.Drudge.define_einst" title="drudge.Drudge.define_einst"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.define_einst()</span></code></a> can be more convenient.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.is_scalar">
+<code class="descname">is_scalar</code><a class="headerlink" href="#drudge.TensorDef.is_scalar" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the tensor defined is a scalar.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.rhs">
+<code class="descname">rhs</code><a class="headerlink" href="#drudge.TensorDef.rhs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the right-hand-side of the definition.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.rhs_terms">
+<code class="descname">rhs_terms</code><a class="headerlink" href="#drudge.TensorDef.rhs_terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gather the terms on the right-hand-side of the definition.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.lhs">
+<code class="descname">lhs</code><a class="headerlink" href="#drudge.TensorDef.lhs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the standard left-hand-side of the definition.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.base">
+<code class="descname">base</code><a class="headerlink" href="#drudge.TensorDef.base" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base of the tensor definition.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.TensorDef.exts">
+<code class="descname">exts</code><a class="headerlink" href="#drudge.TensorDef.exts" title="Permalink to this definition">¶</a></dt>
+<dd><p>The external indices.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.simplify">
+<code class="descname">simplify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.simplify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.simplify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplify the tensor in the definition.</p>
+<p>Due to the scarcity of the usefulness of keeping both the unsimplified
+and the simplified tensor definition, this method will mutate the tensor
+with its simplified form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two tensor definitions for equality.</p>
+<p>Note that similar to the equality comparison of tensors, here we only
+compare the syntactic equality rather than the mathematical equality.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form simple readable string for a definition.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.latex">
+<code class="descname">latex</code><span class="sig-paren">(</span><em>sep_lines=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.latex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.latex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the latex form for the tensor definition.</p>
+<p>The result will just be the form from <a class="reference internal" href="#drudge.Tensor.latex" title="drudge.Tensor.latex"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.latex()</span></code></a> with the
+RHS prepended.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sep_lines</strong> (<em>bool</em>) – If terms should be put into separate lines by separating them with
+<code class="docutils literal"><span class="pre">\\</span></code>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.display">
+<code class="descname">display</code><span class="sig-paren">(</span><em>if_return=True</em>, <em>sep_lines=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.display"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.display" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display the tensor definition in interactive notebook sessions.</p>
+<p>The parameters here all have the same meaning as in
+<a class="reference internal" href="#drudge.Tensor.display" title="drudge.Tensor.display"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.display()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.act">
+<code class="descname">act</code><span class="sig-paren">(</span><em>tensor</em>, <em>wilds=None</em>, <em>full_balance=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.act"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.act" title="Permalink to this definition">¶</a></dt>
+<dd><p>Act the definition on a tensor.</p>
+<p>This method is the active voice version of the <a class="reference internal" href="#drudge.Tensor.subst" title="drudge.Tensor.subst"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.subst()</span></code></a>
+function.  All appearances of the defined object in the tensor will be
+substituted.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.TensorDef.__getitem__">
+<code class="descname">__getitem__</code><span class="sig-paren">(</span><em>item</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/drudge.html#TensorDef.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.TensorDef.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the tensor when the definition is indexed.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="miscellaneous-utilities">
+<h2>Miscellaneous utilities<a class="headerlink" href="#miscellaneous-utilities" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="drudge.sum_">
+<code class="descclassname">drudge.</code><code class="descname">sum_</code><span class="sig-paren">(</span><em>obj</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#sum_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.sum_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sum the values in the given iterable.</p>
+<p>Different from the built-in summation function, here a value zero is created
+only when the iterator is empty.  Or the summation is based on the first
+item in the iterable.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="drudge.prod_">
+<code class="descclassname">drudge.</code><code class="descname">prod_</code><span class="sig-paren">(</span><em>obj</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#prod_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.prod_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Product the values in the given iterable.</p>
+<p>Similar to the summation utility function, here the initial value for the
+reduction is the first element.  Different from the summation, here
+a integer unity will be returned for empty iterator.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.Stopwatch">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">Stopwatch</code><span class="sig-paren">(</span><em>print_cb=&lt;built-in function print&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#Stopwatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Stopwatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility class for printing timing information.</p>
+<p>This class helps to timing the progression of batch jobs.  It is capable of
+getting and formatting the elapsed wall time between consecutive steps.
+Note that the timing here might not be accurate to one second.</p>
+<dl class="method">
+<dt id="drudge.Stopwatch.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>print_cb=&lt;built-in function print&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#Stopwatch.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Stopwatch.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the stopwatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>print_cb</strong> – The function will be called with the formatted time-stamp.  By
+default, it will just be written to stdout.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Stopwatch.tick">
+<code class="descname">tick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#Stopwatch.tick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Stopwatch.tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the timer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.Stopwatch.tock">
+<code class="descname">tock</code><span class="sig-paren">(</span><em>label</em>, <em>tensor=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/utils.html#Stopwatch.tock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.Stopwatch.tock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a timestamp.</p>
+<p>The formatted timestamp will be given to the callback of the current
+stamper.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>label</strong> – The label for the current step.</li>
+<li><strong>tensor</strong> – When a tensor is given, it will be cached, counted its number of
+terms.  This method has this parameter since if no reduction is
+performed on the tensor, it might remain unevaluated inside Spark
+and give misleading timing information.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.Stopwatch.__weakref__">
+<code class="descname">__weakref__</code><a class="headerlink" href="#drudge.Stopwatch.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Base drudge system</a><ul>
+<li><a class="reference internal" href="#building-blocks-of-the-basic-drudge-data-structure">Building blocks of the basic drudge data structure</a></li>
+<li><a class="reference internal" href="#canonicalization-of-indexed-quantities-with-symmetry">Canonicalization of indexed quantities with symmetry</a></li>
+<li><a class="reference internal" href="#primary-interface">Primary interface</a></li>
+<li><a class="reference internal" href="#miscellaneous-utilities">Miscellaneous utilities</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api.html">Drudge API reference guide</a><ul>
+      <li>Previous: <a href="../api.html" title="previous chapter">Drudge API reference guide</a></li>
+      <li>Next: <a href="algebras.html" title="next chapter">Support of different algebraic systems</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/base.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/base.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

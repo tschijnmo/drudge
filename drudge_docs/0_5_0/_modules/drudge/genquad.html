@@ -1,0 +1,270 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.genquad &#8212; drudge 0.5.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.genquad</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Base drudge for general quadratic algebra.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">RDD</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">sympify</span><span class="p">,</span> <span class="n">Expr</span>
+
+<span class="kn">from</span> <span class="nn">.drudge</span> <span class="k">import</span> <span class="n">Drudge</span>
+<span class="kn">from</span> <span class="nn">.term</span> <span class="k">import</span> <span class="n">Term</span><span class="p">,</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">parse_terms</span><span class="p">,</span> <span class="n">ATerms</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">nest_bind</span>
+
+
+<div class="viewcode-block" id="GenQuadDrudge"><a class="viewcode-back" href="../../api/algebras.html#drudge.GenQuadDrudge">[docs]</a><span class="k">class</span> <span class="nc">GenQuadDrudge</span><span class="p">(</span><span class="n">Drudge</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Drudge for general quadratic algebra.</span>
+
+<span class="sd">    This abstract base class encompasses a wide range of algebraic systems.  By</span>
+<span class="sd">    a quadratic algebra, we mean any algebraic system with commutation rules</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        a b = \phi b a + \kappa</span>
+
+<span class="sd">    for any two elements :math:`a` and :math:`b` in the algebra with</span>
+<span class="sd">    :math:`\phi` a scalar and :math:`\kappa` any element in the algebra.  This</span>
+<span class="sd">    includes all Lie algebra systems by fixing :math:`\phi` to plus unity.</span>
+<span class="sd">    Other algebra systems with other :math:`\phi` can also be treated as long as</span>
+<span class="sd">    it is a scalar.</span>
+
+<span class="sd">    For the special case of :math:`\phi = \pm 1` and :math:`\kappa` being a</span>
+<span class="sd">    scalar, :py:class:`WickDrudge` should be used, which utilizes the special</span>
+<span class="sd">    structure and has much better performance.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GenQuadDrudge.__init__"><a class="viewcode-back" href="../../api/algebras.html#drudge.GenQuadDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">full_balance</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge.&quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_full_balance</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># For linter.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_balance</span> <span class="o">=</span> <span class="n">full_balance</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">full_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;If full load-balancing is to be performed during normal-ordering.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_full_balance</span>
+
+    <span class="nd">@full_balance</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">full_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the full load-balancing option.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid option for full balancing&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="s1">&#39;expecting boolean&#39;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_full_balance</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="n">Swapper</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span>
+        <span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Vec</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Expr</span><span class="p">,</span> <span class="n">ATerms</span><span class="p">]]</span>
+    <span class="p">]</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">swapper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Swapper</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The function to be called with two operators to commute.</span>
+
+<span class="sd">        It is going to be called with two vectors.  When they are already in</span>
+<span class="sd">        desired order, a ``None`` should be returned.  Or the phase of the</span>
+<span class="sd">        commutation should be returned as a SymPy expression, along with the</span>
+<span class="sd">        commutator, which can be anything that can be interpreted as terms.</span>
+
+<span class="sd">        It is named as ``swapper`` is avoid any confusion about the established</span>
+<span class="sd">        meaning of the word ``commutator`` in mathematics.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="GenQuadDrudge.normal_order"><a class="viewcode-back" href="../../api/algebras.html#drudge.GenQuadDrudge.normal_order">[docs]</a>    <span class="k">def</span> <span class="nf">normal_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Normal order the terms in the RDD.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid keyword arguments&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">symms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">symms</span>
+        <span class="n">swapper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swapper</span>
+        <span class="n">resolvers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolvers</span>
+
+        <span class="n">init</span> <span class="o">=</span> <span class="n">terms</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">term</span><span class="p">:</span> <span class="n">_NOState</span><span class="p">(</span>
+            <span class="n">pivot</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">front</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">term</span><span class="o">.</span><span class="n">canon4normal</span><span class="p">(</span><span class="n">symms</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="p">))</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">nest_bind</span><span class="p">(</span><span class="n">init</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_sort_vec</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">swapper</span><span class="o">=</span><span class="n">swapper</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">),</span> <span class="n">full_balance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_balance</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">term</span><span class="p">)</span></div></div>
+
+
+<span class="c1">#</span>
+<span class="c1"># A state in the normal-ordering process.</span>
+<span class="c1">#</span>
+<span class="c1"># Basically this is a small variation of insertion sort.  Pivot is the index of</span>
+<span class="c1"># the vector to swap, possibly.  Front is the index for the next pivot.</span>
+<span class="c1">#</span>
+
+<span class="n">_NOState</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;_NOState&#39;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">&#39;pivot&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;front&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;term&#39;</span>
+<span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_sort_vec</span><span class="p">(</span><span class="n">no_state</span><span class="p">:</span> <span class="n">_NOState</span><span class="p">,</span> <span class="n">swapper</span><span class="p">:</span> <span class="n">GenQuadDrudge</span><span class="o">.</span><span class="n">Swapper</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Perform one step in the insertion sorting process.</span>
+
+<span class="sd">    This function is designed to work with the nest-bind protocol.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">orig_term</span> <span class="o">=</span> <span class="n">no_state</span><span class="o">.</span><span class="n">term</span>
+    <span class="n">vecs</span> <span class="o">=</span> <span class="n">orig_term</span><span class="o">.</span><span class="n">vecs</span>
+    <span class="n">n_vecs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span>
+    <span class="n">pivot</span> <span class="o">=</span> <span class="n">no_state</span><span class="o">.</span><span class="n">pivot</span>
+
+    <span class="k">if</span> <span class="n">pivot</span> <span class="o">&gt;=</span> <span class="n">n_vecs</span><span class="p">:</span>
+        <span class="c1"># End of the outer loop.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># To be used by the end of the inner loop.</span>
+    <span class="n">move2front</span> <span class="o">=</span> <span class="p">[</span><span class="n">_NOState</span><span class="p">(</span>
+        <span class="n">pivot</span><span class="o">=</span><span class="n">no_state</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">front</span><span class="o">=</span><span class="n">no_state</span><span class="o">.</span><span class="n">front</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">no_state</span><span class="o">.</span><span class="n">term</span>
+    <span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">pivot</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">move2front</span>
+
+    <span class="n">prev</span> <span class="o">=</span> <span class="n">pivot</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">swap_res</span> <span class="o">=</span> <span class="n">swapper</span><span class="p">(</span><span class="n">vecs</span><span class="p">[</span><span class="n">prev</span><span class="p">],</span> <span class="n">vecs</span><span class="p">[</span><span class="n">pivot</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">swap_res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">move2front</span>
+
+    <span class="n">phase</span> <span class="o">=</span> <span class="n">sympify</span><span class="p">(</span><span class="n">swap_res</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">comm_terms</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">parse_terms</span><span class="p">(</span><span class="n">swap_res</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">comm_terms</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">expand</span><span class="p">())</span>
+
+    <span class="c1"># Now we need to do a swap.</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[:</span><span class="n">prev</span><span class="p">]</span>
+    <span class="n">tail</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[</span><span class="n">pivot</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="n">res_states</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">swapped_vecs</span> <span class="o">=</span> <span class="n">head</span> <span class="o">+</span> <span class="p">(</span><span class="n">vecs</span><span class="p">[</span><span class="n">pivot</span><span class="p">],</span> <span class="n">vecs</span><span class="p">[</span><span class="n">prev</span><span class="p">])</span> <span class="o">+</span> <span class="n">tail</span>
+    <span class="n">swapped_amp</span> <span class="o">=</span> <span class="n">phase</span> <span class="o">*</span> <span class="n">orig_term</span><span class="o">.</span><span class="n">amp</span>
+    <span class="k">if</span> <span class="n">swapped_amp</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">swapped_term</span> <span class="o">=</span> <span class="n">Term</span><span class="p">(</span>
+            <span class="n">orig_term</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">swapped_amp</span><span class="p">,</span> <span class="n">swapped_vecs</span>
+        <span class="p">)</span>
+        <span class="n">res_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_NOState</span><span class="p">(</span>
+            <span class="n">pivot</span><span class="o">=</span><span class="n">prev</span><span class="p">,</span> <span class="n">front</span><span class="o">=</span><span class="n">no_state</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">swapped_term</span>
+        <span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">comm_term</span> <span class="ow">in</span> <span class="n">comm_terms</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">comm_term</span><span class="o">.</span><span class="n">amp</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">comm_vecs</span> <span class="o">=</span> <span class="n">comm_term</span><span class="o">.</span><span class="n">vecs</span>
+        <span class="n">res_term</span> <span class="o">=</span> <span class="n">Term</span><span class="p">(</span><span class="n">orig_term</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">comm_term</span><span class="o">.</span><span class="n">amp</span> <span class="o">*</span> <span class="n">orig_term</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="n">head</span><span class="p">,</span> <span class="n">comm_vecs</span><span class="p">,</span> <span class="n">tail</span><span class="p">)</span>
+        <span class="p">))</span><span class="o">.</span><span class="n">simplify_deltas</span><span class="p">(</span><span class="n">resolvers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res_term</span><span class="o">.</span><span class="n">amp</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comm_vecs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Old front, new index.</span>
+            <span class="n">res_pivot</span> <span class="o">=</span> <span class="n">no_state</span><span class="o">.</span><span class="n">front</span> <span class="o">-</span> <span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Index of the first newly inserted vector.</span>
+            <span class="n">res_pivot</span> <span class="o">=</span> <span class="n">prev</span>
+
+        <span class="n">res_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_NOState</span><span class="p">(</span>
+            <span class="n">pivot</span><span class="o">=</span><span class="n">res_pivot</span><span class="p">,</span> <span class="n">front</span><span class="o">=</span><span class="n">res_pivot</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">res_term</span>
+        <span class="p">))</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">res_states</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

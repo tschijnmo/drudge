@@ -1,0 +1,23 @@
+0.8.0
+-----
+
+The primary highlight of this research is the introduction of drudge scripts,
+which is a convenient and flexible domain-specific language for doing symbolic
+computations in drudge.  This could make drudge a lot more convenient for simple
+tasks and more accessible for new comers, especially those unfamiliar with the
+Python language.  Drudge scripts can be executed either by using ``exec_drs``
+method of the Drudge class or using drudge as the main program.
+
+Motivated by the drudge script, the tensor definitions are made more convenient
+to use even in the normal Python interface.  Now tensor definitions subclasses
+the tensor class.  So all arithmetic operations are automatically available.
+And they can be more conveniently created by the new ``Drudge.def_`` method and
+added to the name archive by the ``Drudge.set_name`` method.
+
+Also the LaTeX formatting has been improved with the option to suppress
+summations and the capability of using the LaTeX ``breqn`` package to
+automatically format long terms with a lot of factors.  Also the LaTeX printing
+of tensors whose base is parsed by SymPy to have a subscript is fixed.
+Previously we get double subscripts for a base, which crashes both the original
+TeX and MathJAX.
+

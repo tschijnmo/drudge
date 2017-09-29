@@ -1,0 +1,272 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.su2 &#8212; drudge 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.su2</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Drudge for SU(2) Lie algebra.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">KroneckerDelta</span>
+
+<span class="kn">from</span> <span class="nn">.genquad</span> <span class="k">import</span> <span class="n">GenQuadDrudge</span>
+<span class="kn">from</span> <span class="nn">.term</span> <span class="k">import</span> <span class="n">Vec</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">sympy_key</span>
+
+
+<div class="viewcode-block" id="SU2LatticeDrudge"><a class="viewcode-back" href="../../api/algebras.html#drudge.SU2LatticeDrudge">[docs]</a><span class="k">class</span> <span class="nc">SU2LatticeDrudge</span><span class="p">(</span><span class="n">GenQuadDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for a lattice of SU(2) algebras.</span>
+
+<span class="sd">    This drudge has the commutation rules for SU(2) algebras in Cartan-Weyl form</span>
+<span class="sd">    (Ladder operators).  Here both the shift and Cartan operators can have</span>
+<span class="sd">    additional *lattice indices*.  Operators on different lattice sites always</span>
+<span class="sd">    commute.</span>
+
+<span class="sd">    The the normal-ordering operation would try to put raising operators before</span>
+<span class="sd">    the Cartan operators, which come before the lowering operators.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SU2LatticeDrudge.__init__"><a class="viewcode-back" href="../../api/algebras.html#drudge.SU2LatticeDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cartan</span><span class="o">=</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;J^z&#39;</span><span class="p">),</span> <span class="n">raise_</span><span class="o">=</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;J^+&#39;</span><span class="p">),</span> <span class="n">lower</span><span class="o">=</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;J^-&#39;</span><span class="p">),</span>
+            <span class="n">root</span><span class="o">=</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">norm</span><span class="o">=</span><span class="n">Integer</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        ctx</span>
+<span class="sd">            The Spark context for the drudge.</span>
+
+<span class="sd">        cartan</span>
+<span class="sd">            The basis operator for the Cartan subalgebra (:math:`J^z` operator</span>
+<span class="sd">            for spin problem).  It is registered in the name archive by the</span>
+<span class="sd">            first letter in its label followed by an underscore.</span>
+
+<span class="sd">        raise_</span>
+<span class="sd">            The raising operator.  It is also also registered in the name</span>
+<span class="sd">            archive by the first letter in its label followed by ``_p``.</span>
+
+<span class="sd">        lower</span>
+<span class="sd">            The lowering operator, registered by the first letter followed by</span>
+<span class="sd">            ``_m``.</span>
+
+<span class="sd">        root</span>
+<span class="sd">            The coefficient for the commutator between the Cartan and shift</span>
+<span class="sd">            operators.</span>
+
+<span class="sd">        norm</span>
+<span class="sd">            The coefficient for the commutator between the raising and lowering</span>
+<span class="sd">            operators.</span>
+
+<span class="sd">        kwargs</span>
+<span class="sd">            All other keyword arguments are given to the base class</span>
+<span class="sd">            :py:class:`GenQuadDrudge`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cartan</span> <span class="o">=</span> <span class="n">cartan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raise_</span> <span class="o">=</span> <span class="n">raise_</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lower</span> <span class="o">=</span> <span class="n">lower</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+            <span class="n">cartan</span><span class="o">.</span><span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span> <span class="n">cartan</span><span class="p">,</span>
+            <span class="n">raise_</span><span class="o">.</span><span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_p&#39;</span><span class="p">:</span> <span class="n">raise_</span><span class="p">,</span>
+            <span class="n">lower</span><span class="o">.</span><span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_m&#39;</span><span class="p">:</span> <span class="n">lower</span>
+        <span class="p">})</span>
+
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">_SU2Spec</span><span class="p">(</span>
+            <span class="n">cartan</span><span class="o">=</span><span class="n">cartan</span><span class="p">,</span> <span class="n">raise_</span><span class="o">=</span><span class="n">raise_</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="n">lower</span><span class="p">,</span>
+            <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span> <span class="o">=</span> <span class="n">spec</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_swapper</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_swap_su2</span><span class="p">,</span> <span class="n">spec</span><span class="o">=</span><span class="n">spec</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">swapper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenQuadDrudge</span><span class="o">.</span><span class="n">Swapper</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The swapper for the spin algebra.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_swapper</span></div>
+
+
+<span class="n">_SU2Spec</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;_SU2Spec&#39;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">&#39;cartan&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;raise_&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;lower&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;root&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;norm&#39;</span>
+<span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_swap_su2</span><span class="p">(</span><span class="n">vec1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">vec2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">_SU2Spec</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Swap two vectors based on the SU2 rules.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">char1</span><span class="p">,</span> <span class="n">indice1</span><span class="p">,</span> <span class="n">key1</span> <span class="o">=</span> <span class="n">_parse_vec</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+    <span class="n">char2</span><span class="p">,</span> <span class="n">indice2</span><span class="p">,</span> <span class="n">key2</span> <span class="o">=</span> <span class="n">_parse_vec</span><span class="p">(</span><span class="n">vec2</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indice1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">indice2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;Invalid SU2 generators on lattice&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span><span class="p">),</span>
+            <span class="s1">&#39;incompatible number of lattice indices&#39;</span>
+        <span class="p">)</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="p">(</span>
+        <span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indice1</span><span class="p">,</span> <span class="n">indice2</span><span class="p">)</span>
+    <span class="p">),</span> <span class="n">_UNITY</span><span class="p">)</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">root</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">norm</span>
+
+    <span class="k">if</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">_RAISE</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">_RAISE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key1</span> <span class="o">&lt;</span> <span class="n">key2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">key1</span> <span class="o">&gt;</span> <span class="n">key2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="n">_NOUGHT</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">elif</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">_CARTAN</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">_RAISE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="n">root</span> <span class="o">*</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">vec2</span>
+        <span class="k">elif</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">_CARTAN</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key1</span> <span class="o">&gt;</span> <span class="n">key2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="n">_NOUGHT</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">elif</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">_LOWER</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">_RAISE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="o">-</span><span class="n">norm</span> <span class="o">*</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">spec</span><span class="o">.</span><span class="n">cartan</span><span class="p">[</span><span class="n">indice1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">_CARTAN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="n">root</span> <span class="o">*</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">vec1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key1</span> <span class="o">&lt;</span> <span class="n">key2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">key1</span> <span class="o">&gt;</span> <span class="n">key2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_UNITY</span><span class="p">,</span> <span class="n">_NOUGHT</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="kc">False</span>
+
+
+<span class="n">_RAISE</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">_CARTAN</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">_LOWER</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_vec</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">_SU2Spec</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the character, lattice indices, and indices keys of the vector.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">base</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">base</span>
+    <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">spec</span><span class="o">.</span><span class="n">cartan</span><span class="p">:</span>
+        <span class="n">char</span> <span class="o">=</span> <span class="n">_CARTAN</span>
+    <span class="k">elif</span> <span class="n">base</span> <span class="o">==</span> <span class="n">spec</span><span class="o">.</span><span class="n">raise_</span><span class="p">:</span>
+        <span class="n">char</span> <span class="o">=</span> <span class="n">_RAISE</span>
+    <span class="k">elif</span> <span class="n">base</span> <span class="o">==</span> <span class="n">spec</span><span class="o">.</span><span class="n">lower</span><span class="p">:</span>
+        <span class="n">char</span> <span class="o">=</span> <span class="n">_LOWER</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unexpected vector for SU2 algebra&#39;</span><span class="p">,</span> <span class="n">vec</span><span class="p">)</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">indices</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">char</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">keys</span>
+
+
+<span class="n">_UNITY</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">_NOUGHT</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

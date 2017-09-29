@@ -1,0 +1,320 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Direct support of different problems &#8212; drudge 0.7.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Support of different algebraic systems" href="algebras.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="direct-support-of-different-problems">
+<span id="problem-drudges"></span><h1>Direct support of different problems<a class="headerlink" href="#direct-support-of-different-problems" title="Permalink to this headline">¶</a></h1>
+<p>In addition to the algebraic rules, more domain specific knowledge can be added
+to drudge subclasses for the convenience of working on specific problems.  In
+these <a class="reference internal" href="base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> subclasses, we have not only the general mathematical
+knowledge like commutation rules, but more detailed information about the
+problem as well, like some commonly used ranges, dummies.</p>
+<dl class="class">
+<dt id="drudge.GenMBDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">GenMBDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>exch=-1</em>, <em>op_label='c'</em>, <em>orb=((Range('L')</em>, <em>'abcdefghijklmnopq')</em>, <em>)</em>, <em>spin=()</em>, <em>one_body=t</em>, <em>two_body=u</em>, <em>dbbar=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#GenMBDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.GenMBDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for general many-body problems.</p>
+<p>In a general many-body problem, a state for the particle is given by a
+symbolic <strong>orbital</strong> quantum numbers for the external degrees of freedom and
+optionally a concrete <strong>spin</strong> quantum numbers for the internal states of
+the particles.  Normally, there is just one orbital quantum number and one
+or no spin quantum number.</p>
+<p>In this model, a default Hamiltonian of the model is constructed from a
+one-body and two-body interaction, both of them are assumed to be spin
+conserving.</p>
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.op">
+<code class="descname">op</code><a class="headerlink" href="#drudge.GenMBDrudge.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>The vector base for the field operators.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.cr">
+<code class="descname">cr</code><a class="headerlink" href="#drudge.GenMBDrudge.cr" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base for the creation operator.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.an">
+<code class="descname">an</code><a class="headerlink" href="#drudge.GenMBDrudge.an" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base for the annihilation operator.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.orb_ranges">
+<code class="descname">orb_ranges</code><a class="headerlink" href="#drudge.GenMBDrudge.orb_ranges" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of all the ranges for the orbital quantum number.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.spin_vals">
+<code class="descname">spin_vals</code><a class="headerlink" href="#drudge.GenMBDrudge.spin_vals" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of all the explicit spin values.  None if spin values are not
+given.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.spin_range">
+<code class="descname">spin_range</code><a class="headerlink" href="#drudge.GenMBDrudge.spin_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>The symbolic range for spin values.  None if it is not given.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.orig_ham">
+<code class="descname">orig_ham</code><a class="headerlink" href="#drudge.GenMBDrudge.orig_ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The original form of the Hamiltonian without any simplification.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.GenMBDrudge.ham">
+<code class="descname">ham</code><a class="headerlink" href="#drudge.GenMBDrudge.ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The simplified form of the Hamiltonian.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.GenMBDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>exch=-1</em>, <em>op_label='c'</em>, <em>orb=((Range('L')</em>, <em>'abcdefghijklmnopq')</em>, <em>)</em>, <em>spin=()</em>, <em>one_body=t</em>, <em>two_body=u</em>, <em>dbbar=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#GenMBDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.GenMBDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>exch</strong> – The exchange symmetry of the identical particle.</li>
+<li><strong>op_label</strong> – The label for the field operators.  The creation operator will be
+registered in the names archive by name of this label with <code class="docutils literal"><span class="pre">_dag</span></code>
+appended.  And the annihilation operator will be registered with a
+single trailing underscore.</li>
+<li><strong>orb</strong> – An iterable of range and dummies pairs for the orbital quantum
+number, which is considered to be over the <strong>direct sum</strong> of all the
+ranges given.  All the ranges and dummies will be registered to the
+names archive by <a class="reference internal" href="base.html#drudge.Drudge.set_dumms" title="drudge.Drudge.set_dumms"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.set_dumms()</span></code></a>.</li>
+<li><strong>spin</strong> – The explicit spin quantum number.  It can be an empty sequence to
+disable explicit spin.  Or it can be a sequence of SymPy expressions
+to give explicit spin values, or a range and dummies pair for
+symbolic spin.</li>
+<li><strong>one_body</strong> – The indexed base for the amplitude in the one-body part of the
+Hamiltonian.  It will also be added to the name archive.</li>
+<li><strong>two_body</strong> – The indexed base for the two-body part of the Hamiltonian.  It will
+also be added to the name archive.</li>
+<li><strong>dbbar</strong> (<em>bool</em>) – If the two-body part of the Hamiltonian is double-bared.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.PartHoleDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">PartHoleDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>op_label='c'</em>, <em>part_orb=(Range('V'</em>, <em>0</em>, <em>nv)</em>, <em>(a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>a0</em>, <em>a1</em>, <em>a2</em>, <em>a3</em>, <em>a4</em>, <em>a5</em>, <em>a6</em>, <em>a7</em>, <em>a8</em>, <em>a9</em>, <em>a10</em>, <em>a11</em>, <em>a12</em>, <em>a13</em>, <em>a14</em>, <em>a15</em>, <em>a16</em>, <em>a17</em>, <em>a18</em>, <em>a19</em>, <em>a20</em>, <em>a21</em>, <em>a22</em>, <em>a23</em>, <em>a24</em>, <em>a25</em>, <em>a26</em>, <em>a27</em>, <em>a28</em>, <em>a29</em>, <em>a30</em>, <em>a31</em>, <em>a32</em>, <em>a33</em>, <em>a34</em>, <em>a35</em>, <em>a36</em>, <em>a37</em>, <em>a38</em>, <em>a39</em>, <em>a40</em>, <em>a41</em>, <em>a42</em>, <em>a43</em>, <em>a44</em>, <em>a45</em>, <em>a46</em>, <em>a47</em>, <em>a48</em>, <em>a49))</em>, <em>hole_orb=(Range('O'</em>, <em>0</em>, <em>no)</em>, <em>(i</em>, <em>j</em>, <em>k</em>, <em>l</em>, <em>i0</em>, <em>i1</em>, <em>i2</em>, <em>i3</em>, <em>i4</em>, <em>i5</em>, <em>i6</em>, <em>i7</em>, <em>i8</em>, <em>i9</em>, <em>i10</em>, <em>i11</em>, <em>i12</em>, <em>i13</em>, <em>i14</em>, <em>i15</em>, <em>i16</em>, <em>i17</em>, <em>i18</em>, <em>i19</em>, <em>i20</em>, <em>i21</em>, <em>i22</em>, <em>i23</em>, <em>i24</em>, <em>i25</em>, <em>i26</em>, <em>i27</em>, <em>i28</em>, <em>i29</em>, <em>i30</em>, <em>i31</em>, <em>i32</em>, <em>i33</em>, <em>i34</em>, <em>i35</em>, <em>i36</em>, <em>i37</em>, <em>i38</em>, <em>i39</em>, <em>i40</em>, <em>i41</em>, <em>i42</em>, <em>i43</em>, <em>i44</em>, <em>i45</em>, <em>i46</em>, <em>i47</em>, <em>i48</em>, <em>i49))</em>, <em>spin=()</em>, <em>one_body=t</em>, <em>two_body=u</em>, <em>fock=f</em>, <em>dbbar=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#PartHoleDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.PartHoleDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for the particle-hole problems.</p>
+<p>This is a shallow subclass of <a class="reference internal" href="#drudge.GenMBDrudge" title="drudge.GenMBDrudge"><code class="xref py py-class docutils literal"><span class="pre">GenMBDrudge</span></code></a> for the particle-hole
+problems.  It contains different forms of the Hamiltonian.</p>
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.orig_ham">
+<code class="descname">orig_ham</code><a class="headerlink" href="#drudge.PartHoleDrudge.orig_ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The original form of the Hamiltonian, written in terms of bare one-body
+and two-body interaction tensors without normal-ordering with respect to
+the Fermion vacuum.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.full_ham">
+<code class="descname">full_ham</code><a class="headerlink" href="#drudge.PartHoleDrudge.full_ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The full form of the Hamiltonian in terms of the bare interaction
+tensors, normal-ordered with respect to the Fermi vacuum.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.ham_energy">
+<code class="descname">ham_energy</code><a class="headerlink" href="#drudge.PartHoleDrudge.ham_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>The zero energy inside the full Hamiltonian.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.one_body_ham">
+<code class="descname">one_body_ham</code><a class="headerlink" href="#drudge.PartHoleDrudge.one_body_ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The one-body part of the full Hamiltonian, written in terms of the bare
+interaction tensors.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.ham">
+<code class="descname">ham</code><a class="headerlink" href="#drudge.PartHoleDrudge.ham" title="Permalink to this definition">¶</a></dt>
+<dd><p>The most frequently used form of the Hamiltonian, written in terms of
+Fock matrix and the two-body interaction tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.PartHoleDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>op_label='c'</em>, <em>part_orb=(Range('V'</em>, <em>0</em>, <em>nv)</em>, <em>(a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>a0</em>, <em>a1</em>, <em>a2</em>, <em>a3</em>, <em>a4</em>, <em>a5</em>, <em>a6</em>, <em>a7</em>, <em>a8</em>, <em>a9</em>, <em>a10</em>, <em>a11</em>, <em>a12</em>, <em>a13</em>, <em>a14</em>, <em>a15</em>, <em>a16</em>, <em>a17</em>, <em>a18</em>, <em>a19</em>, <em>a20</em>, <em>a21</em>, <em>a22</em>, <em>a23</em>, <em>a24</em>, <em>a25</em>, <em>a26</em>, <em>a27</em>, <em>a28</em>, <em>a29</em>, <em>a30</em>, <em>a31</em>, <em>a32</em>, <em>a33</em>, <em>a34</em>, <em>a35</em>, <em>a36</em>, <em>a37</em>, <em>a38</em>, <em>a39</em>, <em>a40</em>, <em>a41</em>, <em>a42</em>, <em>a43</em>, <em>a44</em>, <em>a45</em>, <em>a46</em>, <em>a47</em>, <em>a48</em>, <em>a49))</em>, <em>hole_orb=(Range('O'</em>, <em>0</em>, <em>no)</em>, <em>(i</em>, <em>j</em>, <em>k</em>, <em>l</em>, <em>i0</em>, <em>i1</em>, <em>i2</em>, <em>i3</em>, <em>i4</em>, <em>i5</em>, <em>i6</em>, <em>i7</em>, <em>i8</em>, <em>i9</em>, <em>i10</em>, <em>i11</em>, <em>i12</em>, <em>i13</em>, <em>i14</em>, <em>i15</em>, <em>i16</em>, <em>i17</em>, <em>i18</em>, <em>i19</em>, <em>i20</em>, <em>i21</em>, <em>i22</em>, <em>i23</em>, <em>i24</em>, <em>i25</em>, <em>i26</em>, <em>i27</em>, <em>i28</em>, <em>i29</em>, <em>i30</em>, <em>i31</em>, <em>i32</em>, <em>i33</em>, <em>i34</em>, <em>i35</em>, <em>i36</em>, <em>i37</em>, <em>i38</em>, <em>i39</em>, <em>i40</em>, <em>i41</em>, <em>i42</em>, <em>i43</em>, <em>i44</em>, <em>i45</em>, <em>i46</em>, <em>i47</em>, <em>i48</em>, <em>i49))</em>, <em>spin=()</em>, <em>one_body=t</em>, <em>two_body=u</em>, <em>fock=f</em>, <em>dbbar=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#PartHoleDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.PartHoleDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the particle-hole drudge.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="drudge.PartHoleDrudge.op_parser">
+<code class="descname">op_parser</code><a class="headerlink" href="#drudge.PartHoleDrudge.op_parser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the special operator parser for particle-hole problems.</p>
+<p>Here when the first index to the operator is resolved to be a hole
+state, the creation/annihilation character of the operator will be
+flipped.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.PartHoleDrudge.eval_fermi_vev">
+<code class="descname">eval_fermi_vev</code><span class="sig-paren">(</span><em>tensor: drudge.drudge.Tensor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#PartHoleDrudge.eval_fermi_vev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.PartHoleDrudge.eval_fermi_vev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate expectation value with respect to Fermi vacuum.</p>
+<p>This is just an alias to the actual <a class="reference internal" href="algebras.html#drudge.FockDrudge.eval_phys_vev" title="drudge.FockDrudge.eval_phys_vev"><code class="xref py py-meth docutils literal"><span class="pre">FockDrudge.eval_phys_vev()</span></code></a>
+method to avoid confusion about the terminology in particle-hole
+problems.  And it is set as a tensor method by the same name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="drudge.PartHoleDrudge.parse_tce">
+<code class="descname">parse_tce</code><span class="sig-paren">(</span><em>tce_out: str, cc_bases: typing.Mapping[int, sympy.tensor.indexed.IndexedBase]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#PartHoleDrudge.parse_tce"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.PartHoleDrudge.parse_tce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse TCE output into a tensor.</p>
+<p>The CC amplitude bases should be given as a dictionary mapping from the
+excitation order to the actual base.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.UP">
+<code class="descclassname">drudge.</code><code class="descname">UP</code><a class="headerlink" href="#drudge.UP" title="Permalink to this definition">¶</a></dt>
+<dd><p>The symbol for spin up.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="drudge.DOWN">
+<code class="descclassname">drudge.</code><code class="descname">DOWN</code><a class="headerlink" href="#drudge.DOWN" title="Permalink to this definition">¶</a></dt>
+<dd><p>The symbolic value for spin down.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.SpinOneHalfGenDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">SpinOneHalfGenDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#SpinOneHalfGenDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SpinOneHalfGenDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for many-body problems of particles with explicit 1/2 spin.</p>
+<p>This is just a shallow subclass of the drudge for general many-body
+problems, with exchange set to fermi and has explicit spin values of
+<a class="reference internal" href="#drudge.UP" title="drudge.UP"><code class="xref py py-data docutils literal"><span class="pre">UP</span></code></a> and <a class="reference internal" href="#drudge.DOWN" title="drudge.DOWN"><code class="xref py py-data docutils literal"><span class="pre">DOWN</span></code></a>.</p>
+<dl class="method">
+<dt id="drudge.SpinOneHalfGenDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#SpinOneHalfGenDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SpinOneHalfGenDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the drudge object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="drudge.SpinOneHalfPartHoleDrudge">
+<em class="property">class </em><code class="descclassname">drudge.</code><code class="descname">SpinOneHalfPartHoleDrudge</code><span class="sig-paren">(</span><em>*args</em>, <em>part_orb=(Range('V'</em>, <em>0</em>, <em>nv)</em>, <em>(a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>a0</em>, <em>a1</em>, <em>a2</em>, <em>a3</em>, <em>a4</em>, <em>a5</em>, <em>a6</em>, <em>a7</em>, <em>a8</em>, <em>a9</em>, <em>a10</em>, <em>a11</em>, <em>a12</em>, <em>a13</em>, <em>a14</em>, <em>a15</em>, <em>a16</em>, <em>a17</em>, <em>a18</em>, <em>a19</em>, <em>a20</em>, <em>a21</em>, <em>a22</em>, <em>a23</em>, <em>a24</em>, <em>a25</em>, <em>a26</em>, <em>a27</em>, <em>a28</em>, <em>a29</em>, <em>a30</em>, <em>a31</em>, <em>a32</em>, <em>a33</em>, <em>a34</em>, <em>a35</em>, <em>a36</em>, <em>a37</em>, <em>a38</em>, <em>a39</em>, <em>a40</em>, <em>a41</em>, <em>a42</em>, <em>a43</em>, <em>a44</em>, <em>a45</em>, <em>a46</em>, <em>a47</em>, <em>a48</em>, <em>a49</em>, <em>beta</em>, <em>gamma))</em>, <em>hole_orb=(Range('O'</em>, <em>0</em>, <em>no)</em>, <em>(i</em>, <em>j</em>, <em>k</em>, <em>l</em>, <em>i0</em>, <em>i1</em>, <em>i2</em>, <em>i3</em>, <em>i4</em>, <em>i5</em>, <em>i6</em>, <em>i7</em>, <em>i8</em>, <em>i9</em>, <em>i10</em>, <em>i11</em>, <em>i12</em>, <em>i13</em>, <em>i14</em>, <em>i15</em>, <em>i16</em>, <em>i17</em>, <em>i18</em>, <em>i19</em>, <em>i20</em>, <em>i21</em>, <em>i22</em>, <em>i23</em>, <em>i24</em>, <em>i25</em>, <em>i26</em>, <em>i27</em>, <em>i28</em>, <em>i29</em>, <em>i30</em>, <em>i31</em>, <em>i32</em>, <em>i33</em>, <em>i34</em>, <em>i35</em>, <em>i36</em>, <em>i37</em>, <em>i38</em>, <em>i39</em>, <em>i40</em>, <em>i41</em>, <em>i42</em>, <em>i43</em>, <em>i44</em>, <em>i45</em>, <em>i46</em>, <em>i47</em>, <em>i48</em>, <em>i49</em>, <em>u</em>, <em>v))</em>, <em>spin=(SpinOneHalf.UP</em>, <em>SpinOneHalf.DOWN)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#SpinOneHalfPartHoleDrudge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SpinOneHalfPartHoleDrudge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drudge for the particle-hole problems with explicit one-half spin.</p>
+<p>This is a shallow subclass over the general particle-hole drudge without
+explicit spin.  The spin values are given explicitly, which are set to
+<a class="reference internal" href="#drudge.UP" title="drudge.UP"><code class="xref py py-data docutils literal"><span class="pre">UP</span></code></a> and <a class="reference internal" href="#drudge.DOWN" title="drudge.DOWN"><code class="xref py py-data docutils literal"><span class="pre">DOWN</span></code></a> by default.  And the double-bar of the
+two-body interaction is disabled.  And some additional dummies traditional
+in the field are also added.</p>
+<dl class="method">
+<dt id="drudge.SpinOneHalfPartHoleDrudge.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>*args</em>, <em>part_orb=(Range('V'</em>, <em>0</em>, <em>nv)</em>, <em>(a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>a0</em>, <em>a1</em>, <em>a2</em>, <em>a3</em>, <em>a4</em>, <em>a5</em>, <em>a6</em>, <em>a7</em>, <em>a8</em>, <em>a9</em>, <em>a10</em>, <em>a11</em>, <em>a12</em>, <em>a13</em>, <em>a14</em>, <em>a15</em>, <em>a16</em>, <em>a17</em>, <em>a18</em>, <em>a19</em>, <em>a20</em>, <em>a21</em>, <em>a22</em>, <em>a23</em>, <em>a24</em>, <em>a25</em>, <em>a26</em>, <em>a27</em>, <em>a28</em>, <em>a29</em>, <em>a30</em>, <em>a31</em>, <em>a32</em>, <em>a33</em>, <em>a34</em>, <em>a35</em>, <em>a36</em>, <em>a37</em>, <em>a38</em>, <em>a39</em>, <em>a40</em>, <em>a41</em>, <em>a42</em>, <em>a43</em>, <em>a44</em>, <em>a45</em>, <em>a46</em>, <em>a47</em>, <em>a48</em>, <em>a49</em>, <em>beta</em>, <em>gamma))</em>, <em>hole_orb=(Range('O'</em>, <em>0</em>, <em>no)</em>, <em>(i</em>, <em>j</em>, <em>k</em>, <em>l</em>, <em>i0</em>, <em>i1</em>, <em>i2</em>, <em>i3</em>, <em>i4</em>, <em>i5</em>, <em>i6</em>, <em>i7</em>, <em>i8</em>, <em>i9</em>, <em>i10</em>, <em>i11</em>, <em>i12</em>, <em>i13</em>, <em>i14</em>, <em>i15</em>, <em>i16</em>, <em>i17</em>, <em>i18</em>, <em>i19</em>, <em>i20</em>, <em>i21</em>, <em>i22</em>, <em>i23</em>, <em>i24</em>, <em>i25</em>, <em>i26</em>, <em>i27</em>, <em>i28</em>, <em>i29</em>, <em>i30</em>, <em>i31</em>, <em>i32</em>, <em>i33</em>, <em>i34</em>, <em>i35</em>, <em>i36</em>, <em>i37</em>, <em>i38</em>, <em>i39</em>, <em>i40</em>, <em>i41</em>, <em>i42</em>, <em>i43</em>, <em>i44</em>, <em>i45</em>, <em>i46</em>, <em>i47</em>, <em>i48</em>, <em>i49</em>, <em>u</em>, <em>v))</em>, <em>spin=(SpinOneHalf.UP</em>, <em>SpinOneHalf.DOWN)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/drudge/fock.html#SpinOneHalfPartHoleDrudge.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drudge.SpinOneHalfPartHoleDrudge.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the particle-hole drudge.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api.html">Drudge API reference guide</a><ul>
+      <li>Previous: <a href="algebras.html" title="previous chapter">Support of different algebraic systems</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/problems.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/problems.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

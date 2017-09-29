@@ -1,0 +1,234 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.clifford &#8212; drudge 0.3.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.clifford</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Drudges for clifford algebra.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">RDD</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">KroneckerDelta</span>
+
+<span class="kn">from</span> <span class="nn">.term</span> <span class="k">import</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">Term</span>
+<span class="kn">from</span> <span class="nn">.wick</span> <span class="k">import</span> <span class="n">WickDrudge</span>
+
+
+<span class="k">def</span> <span class="nf">inner_by_delta</span><span class="p">(</span><span class="n">vec1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">vec2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compute the inner product of two vectors by delta.</span>
+
+<span class="sd">    The two vectors are assumed to be from the same base and have the same</span>
+<span class="sd">    number of indices, or ValueError will be raised.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">indices1</span> <span class="o">=</span> <span class="n">vec1</span><span class="o">.</span><span class="n">indices</span>
+    <span class="n">indices2</span> <span class="o">=</span> <span class="n">vec2</span><span class="o">.</span><span class="n">indices</span>
+    <span class="k">if</span> <span class="n">vec1</span><span class="o">.</span><span class="n">label</span> <span class="o">!=</span> <span class="n">vec2</span><span class="o">.</span><span class="n">label</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;Invalid vectors to computer inner product by delta&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="p">(</span>
+        <span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indices1</span><span class="p">,</span> <span class="n">indices2</span><span class="p">)</span>
+    <span class="p">),</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="CliffordDrudge"><a class="viewcode-back" href="../../api/algebras.html#drudge.CliffordDrudge">[docs]</a><span class="k">class</span> <span class="nc">CliffordDrudge</span><span class="p">(</span><span class="n">WickDrudge</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Drudge for Clifford algebras.</span>
+
+<span class="sd">    A Clifford algebra over a inner product space :math:`V` is an algebraic</span>
+<span class="sd">    system with</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        uv + vu = 2 \langle u, v \rangle</span>
+
+<span class="sd">    for all :math:`u, v \in V`.</span>
+
+<span class="sd">    This drudge should work for any Clifford algebra with given inner product</span>
+<span class="sd">    function.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">Inner</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Vec</span><span class="p">],</span> <span class="n">Expr</span><span class="p">]</span>
+
+<div class="viewcode-block" id="CliffordDrudge.__init__"><a class="viewcode-back" href="../../api/algebras.html#drudge.CliffordDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">inner</span><span class="p">:</span> <span class="n">Inner</span> <span class="o">=</span> <span class="n">inner_by_delta</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        ctx</span>
+<span class="sd">            The context for Spark.</span>
+
+<span class="sd">        inner</span>
+<span class="sd">            The callable to compute the inner product of two vectors.  By</span>
+<span class="sd">            default, the inner product of vectors of the same base and the same</span>
+<span class="sd">            number of indices will be computed to be the delta, or</span>
+<span class="sd">            ``ValueError`` will be raised.</span>
+
+<span class="sd">        kwargs</span>
+<span class="sd">            All other keyword arguments will be forwarded to the base class</span>
+<span class="sd">            :py:class:`WickDrudge`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span> <span class="o">=</span> <span class="n">inner</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_contractor</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+            <span class="n">_contract4clifford</span><span class="p">,</span> <span class="n">inner</span><span class="o">=</span><span class="n">inner</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_collapse</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+            <span class="n">_collapse4clifford</span><span class="p">,</span> <span class="n">inner</span><span class="o">=</span><span class="n">inner</span>
+        <span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">phase</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The phase for Clifford algebra, negative unity.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">comparator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Comparator for Clifford algebra.</span>
+
+<span class="sd">        Here we just compare vectors by the default sort key for vectors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_compare_by_sort_key</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">contractor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Contractor for Clifford algebra.</span>
+
+<span class="sd">        The inner product function will be invoked.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contractor</span>
+
+<div class="viewcode-block" id="CliffordDrudge.normal_order"><a class="viewcode-back" href="../../api/algebras.html#drudge.CliffordDrudge.normal_order">[docs]</a>    <span class="k">def</span> <span class="nf">normal_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Put vectors in Clifford algebra in normal-order.</span>
+
+<span class="sd">        After the normal-ordering by Wick expansion, adjacent equal vectors will</span>
+<span class="sd">        be collapsed by rules of Clifford algebra.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">normal_order</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_collapse</span><span class="p">)</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_compare_by_sort_key</span><span class="p">(</span><span class="n">vec1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">vec2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">Term</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compare the two vectors just by their sort key.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">vec1</span><span class="o">.</span><span class="n">sort_key</span> <span class="o">&gt;</span> <span class="n">vec2</span><span class="o">.</span><span class="n">sort_key</span>
+
+
+<span class="k">def</span> <span class="nf">_contract4clifford</span><span class="p">(</span>
+        <span class="n">vec1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">vec2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+        <span class="n">inner</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Contract two vectors by Clifford rules.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">inner</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span><span class="p">)</span> <span class="o">*</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_collapse4clifford</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inner</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Collapse adjacent equal vectors by Clifford algebras.&quot;&quot;&quot;</span>
+
+    <span class="n">vecs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">):</span>
+
+        <span class="n">n_vecs</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">g</span><span class="p">)</span>
+        <span class="n">n_inners</span> <span class="o">=</span> <span class="n">n_vecs</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">n_rem</span> <span class="o">=</span> <span class="n">n_vecs</span> <span class="o">%</span> <span class="mi">2</span>
+
+        <span class="c1"># Skip inner product computation when it is not needed.</span>
+        <span class="k">if</span> <span class="n">n_inners</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">amp</span> <span class="o">*=</span> <span class="n">inner</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="o">**</span> <span class="n">n_inners</span>
+
+        <span class="k">if</span> <span class="n">n_rem</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">vecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">Term</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">,</span> <span class="n">amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">vecs</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

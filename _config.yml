@@ -8,6 +8,6 @@ description: >
     Symbolic tensor and non-commutative algebra with powerful automatic code
     generation and optimization
 
-include: ['_static']
+include: ['_static', '_modules', '_sources']
 
 header_pages: ['install.md', 'docs.md', 'news.html']

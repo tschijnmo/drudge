@@ -1,0 +1,252 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.report &#8212; drudge 0.9.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.report</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Utility to write simple reports in HTML format.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">jinja2</span> <span class="k">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">PackageLoader</span>
+<span class="kn">from</span> <span class="nn">sympy.printing.latex</span> <span class="k">import</span> <span class="n">LatexPrinter</span>
+
+
+<div class="viewcode-block" id="Report"><a class="viewcode-back" href="../../api/base.html#drudge.Report">[docs]</a><span class="k">class</span> <span class="nc">Report</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Simple report for output drudge results.</span>
+
+<span class="sd">    This class helps to write symbolic results to files for batch processing</span>
+<span class="sd">    jobs.  It is not recommended to be used directly.  Users should use the</span>
+<span class="sd">    method provided by drudge class instead in ``with`` statements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Report.__init__"><a class="viewcode-back" href="../../api/base.html#drudge.Report.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the report object.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span> <span class="o">=</span> <span class="n">filename</span>
+
+        <span class="n">filename_parts</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filename_parts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid filename, unable to determine type&#39;</span><span class="p">,</span> <span class="n">filename</span>
+            <span class="p">)</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">filename_parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;html&#39;</span><span class="p">,</span> <span class="s1">&#39;tex&#39;</span><span class="p">,</span> <span class="s1">&#39;pdf&#39;</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid extension&#39;</span><span class="p">,</span> <span class="n">ext</span><span class="p">,</span> <span class="s1">&#39;in&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span> <span class="o">=</span> <span class="n">ext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_basename</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">filename_parts</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span>
+            <span class="s1">&#39;sects&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sects</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="Report.add"><a class="viewcode-back" href="../../api/base.html#drudge.Report.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">env</span><span class="o">=</span><span class="s1">&#39;[&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Add a section to the result.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        title</span>
+
+<span class="sd">            The title of the equation.  It will be used as a section header.</span>
+<span class="sd">            When it is given as a None, the section header will not be added.</span>
+
+<span class="sd">        content</span>
+
+<span class="sd">            The actual tensor or tensor definition to be printed.  It can be</span>
+<span class="sd">            given as a None to skip any equation rendering.</span>
+
+<span class="sd">        description</span>
+
+<span class="sd">            A verbal description of the content.  It will be typeset before the</span>
+<span class="sd">            actual equation as normal text.  A None value will cause it to be</span>
+<span class="sd">            suppressed.</span>
+
+<span class="sd">        env</span>
+
+<span class="sd">            The environment to put the equation in.  A value of ``&#39;[&#39;`` will use</span>
+<span class="sd">            ``\[`` and ``\]`` as the deliminator of the math environment.  Other</span>
+<span class="sd">            values will be put inside the common ``\begin{}`` and ``\end{}``</span>
+<span class="sd">            tags of LaTeX.</span>
+
+<span class="sd">        kwargs</span>
+
+<span class="sd">            All the rest of the keyword arguments are forwarded to the</span>
+<span class="sd">            :py:meth:`Drudge.format_latex` method.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+
+<span class="sd">        **For long equations in LaTeX environments,** normally ``env=&#39;align&#39;``</span>
+<span class="sd">        and ``sep_lines=True`` can be set to allow each term to occupy separate</span>
+<span class="sd">        lines, automatic page break will be inserted, or ``env=&#39;dmath&#39;`` and</span>
+<span class="sd">        ``sep_lines=False`` can be used to use ``breqn`` package to</span>
+<span class="sd">        automatically flow the terms.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">env</span> <span class="o">==</span> <span class="s1">&#39;[&#39;</span><span class="p">:</span>
+            <span class="n">opening</span><span class="p">,</span> <span class="n">closing</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;\[&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\]&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">opening</span><span class="p">,</span> <span class="n">closing</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="sa">r</span><span class="s1">&#39;\</span><span class="si">{}</span><span class="s1">{{</span><span class="si">{}</span><span class="s1">}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;begin&#39;</span><span class="p">,</span> <span class="s1">&#39;end&#39;</span><span class="p">]</span>
+            <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sects</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span>
+            <span class="s1">&#39;expr&#39;</span><span class="p">:</span> <span class="n">content</span><span class="o">.</span><span class="n">latex</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;opening&#39;</span><span class="p">:</span> <span class="n">opening</span><span class="p">,</span>
+            <span class="s1">&#39;closing&#39;</span><span class="p">:</span> <span class="n">closing</span>
+        <span class="p">})</span></div>
+
+<div class="viewcode-block" id="Report.write"><a class="viewcode-back" href="../../api/base.html#drudge.Report.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Write the report.</span>
+
+<span class="sd">        Note that this method also closes the output file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span>
+            <span class="n">loader</span><span class="o">=</span><span class="n">PackageLoader</span><span class="p">(</span><span class="s1">&#39;drudge&#39;</span><span class="p">),</span>
+            <span class="n">lstrip_blocks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">trim_blocks</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span> <span class="o">==</span> <span class="s1">&#39;html&#39;</span><span class="p">:</span>
+            <span class="n">templ_name</span> <span class="o">=</span> <span class="s1">&#39;report.html&#39;</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span> <span class="o">==</span> <span class="s1">&#39;tex&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span> <span class="o">==</span> <span class="s1">&#39;pdf&#39;</span><span class="p">:</span>
+            <span class="n">templ_name</span> <span class="o">=</span> <span class="s1">&#39;report.tex&#39;</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basename</span> <span class="o">+</span> <span class="s1">&#39;.tex&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="kc">False</span>
+
+        <span class="n">templ</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="n">templ_name</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">templ</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="p">)</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span> <span class="o">==</span> <span class="s1">&#39;pdf&#39;</span><span class="p">:</span>
+            <span class="n">stat</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s1">&#39;pdflatex&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">],</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Do not crash program only because LaTeX does not compile.</span>
+            <span class="k">if</span> <span class="n">stat</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">err_msg</span> <span class="o">=</span> <span class="s1">&#39;pdflatex failed for </span><span class="si">{}</span><span class="s1">.  Error: </span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">filename</span><span class="p">,</span> <span class="n">stat</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stat</span><span class="o">.</span><span class="n">stderr</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">err_msg</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ScalarLatexPrinter"><a class="viewcode-back" href="../../api/base.html#drudge.ScalarLatexPrinter">[docs]</a><span class="k">class</span> <span class="nc">ScalarLatexPrinter</span><span class="p">(</span><span class="n">LatexPrinter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Specialized LaTeX printers for usage in drudge.</span>
+
+<span class="sd">    Basically this class tries to fix some problems with using the original</span>
+<span class="sd">    LaTeX printer from SymPy in common drudge tasks.</span>
+
+<span class="sd">    Specifically, for indexed objects, if the base already contains a subscript,</span>
+<span class="sd">    it will be raised into a superscript wrapped inside a pair of parenthesis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_print_Indexed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print</span><span class="p">(</span><span class="n">expr</span><span class="o">.</span><span class="n">base</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(.*)_\{(.*)\}&#39;</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+                <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;^{(&#39;</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s1">&#39;)}&#39;</span>
+            <span class="p">])</span>
+        <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">):</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">base</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">indices</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">expr</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="n">base</span><span class="p">,</span> <span class="s1">&#39;_{&#39;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="s1">&#39;}&#39;</span>
+        <span class="p">])</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

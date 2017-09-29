@@ -1,0 +1,32 @@
+0.5.0
+-----
+
+The most prominent change of this release is the addition of the
+``RestrictedPartHoleDrudge``.  Compared with the ``SpinOneHalfPartHoleDrudge``,
+this class is less flexible but can be orders of magnitude faster.  Note that
+no backward compatibility is broken by this.  All previous script should still
+run fine.  For problems originally written in terms of the unitary group
+generators, switching to this new drudge can be really easy.  All these needs
+to be done is to remove your own definitions of the unitary group generators,
+and use the generator ``e_`` provided by the drudge instead.  For instance, as
+in the patch for the `RCCSD example`_.
+
+.. _RCCSD example: https://github.com/tschijnmo/drudge/commit/83f65a690981f7a3c53a93463b58c90d14c9c5ff
+
+With such simple changes, the internals of the evaluations will be switched to
+the new scheme and the code will be significantly faster.
+
+In addition of this change, there are also some other revisions,
+
+* A bug in Spark has been circumvented in tensor rewriting.  Thanks to Ethan
+  Qiu for pointing this out.
+
+* Tensor definition now allow generic external indices without explicit range.
+
+* A new simplification heuristics is added to simplify summations whose dummy
+  is not actually involved in the tensor.
+
+* Add total timing support in ``Stopwatch``.
+
+* Optimize summation discovery based on Einstein summation convention.
+

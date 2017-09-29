@@ -1,0 +1,122 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>0.5.0 &#8212; drudge 0.7.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="0.6.0" href="0_6_0.html" />
+    <link rel="prev" title="0.4.0" href="0_4_0.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="id1">
+<h1>0.5.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>The most prominent change of this release is the addition of the
+<code class="docutils literal"><span class="pre">RestrictedPartHoleDrudge</span></code>.  Compared with the <code class="docutils literal"><span class="pre">SpinOneHalfPartHoleDrudge</span></code>,
+this class is less flexible but can be orders of magnitude faster.  Note that
+no backward compatibility is broken by this.  All previous script should still
+run fine.  For problems originally written in terms of the unitary group
+generators, switching to this new drudge can be really easy.  All these needs
+to be done is to remove your own definitions of the unitary group generators,
+and use the generator <code class="docutils literal"><span class="pre">e_</span></code> provided by the drudge instead.  For instance, as
+in the patch for the <a class="reference external" href="https://github.com/tschijnmo/drudge/commit/83f65a690981f7a3c53a93463b58c90d14c9c5ff">RCCSD example</a>.</p>
+<p>With such simple changes, the internals of the evaluations will be switched to
+the new scheme and the code will be significantly faster.</p>
+<p>In addition of this change, there are also some other revisions,</p>
+<ul class="simple">
+<li>A bug in Spark has been circumvented in tensor rewriting.  Thanks to Ethan
+Qiu for pointing this out.</li>
+<li>Tensor definition now allow generic external indices without explicit range.</li>
+<li>A new simplification heuristics is added to simplify summations whose dummy
+is not actually involved in the tensor.</li>
+<li>Add total timing support in <code class="docutils literal"><span class="pre">Stopwatch</span></code>.</li>
+<li>Optimize summation discovery based on Einstein summation convention.</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../releases.html">Release history</a><ul>
+      <li>Previous: <a href="0_4_0.html" title="previous chapter">0.4.0</a></li>
+      <li>Next: <a href="0_6_0.html" title="next chapter">0.6.0</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/releases/0_5_0.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/releases/0_5_0.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

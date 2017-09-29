@@ -1,0 +1,464 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.wick &#8212; drudge 0.5.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.wick</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Drudge for wick-style algebraic systems.</span>
+
+<span class="sd">In this module, we have a abstract base class for Wick-style algebraic systems,</span>
+<span class="sd">as well as function helpful for its subclasses.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">RDD</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">Expr</span>
+
+<span class="kn">from</span> <span class="nn">.drudge</span> <span class="k">import</span> <span class="n">Drudge</span>
+<span class="kn">from</span> <span class="nn">.term</span> <span class="k">import</span> <span class="n">Term</span><span class="p">,</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">simplify_deltas_in_expr</span><span class="p">,</span> <span class="n">compose_simplified_delta</span>
+<span class="kn">from</span> <span class="nn">.wickcore</span> <span class="k">import</span> <span class="n">compose_wick</span>
+
+
+<div class="viewcode-block" id="WickDrudge"><a class="viewcode-back" href="../../api/algebras.html#drudge.WickDrudge">[docs]</a><span class="k">class</span> <span class="nc">WickDrudge</span><span class="p">(</span><span class="n">Drudge</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for Wick-style algebras.</span>
+
+<span class="sd">    A Wick-style algebra is an algebraic system where the commutator between any</span>
+<span class="sd">    generators of the algebra is a simple scalar value.  This drudge will</span>
+<span class="sd">    attempt to put the vectors into normal order based on the given comparator</span>
+<span class="sd">    and contractor by Wick theorem.</span>
+
+<span class="sd">    Normally, subclasses need to override the properties :py:attr:`phase`,</span>
+<span class="sd">    :py:attr:`contractor`, and :py:attr:`comparator` with domain-specific</span>
+<span class="sd">    knowledge.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="WickDrudge.__init__"><a class="viewcode-back" href="../../api/algebras.html#drudge.WickDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">wick_parallel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the Wick drudge.</span>
+
+<span class="sd">        This level just have one option to handle, the parallelism option.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span> <span class="o">=</span> <span class="n">wick_parallel</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">wick_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the Wick parallelism level.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span>
+
+    <span class="nd">@wick_parallel</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">wick_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the Wick parallelism level.</span>
+
+<span class="sd">        Valid values are ``0``, for normal problems, ``1``, for harder problems,</span>
+<span class="sd">        and ``2``, for really hard expressions containing just a few terms.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid parallel level for Wick expansion&#39;</span><span class="p">,</span> <span class="n">level</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span> <span class="o">=</span> <span class="n">level</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">contractor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">Term</span><span class="p">],</span> <span class="n">Expr</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Get the contractor for the algebraic system.</span>
+
+<span class="sd">        The contractor is going to be called with two vectors to return the</span>
+<span class="sd">        value of their contraction.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">phase</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the phase for the commutation rule.</span>
+
+<span class="sd">        The phase should be a constant defining the phase of the commutation</span>
+<span class="sd">        rule.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">comparator</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">Term</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Get the comparator for the canonicalized vectors.</span>
+
+<span class="sd">        The normal ordering operation will be performed according to this</span>
+<span class="sd">        comparator.  It will be called with two **canonicalized vectors** for a</span>
+<span class="sd">        boolean value.  True should be returned if the first given vector is</span>
+<span class="sd">        less than the second vector.  The two vectors will be attempted to be</span>
+<span class="sd">        transposed when False is returned.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="WickDrudge.normal_order"><a class="viewcode-back" href="../../api/algebras.html#drudge.WickDrudge.normal_order">[docs]</a>    <span class="k">def</span> <span class="nf">normal_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Normal order the terms according to generalized Wick theorem.</span>
+
+<span class="sd">        The actual expansion is based on the information given in the subclasses</span>
+<span class="sd">        by the abstract properties.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">comparator</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;comparator&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comparator</span><span class="p">)</span>
+        <span class="n">contractor</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;contractor&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">contractor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid arguments to Wick normal order&#39;</span><span class="p">,</span> <span class="n">kwargs</span>
+            <span class="p">)</span>
+
+        <span class="n">phase</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">phase</span>
+        <span class="n">symms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">symms</span>
+        <span class="n">resolvers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolvers</span>
+
+        <span class="n">terms</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="n">terms_to_proc</span> <span class="o">=</span> <span class="n">terms</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">keep_top</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">comparator</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">terms_to_keep</span> <span class="o">=</span> <span class="n">terms</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">keep_top</span><span class="p">)</span>
+        <span class="n">terms_to_proc</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">terms_to_proc</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">terms_to_keep</span>
+
+        <span class="c1"># Triples: term, contractions, schemes.</span>
+        <span class="n">wick_terms</span> <span class="o">=</span> <span class="n">terms_to_proc</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_prepare_wick</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">comparator</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">symms</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="n">normal_ordered</span> <span class="o">=</span> <span class="n">wick_terms</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">_form_term_from_wick</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="p">])</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">flattened</span> <span class="o">=</span> <span class="n">wick_terms</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">[(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_partitions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">flattened</span> <span class="o">=</span> <span class="n">flattened</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_partitions</span><span class="p">)</span>
+
+            <span class="n">normal_ordered</span> <span class="o">=</span> <span class="n">flattened</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_form_term_from_wick</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="p">))</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+
+            <span class="c1"># This level of parallelism is reserved for really hard problems.</span>
+            <span class="n">expanded</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">schemes</span> <span class="ow">in</span> <span class="n">wick_terms</span><span class="o">.</span><span class="n">collect</span><span class="p">():</span>
+                <span class="c1"># To work around a probable Spark bug.  Problem occurs when we</span>
+                <span class="c1"># have closures inside a loop to be distributed out.</span>
+                <span class="n">form_term</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+                    <span class="n">_form_term_from_wick_bcast</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span>
+                <span class="p">)</span>
+
+                <span class="n">curr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">schemes</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">form_term</span><span class="p">)</span>
+                <span class="n">expanded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">normal_ordered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">expanded</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid Wick expansion parallel level&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wick_parallel</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">terms_to_keep</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">normal_ordered</span><span class="p">)</span></div></div>
+
+
+<span class="c1">#</span>
+<span class="c1"># Internal functions.</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">_prepare_wick</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">comparator</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">symms</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prepare a term for Wick expansion.</span>
+
+<span class="sd">    The possibly pro-processed term, all the contractions, and all contraction</span>
+<span class="sd">    schemes will be returned for the term.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">symms</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">symms</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">symms</span>
+    <span class="n">contr_all</span> <span class="o">=</span> <span class="n">comparator</span> <span class="ow">is</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">contr_all</span><span class="p">:</span>
+        <span class="n">contrs</span> <span class="o">=</span> <span class="n">_get_all_contrs</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span><span class="p">)</span>
+        <span class="n">vec_order</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">canon4normal</span><span class="p">(</span><span class="n">symms</span><span class="p">)</span>
+        <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span> <span class="o">=</span> <span class="n">_sort_vecs</span><span class="p">(</span>
+            <span class="n">term</span><span class="p">,</span> <span class="n">comparator</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span>
+        <span class="p">)</span>
+
+    <span class="c1"># schemes = _compute_wick_schemes(vec_order, contrs)</span>
+    <span class="n">schemes</span> <span class="o">=</span> <span class="n">compose_wick</span><span class="p">(</span><span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">schemes</span>
+
+
+<span class="k">def</span> <span class="nf">_sort_vecs</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">comparator</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sort the vectors and get the contraction values.</span>
+
+<span class="sd">    Here insertion sort is used to sort the vectors into the normal order</span>
+<span class="sd">    required by the comparator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">vecs</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span>
+    <span class="n">n_vecs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span>
+    <span class="n">contrs</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_vecs</span><span class="p">)]</span>
+    <span class="n">sums_dict</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">dumms</span>
+
+    <span class="n">vec_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_vecs</span><span class="p">))</span>
+
+    <span class="n">front</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">pivot</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">pivot</span> <span class="o">&lt;</span> <span class="n">n_vecs</span><span class="p">:</span>
+
+        <span class="n">pivot_i</span> <span class="o">=</span> <span class="n">vec_order</span><span class="p">[</span><span class="n">pivot</span><span class="p">]</span>
+        <span class="n">pivot_vec</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[</span><span class="n">pivot_i</span><span class="p">]</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">pivot</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">pivot</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">comparator</span><span class="p">(</span><span class="n">vecs</span><span class="p">[</span><span class="n">vec_order</span><span class="p">[</span><span class="n">prev</span><span class="p">]],</span> <span class="n">pivot_vec</span><span class="p">,</span> <span class="n">term</span><span class="p">):</span>
+            <span class="n">pivot</span><span class="p">,</span> <span class="n">front</span> <span class="o">=</span> <span class="n">front</span><span class="p">,</span> <span class="n">front</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">prev_i</span> <span class="o">=</span> <span class="n">vec_order</span><span class="p">[</span><span class="n">prev</span><span class="p">]</span>
+            <span class="n">prev_vec</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[</span><span class="n">prev_i</span><span class="p">]</span>
+            <span class="n">vec_order</span><span class="p">[</span><span class="n">prev</span><span class="p">],</span> <span class="n">vec_order</span><span class="p">[</span><span class="n">pivot</span><span class="p">]</span> <span class="o">=</span> <span class="n">pivot_i</span><span class="p">,</span> <span class="n">prev_i</span>
+
+            <span class="n">contr_amp</span><span class="p">,</span> <span class="n">contr_substs</span> <span class="o">=</span> <span class="n">simplify_deltas_in_expr</span><span class="p">(</span>
+                <span class="n">sums_dict</span><span class="p">,</span> <span class="n">contractor</span><span class="p">(</span><span class="n">prev_vec</span><span class="p">,</span> <span class="n">pivot_vec</span><span class="p">,</span> <span class="n">term</span><span class="p">),</span> <span class="n">resolvers</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">contr_amp</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">contrs</span><span class="p">[</span><span class="n">prev_i</span><span class="p">][</span><span class="n">pivot_i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">contr_amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">contr_substs</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+                <span class="p">)</span>
+            <span class="n">pivot</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span>
+
+
+<span class="k">def</span> <span class="nf">_get_all_contrs</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">contractor</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate all possible contractions.</span>
+
+<span class="sd">    This function is going to be called when we do not actually need to normal</span>
+<span class="sd">    order the vectors and only need the results where all the vectors are</span>
+<span class="sd">    contracted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">vecs</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">vecs</span>
+    <span class="n">n_vecs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span>
+    <span class="n">contrs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">sums_dict</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">dumms</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_vecs</span><span class="p">):</span>
+        <span class="n">curr_contrs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">n_vecs</span><span class="p">):</span>
+            <span class="n">vec_prev</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">vec_lat</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">contr_amp</span><span class="p">,</span> <span class="n">contr_substs</span> <span class="o">=</span> <span class="n">simplify_deltas_in_expr</span><span class="p">(</span>
+                <span class="n">sums_dict</span><span class="p">,</span> <span class="n">contractor</span><span class="p">(</span><span class="n">vec_prev</span><span class="p">,</span> <span class="n">vec_lat</span><span class="p">,</span> <span class="n">term</span><span class="p">),</span> <span class="n">resolvers</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">contr_amp</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">curr_contrs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">contr_amp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">contr_substs</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+            <span class="k">continue</span>
+        <span class="n">contrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr_contrs</span><span class="p">)</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">contrs</span>
+
+
+<span class="k">def</span> <span class="nf">_compute_wick_schemes</span><span class="p">(</span><span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compute all the Wick expansion schemes.</span>
+
+<span class="sd">    The vector order should be a sequence giving indices of vectors.  When it is</span>
+<span class="sd">    None, it means that all vectors needs to be contracted.  The contractions</span>
+<span class="sd">    should be a sequence of hash maps giving the amplitude and substitution of</span>
+<span class="sd">    each contraction.</span>
+
+<span class="sd">    The expansion result is a list of pairs, with the first field holding the</span>
+<span class="sd">    permutation of the given vectors for the contraction term, and the second</span>
+<span class="sd">    being the number of vectors contracted. Adjacent pairs in the first section</span>
+<span class="sd">    are are contracted, and the second section contains the remaining vectors</span>
+<span class="sd">    ordered as in the given vector order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">schemes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">avail</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">contrs</span><span class="p">]</span>
+    <span class="n">_add_wick</span><span class="p">(</span><span class="n">schemes</span><span class="p">,</span> <span class="n">avail</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[],</span> <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">schemes</span>
+
+
+<span class="k">def</span> <span class="nf">_add_wick</span><span class="p">(</span><span class="n">schemes</span><span class="p">,</span> <span class="n">avail</span><span class="p">,</span> <span class="n">pivot</span><span class="p">,</span> <span class="n">contred</span><span class="p">,</span> <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add Wick expansion schemes recursively.&quot;&quot;&quot;</span>
+
+    <span class="n">n_vecs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">avail</span><span class="p">)</span>
+    <span class="n">contr_all</span> <span class="o">=</span> <span class="n">vec_order</span> <span class="ow">is</span> <span class="kc">None</span>
+
+    <span class="c1"># Find the actual pivot, which has to be available.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Last vector can never be pivot.</span>
+        <span class="n">pivot</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pivot</span><span class="p">,</span> <span class="n">n_vecs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">avail</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="c1"># When everything is already decided, add the current term.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">contr_all</span> <span class="ow">or</span> <span class="nb">all</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">avail</span><span class="p">):</span>
+            <span class="n">vec_perm</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">contred</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">contr_all</span><span class="p">:</span>
+                <span class="n">vec_perm</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vec_order</span> <span class="k">if</span> <span class="n">avail</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">schemes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+                <span class="n">vec_perm</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">contred</span><span class="p">)</span>
+            <span class="p">))</span>
+        <span class="k">return</span>
+
+    <span class="n">pivot_contrs</span> <span class="o">=</span> <span class="n">contrs</span><span class="p">[</span><span class="n">pivot</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">contr_all</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pivot_contrs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">contr_all</span><span class="p">:</span>
+        <span class="n">_add_wick</span><span class="p">(</span><span class="n">schemes</span><span class="p">,</span> <span class="n">avail</span><span class="p">,</span> <span class="n">pivot</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">contred</span><span class="p">,</span> <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span><span class="p">)</span>
+
+    <span class="n">avail</span><span class="p">[</span><span class="n">pivot</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">vec_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pivot</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_vecs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">avail</span><span class="p">[</span><span class="n">vec_idx</span><span class="p">]</span> <span class="ow">and</span> <span class="n">vec_idx</span> <span class="ow">in</span> <span class="n">pivot_contrs</span><span class="p">:</span>
+            <span class="n">avail</span><span class="p">[</span><span class="n">vec_idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">contred</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">pivot</span><span class="p">,</span> <span class="n">vec_idx</span><span class="p">])</span>
+            <span class="n">_add_wick</span><span class="p">(</span>
+                <span class="n">schemes</span><span class="p">,</span> <span class="n">avail</span><span class="p">,</span> <span class="n">pivot</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">contred</span><span class="p">,</span> <span class="n">vec_order</span><span class="p">,</span> <span class="n">contrs</span>
+            <span class="p">)</span>
+            <span class="n">avail</span><span class="p">[</span><span class="n">vec_idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">contred</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">contred</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">continue</span>
+
+    <span class="n">avail</span><span class="p">[</span><span class="n">pivot</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span>
+
+
+<span class="k">def</span> <span class="nf">_form_term_from_wick</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">,</span> <span class="n">wick_scheme</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate a full Term from a Wick expansion scheme.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sums_dict</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">dumms</span>
+
+    <span class="n">perm</span><span class="p">,</span> <span class="n">n_contred</span> <span class="o">=</span> <span class="n">wick_scheme</span>
+    <span class="n">phase</span> <span class="o">=</span> <span class="n">_get_perm_phase</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">phase</span><span class="p">)</span>
+
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">phase</span>
+    <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">contr_i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_contred</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="n">contr_amp</span><span class="p">,</span> <span class="n">contr_substs</span> <span class="o">=</span> <span class="n">contrs</span><span class="p">[</span><span class="n">perm</span><span class="p">[</span><span class="n">contr_i</span><span class="p">]][</span><span class="n">perm</span><span class="p">[</span><span class="n">contr_i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]]</span>
+        <span class="n">amp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">compose_simplified_delta</span><span class="p">(</span>
+            <span class="n">amp</span> <span class="o">*</span> <span class="n">contr_amp</span><span class="p">,</span> <span class="n">contr_substs</span><span class="p">,</span>
+            <span class="n">substs</span><span class="p">,</span> <span class="n">sums_dict</span><span class="o">=</span><span class="n">sums_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">=</span><span class="n">resolvers</span>
+        <span class="p">)</span>
+        <span class="k">continue</span>
+
+    <span class="n">vecs</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">perm</span><span class="p">[</span><span class="n">n_contred</span><span class="p">:])</span>
+    <span class="k">return</span> <span class="n">term</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span>
+        <span class="n">substs</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="n">amp</span> <span class="o">*</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="n">vecs</span><span class="o">=</span><span class="n">vecs</span><span class="p">,</span> <span class="n">purge_sums</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_form_term_from_wick_bcast</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">,</span> <span class="n">wick_scheme</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Form term from Wick scheme with broadcast resolvers.</span>
+
+<span class="sd">    This function is to work around a probable Spark bug on serializing closures</span>
+<span class="sd">    inside loop.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_form_term_from_wick</span><span class="p">(</span>
+        <span class="n">term</span><span class="p">,</span> <span class="n">contrs</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">resolvers</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">wick_scheme</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_perm_phase</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the phase of the given permutation of points.&quot;&quot;&quot;</span>
+    <span class="n">n_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">phase</span> <span class="o">**</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_points</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">order</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">order</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+    <span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

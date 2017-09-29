@@ -1,0 +1,765 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Drudge tutorial for beginners &#8212; drudge 0.9.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Drudge API reference guide" href="api.html" />
+    <link rel="prev" title="0.9.0" href="releases/0_9_0.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="drudge-tutorial-for-beginners">
+<h1>Drudge tutorial for beginners<a class="headerlink" href="#drudge-tutorial-for-beginners" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="get-started">
+<h2>Get started<a class="headerlink" href="#get-started" title="Permalink to this headline">¶</a></h2>
+<p>Drudge is a library built on top of the SymPy computer algebra library for
+noncommutative and tensor alegbras.  Usually for these style of problems, the
+symbolic manipulation and simplification of mathematical expressions requires a
+lot of context-dependent information, like the specific commutation rules and
+things like the dummy symbols to be used for different ranges.  So the primary
+entry point for using the library is the <a class="reference internal" href="api/base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> class, which serves
+as a central repository of all kinds of domain-specific informations.  To
+create a drudge instance, we need to give it a Spark context so that it is
+capable of parallelize things.  For instance, to run things locally with all
+available cores, we can do</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">pyspark</span> <span class="kn">import</span> <span class="n">SparkContext</span>  
+<span class="o">&gt;&gt;&gt;</span> <span class="n">spark_ctx</span> <span class="o">=</span> <span class="n">SparkContext</span><span class="p">(</span><span class="s1">&#39;local[*]&#39;</span><span class="p">,</span> <span class="s1">&#39;drudge-tutorial&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For using Spark in cluster computing environment, please refer to the Spark
+documentation and setting of your cluster.  With the spark context created, we
+can make the main entry point for drudge,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">drudge</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dr</span> <span class="o">=</span> <span class="n">drudge</span><span class="o">.</span><span class="n">Drudge</span><span class="p">(</span><span class="n">spark_ctx</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then from it, we can create the symbolic expressions as <a class="reference internal" href="api/base.html#drudge.Tensor" title="drudge.Tensor"><code class="xref py py-class docutils literal"><span class="pre">Tensor</span></code></a>
+objects, which are basically mathematical expressions containing noncommutative
+objects and symbolic summations.  For the noncommutativity, in spite of the
+availability of some basic support of it in SymPy, here we have the
+<a class="reference internal" href="api/base.html#drudge.Vec" title="drudge.Vec"><code class="xref py py-class docutils literal"><span class="pre">Vec</span></code></a> class to specifically designate the noncommutativity of its
+multiplication.  It can be created with a label and indexed with SymPy
+expressions.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="n">drudge</span><span class="o">.</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sympy</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="s1">&#39;v[a]&#39;</span>
+</pre></div>
+</div>
+<p>For the symbolic summations, we have the <a class="reference internal" href="api/base.html#drudge.Range" title="drudge.Range"><code class="xref py py-class docutils literal"><span class="pre">Range</span></code></a> class, which denotes
+a symbolic set that a variable could be summed over.  It can be created by just
+a label.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">l</span> <span class="o">=</span> <span class="n">drudge</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With these, we can create tensor objects by using the <a class="reference internal" href="api/base.html#drudge.Drudge.sum" title="drudge.Drudge.sum"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.sum()</span></code></a>
+method,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">x</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a} x[a] * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>Now we got a symbolic tensor of a sum of vectors modulated by a SymPy
+IndexedBase.  Actually any type of SymPy expression can be used to modulate the
+noncommutative vectors.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a} sin(a) * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>And we can also have multiple summations and product of the vectors.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a, b] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>Of cause the multiplication of the vectors will not be commutative,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">l</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a, b] * v[b] * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>Normally, for each symbolic range, we have some traditional symbols used as
+dummies for summations over them, giving these information to drudge objects
+can be very helpful.  Here in this demonstration, we can use the
+<a class="reference internal" href="api/base.html#drudge.Drudge.set_dumms" title="drudge.Drudge.set_dumms"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.set_dumms()</span></code></a> method.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">dr</span><span class="o">.</span><span class="n">set_dumms</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">sympy</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;a b c d&#39;</span><span class="p">))</span>
+<span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dr</span><span class="o">.</span><span class="n">add_resolver_for_dumms</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>where the call to the <a class="reference internal" href="api/base.html#drudge.Drudge.add_resolver_for_dumms" title="drudge.Drudge.add_resolver_for_dumms"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.add_resolver_for_dumms()</span></code></a> method could
+tell the drudge to interpret all the dummy symbols to be over the range that
+they are set to.  By giving drudge object such domain-specific information, we
+can have a lot convenience.  For instance, now we can use Einstein summation
+convention to create tensor object, without the need to spell all the
+summations out.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a, b] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>Also the drudge knows what to do when more dummies are needed in mathematical
+operations.  For instance, when we multiply things,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">prod</span> <span class="o">=</span> <span class="n">tensor</span> <span class="o">*</span> <span class="n">tensor</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">prod</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a]*x[b] * v[a] * v[b]&#39;</span>
+</pre></div>
+</div>
+<p>Here the dummy <span class="math">\(b\)</span> is automatically used since the drudge object knows
+available dummies for its range.  Also the range and the dummies are
+automatically added to the name archive of the drudge, which can be access by
+<a class="reference internal" href="api/base.html#drudge.Drudge.names" title="drudge.Drudge.names"><code class="xref py py-attr docutils literal"><span class="pre">Drudge.names</span></code></a>.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">names</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">L</span>
+<span class="n">Range</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">L_dumms</span>
+<span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">d</span>
+<span class="n">d</span>
+</pre></div>
+</div>
+<p>Here in this example, we set the dummies ourselves by
+<a class="reference internal" href="api/base.html#drudge.Drudge.set_dumms" title="drudge.Drudge.set_dumms"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.set_dumms()</span></code></a>.  Normally, in subclasses of <a class="reference internal" href="api/base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> for
+different specific problems, such setting up is already finished within the
+class.  We can just directly get what we need from the names archive.  There is
+also a method <a class="reference internal" href="api/base.html#drudge.Drudge.inject_names" title="drudge.Drudge.inject_names"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.inject_names()</span></code></a> for the convenience of interactive
+work.</p>
+</div>
+<div class="section" id="tensor-manipulations">
+<h2>Tensor manipulations<a class="headerlink" href="#tensor-manipulations" title="Permalink to this headline">¶</a></h2>
+<p>Now with tensors created by <a class="reference internal" href="api/base.html#drudge.Drudge.sum" title="drudge.Drudge.sum"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.sum()</span></code></a> or <a class="reference internal" href="api/base.html#drudge.Drudge.einst" title="drudge.Drudge.einst"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.einst()</span></code></a>, a
+lot of mathematical operations are available to them.   In addition to the
+above example of (noncommutative) multiplication, we can also have the linear
+algebraic operations of addition and scalar multiplication.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">res</span> <span class="o">=</span> <span class="n">tensor</span> <span class="o">+</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a} x[a] * v[a]</span><span class="se">\n</span><span class="s1"> + sum_{a} y[a] * v[a]&#39;</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">res</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">tensor</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a} 2*x[a] * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>We can also perform some complex substitutions on either the vector or the
+amplitude part, by using the <code class="xref py py-meth docutils literal"><span class="pre">Drudge.subst()</span></code> method.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">t</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;t&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">w</span> <span class="o">=</span> <span class="n">drudge</span><span class="o">.</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">substed</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">b</span><span class="p">]))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">substed</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a]*t[a, b] * w[b]&#39;</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">substed</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">sympy</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">substed</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a} sin(a) * v[a]&#39;</span>
+</pre></div>
+</div>
+<p>Note that here the substituted vector does not have to match the left-hand side
+of the substitution exactly, pattern matching is done here.  Other mathematical
+operations are also available, like symbolic differentiation by
+<a class="reference internal" href="api/base.html#drudge.Tensor.diff" title="drudge.Tensor.diff"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.diff()</span></code></a> and commutation by <code class="docutils literal"><span class="pre">|</span></code> operator
+<a class="reference internal" href="api/base.html#drudge.Tensor.__or__" title="drudge.Tensor.__or__"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.__or__()</span></code></a>.</p>
+<p>Tensors are purely mathematical expressions, while the utility class
+<a class="reference internal" href="api/base.html#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a> can be construed as tensor expressions with a left-hand
+side.  They can be easily created by <a class="reference internal" href="api/base.html#drudge.Drudge.define" title="drudge.Drudge.define"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.define()</span></code></a> and
+<a class="reference internal" href="api/base.html#drudge.Drudge.define_einst" title="drudge.Drudge.define_einst"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.define_einst()</span></code></a>.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">v_def</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">define_einst</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">v_def</span><span class="p">)</span>
+<span class="s1">&#39;v[a] = sum_{b} t[a, b] * w[b]&#39;</span>
+</pre></div>
+</div>
+<p>Their method <a class="reference internal" href="api/base.html#drudge.TensorDef.act" title="drudge.TensorDef.act"><code class="xref py py-meth docutils literal"><span class="pre">TensorDef.act()</span></code></a> is like a active voice version of
+<a class="reference internal" href="api/base.html#drudge.Tensor.subst" title="drudge.Tensor.subst"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.subst()</span></code></a> and could come handy when we need to substitute the same
+definition in multiple inputs.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">res</span> <span class="o">=</span> <span class="n">v_def</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a]*t[a, b] * w[b]&#39;</span>
+</pre></div>
+</div>
+<p>More importantly, the definitions can be indexed directly, and the result is
+designed to work well inside <a class="reference internal" href="api/base.html#drudge.Drudge.sum" title="drudge.Drudge.sum"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.sum()</span></code></a> or <a class="reference internal" href="api/base.html#drudge.Drudge.einst" title="drudge.Drudge.einst"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.einst()</span></code></a>.
+For instance, for the same result, we could have,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">res</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v_def</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="s1">&#39;sum_{b, a} x[a]*t[a, b] * w[b]&#39;</span>
+</pre></div>
+</div>
+<p>When the only purpose of a vector or indexed base is to be substituted and we
+never intend to write tensor expressions directly in terms of them, we can just
+name the definition with a short name directly and put the actual base inside
+only.  For instance,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">define_einst</span><span class="p">(</span><span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">)[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">b</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="s1">&#39;f[a, b] = sum_{c} x[a, c]*y[c, b]&#39;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">]))</span>
+<span class="s1">&#39;sum_{b, a} x[a, b]*y[b, a]&#39;</span>
+</pre></div>
+</div>
+<p>which also demonstrates that the tensor definition facility can also be used for
+scalar quantities.  <a class="reference internal" href="api/base.html#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a> is also at the core of the code
+optimization and generation facility in the <code class="docutils literal"><span class="pre">gristmill</span></code> package.</p>
+<p>Usually for tensorial problems, full simplification requires the utilization of
+some symmetries present on the indexed quantities by permutations among their
+indices.  For instance, an anti-symmetric matrix entry changes sign when we
+transpose the two indices.  Such information can be told to drudge by using the
+<a class="reference internal" href="api/base.html#drudge.Drudge.set_symm" title="drudge.Drudge.set_symm"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.set_symm()</span></code></a> method, by giving generators of the symmetry group
+by <a class="reference internal" href="api/base.html#drudge.Perm" title="drudge.Perm"><code class="xref py py-class docutils literal"><span class="pre">Perm</span></code></a> instances.  For instance, we can do,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">dr</span><span class="o">.</span><span class="n">set_symm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">drudge</span><span class="o">.</span><span class="n">Perm</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">drudge</span><span class="o">.</span><span class="n">NEG</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Then the master simplification algorithm in <a class="reference internal" href="api/base.html#drudge.Tensor.simplify" title="drudge.Tensor.simplify"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.simplify()</span></code></a> is able
+to take full advantage of such information.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">tensor</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+<span class="s1">&#39;sum_{a, b} x[a, b] * v[a] * v[b]</span><span class="se">\n</span><span class="s1"> + sum_{a, b} x[b, a] * v[a] * v[b]&#39;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">simplify</span><span class="p">())</span>
+<span class="s1">&#39;0&#39;</span>
+</pre></div>
+</div>
+<p>Normally, drudge subclasses for specific problems add symmetries for some
+important indexed bases in the problem.  And some drudge subclasses have helper
+methods for the setting of such symmetries, like
+<a class="reference internal" href="api/algebras.html#drudge.FockDrudge.set_n_body_base" title="drudge.FockDrudge.set_n_body_base"><code class="xref py py-meth docutils literal"><span class="pre">FockDrudge.set_n_body_base()</span></code></a> and <a class="reference internal" href="api/algebras.html#drudge.FockDrudge.set_dbbar_base" title="drudge.FockDrudge.set_dbbar_base"><code class="xref py py-meth docutils literal"><span class="pre">FockDrudge.set_dbbar_base()</span></code></a>.</p>
+<p>For the simplification of the noncommutative vector parts, the base
+<a class="reference internal" href="api/base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> class does <strong>not</strong> consider any commutation rules among the
+vectors.  It works on the free algebra, while the subclasses could have the
+specific commutation rules added for the algebraic system.  For instance,
+<a class="reference internal" href="api/algebras.html#drudge.WickDrudge" title="drudge.WickDrudge"><code class="xref py py-class docutils literal"><span class="pre">WickDrudge</span></code></a> add abstract commutation rules where all the commutators
+have scalar values.  Based on it, its special subclass <a class="reference internal" href="api/algebras.html#drudge.FockDrudge" title="drudge.FockDrudge"><code class="xref py py-class docutils literal"><span class="pre">FockDrudge</span></code></a>
+implements the canonical commutation relations for bosons and the canonical
+anti-commutation relations for fermions.  Also based on it, the subclass
+<a class="reference internal" href="api/algebras.html#drudge.CliffordDrudge" title="drudge.CliffordDrudge"><code class="xref py py-class docutils literal"><span class="pre">CliffordDrudge</span></code></a> is capable of treating all kinds of Clifford
+algebras, like geometric algebra, Pauli matrices, Dirac matrices, and Majorana
+fermion operators.  For algebraic systems where the commutator is not always a
+scalar, the abstract base class <a class="reference internal" href="api/algebras.html#drudge.GenQuadDrudge" title="drudge.GenQuadDrudge"><code class="xref py py-class docutils literal"><span class="pre">GenQuadDrudge</span></code></a> can be used for
+basically all kinds of commutation rules.  For instance, its subclass
+<a class="reference internal" href="api/algebras.html#drudge.SU2LatticeDrudge" title="drudge.SU2LatticeDrudge"><code class="xref py py-class docutils literal"><span class="pre">SU2LatticeDrudge</span></code></a> can be used for <span class="math">\(\mathfrak{su}(2)\)</span> algebra in
+Cartan-Weyl form.</p>
+<p>These drudge subclasses only has the mathematical commutation rules implemented,
+for convenience in solving problems, many drudge subclasses are built-in with a
+lot of domain-specific information like the ranges and dummies, which are listed
+in <a class="reference internal" href="api/problems.html#problem-drudges"><span class="std std-ref">Direct support of different problems</span></a>.  For instance, we can easily see the commutativity of
+two particle-hole excitation operators by using the <a class="reference internal" href="api/problems.html#drudge.PartHoleDrudge" title="drudge.PartHoleDrudge"><code class="xref py py-class docutils literal"><span class="pre">PartHoleDrudge</span></code></a>.</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">phdr</span> <span class="o">=</span> <span class="n">drudge</span><span class="o">.</span><span class="n">PartHoleDrudge</span><span class="p">(</span><span class="n">spark_ctx</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">t</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;t&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">u</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="n">phdr</span><span class="o">.</span><span class="n">names</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">,</span> <span class="n">i</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">i</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">excit1</span> <span class="o">=</span> <span class="n">phdr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">c_dag</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">excit2</span> <span class="o">=</span> <span class="n">phdr</span><span class="o">.</span><span class="n">einst</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">c_dag</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">comm</span> <span class="o">=</span> <span class="n">excit1</span> <span class="o">|</span> <span class="n">excit2</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+<span class="s1">&#39;sum_{i, a, j, b} t[a, i]*u[b, j] * c[CR, a] * c[AN, i] * c[CR, b] * c[AN, j]</span><span class="se">\n</span><span class="s1"> + sum_{i, a, j, b} -t[a, i]*u[b, j] * c[CR, b] * c[AN, j] * c[CR, a] * c[AN, i]&#39;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">simplify</span><span class="p">())</span>
+<span class="s1">&#39;0&#39;</span>
+</pre></div>
+</div>
+<p>Note that here basically all things related to the problem, like the vector for
+creation and annihilation operator, the conventional dummies <span class="math">\(a\)</span> and
+<span class="math">\(i\)</span> for particle and hole labels, are directly read from the name archive
+of the drudge.  Problem-specific drudges are supposed to give such convenience.</p>
+<p>In addition to providing context-dependent information for general tensor
+operations, drudge subclasses could also provide additional operations on
+tensors created from them.  For instance, for the above commutator, we can
+directly compute the expectation value with respect to the Fermi vacuum by</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="nb">str</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">eval_fermi_vev</span><span class="p">())</span>
+<span class="s1">&#39;0&#39;</span>
+</pre></div>
+</div>
+<p>These additional operations are called tensor methods and are documented in the
+drudge subclasses.</p>
+</div>
+<div class="section" id="drudge-scripts">
+<span id="drs-intro"></span><h2>Drudge scripts<a class="headerlink" href="#drudge-scripts" title="Permalink to this headline">¶</a></h2>
+<p>For maximum flexibility, drudge has been designed to be a Python library from
+the beginning.  However, in a lot of cases, like for small tasks or for users
+unfamiliar with the Python language or the Spark environment, a domain-specific
+language capable of making simple tasks simple can be desired.  Drudge script is
+such a language for this purpose.</p>
+<p>A drudge script is essentially a Python script heavily tweaked to be executed
+inside a special environment.  So all Python lexicographical and syntactical
+rules apply.  For a technical description of the pre-processing and execution
+drudge scripts, please see <a class="reference internal" href="api/base.html#drudge.Drudge.exec_drs" title="drudge.Drudge.exec_drs"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.exec_drs()</span></code></a>.  To execute a drudge
+script, we first need a <a class="reference internal" href="api/base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> object, such that the domain specific
+information about the current problem can be available.  For this, we can either
+have a normal Python script, where a Drudge object is created with its
+<a class="reference internal" href="api/base.html#drudge.Drudge.exec_drs" title="drudge.Drudge.exec_drs"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.exec_drs()</span></code></a> called with the source code for the drudge script,
+and execute it normally as Python scripts.  Or drudge can also be used as the
+main program, either by <code class="docutils literal"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">drudge</span></code> or <code class="docutils literal"><span class="pre">drudge</span></code>.  Then two files
+needs to be given as arguments.  The first one is a configuration script, which
+is a normal Python script with a Drudge object assigned to a special variable
+<code class="docutils literal"><span class="pre">DRUDGE</span></code>.  Then this Drudge object will be used for the execution of the
+actual drudge script given in the second argument.</p>
+<p>As an example illustrating the basic principles and ease of drudge scripts, we
+assume that we are working on a drudge with a single range registered in the
+name archive as <code class="docutils literal"><span class="pre">R</span></code>.  To create a symbolic definition of a matrix as a product
+of two matrices, suppose the drudge object can be accessed by a variable <code class="docutils literal"><span class="pre">dr</span></code>,
+we need to write something like:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">names</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;i j k&#39;</span><span class="p">)</span>
+<span class="n">def_</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="n">dr</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>which can be quite cumbersome for such a simple task.  Suppose the drudge has a
+resolver capable of resolving any index to the range, we can write:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;i j k&#39;</span><span class="p">)</span>
+<span class="n">def_</span> <span class="o">=</span> <span class="n">dr</span><span class="o">.</span><span class="n">define_einst</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>which although is simplified a lot, still contains quite a lot of noise. Because
+of the Python execution model and scoping rules, the indexed bases and symbols
+must be explicitly created before they can be used.</p>
+<p>Inside a drudge script, names in the name archive, all methods of the current
+drudge object, as well as names from the drudge, gristmill (if installed), and
+the SymPy package can directly be used without any qualification. More
+importantly, Symbol objects and IndexedBase objects are no longer needed to be
+explicitly created.  All undefined names will be resolved as an atomic symbol,
+which can be construed as both a SymPy symbol and a SymPy IndexedBase.  With
+these, the above definition can be simplified into:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">def_</span> <span class="o">=</span> <span class="n">define_einst</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Due to the ubiquity of tensor definitions in common drudge tasks, a special
+operator <code class="docutils literal"><span class="pre">&lt;&lt;=</span></code> (Python left-shift augmented assignment operator) is introduced
+for the making definitions.  With this, the above definition can be written as:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;&lt;=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>which makes the definition and put the definition in the name archive by
+<a class="reference internal" href="api/base.html#drudge.Drudge.set_name" title="drudge.Drudge.set_name"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.set_name()</span></code></a>.  So by default, the definition is put into the name
+archive under name <code class="docutils literal"><span class="pre">r</span></code> as a <a class="reference internal" href="api/base.html#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a> object, and the base of the
+definition is put under name <code class="docutils literal"><span class="pre">_r</span></code>.  Since names in the name archive do not
+need to be qualified in drudge scripts:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="nb">sum</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>directly gives us the chain product <span class="math">\(\mathbf{XYXY}\)</span>.  And symbolic
+references to the <code class="docutils literal"><span class="pre">r</span></code> tensor without the concrete definition substituted in
+can still be made by using <code class="docutils literal"><span class="pre">_r</span></code>, like:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="n">_r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">_r</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>which gives us the product <span class="math">\(\mathbf{RR}\)</span>.  For this, the actual definition
+can be substituted explicitly when desired, for example, by:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">s</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which gives us <span class="math">\(\mathbf{XYXY}\)</span>.</p>
+<p>Note that the definition by <code class="docutils literal"><span class="pre">&lt;&lt;=</span></code> is made by using the <a class="reference internal" href="api/base.html#drudge.Drudge.def_" title="drudge.Drudge.def_"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.def_()</span></code></a>
+method.  As a result, when the drudge property <a class="reference internal" href="api/base.html#drudge.Drudge.default_einst" title="drudge.Drudge.default_einst"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.default_einst()</span></code></a>
+is set, Einstein summation convention is going to be automatically applied to
+the right-hand side.  So we can simply write:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;&lt;=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>when the ranges of <span class="math">\(i, j, k\)</span> can be resolved by the drudge.</p>
+<p>In cases where tainting of the global name archive is undesired for a tensor
+definition, we can use the <code class="docutils literal"><span class="pre">&lt;=</span></code> operator, which simply returns the definition
+object without adding it to the name archive.  For instance, to store the tensor
+definition in a variable <code class="docutils literal"><span class="pre">def_</span></code>, we can use:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">def_</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This can be useful in functions inside drudge scripts.</p>
+<p>Additionally, drudges could have more functions specifically to be used inside
+drudge scripts.  For instance, in the base <a class="reference internal" href="api/base.html#drudge.Drudge" title="drudge.Drudge"><code class="xref py py-class docutils literal"><span class="pre">Drudge</span></code></a> class, we have a
+simple constructor <code class="docutils literal"><span class="pre">S</span></code>, for converting strings to the special kind of symbols
+that can be indexed and used in <code class="docutils literal"><span class="pre">&lt;&lt;=</span></code> in drudge scripts.  Also have <code class="docutils literal"><span class="pre">sum_</span></code>
+for the actual Python built-in <code class="docutils literal"><span class="pre">sum</span></code> function, which is shadowed by the
+<a class="reference internal" href="api/base.html#drudge.Drudge.sum" title="drudge.Drudge.sum"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.sum()</span></code></a> method.  And the drudge object used for the execution can
+be accessed by <code class="docutils literal"><span class="pre">DRUDGE</span></code>.</p>
+<p>For the taste of users without much object-oriented programming, inside drudge
+scripts, method calling like <code class="docutils literal"><span class="pre">obj.meth(args)</span></code> can also be written as
+<code class="docutils literal"><span class="pre">meth(obj,</span> <span class="pre">args)</span></code>.  For instance, for a tensor <code class="docutils literal"><span class="pre">tensor</span></code>:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">simplify</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>is equivalent to:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">tensor</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Attribute access can be done in the same way, for instance,:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">n_terms</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>is equivalent to:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">tensor</span><span class="o">.</span><span class="n">n_terms</span>
+</pre></div>
+</div>
+<p>Note that a caveat of this syntactic sugar is that the method name cannot be
+defined to be anything else before the calling.  For instance,:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">n_terms</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">n_terms</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>does not work, since <code class="docutils literal"><span class="pre">n_terms</span></code> is already defined to the integer 10, thus
+cannot be called any more.  Another caveat is that static methods cannot be
+called in this way, which fortunately does not appear a lot in common usages of
+drudge.</p>
+<p>For the convenience of symbolic computation, all integer literals inside drudge
+scripts are automatically resolved to SymPy integer values, rather than the
+built-in integer values.  As a result, we can directly write:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>for the rational value of one-half, without having to worry about the truncation
+or degradation to finite-precision floating-point numbers for Python integers.
+To access built-in integers, which is normally unnecessary, we can explicitly
+write something like <code class="docutils literal"><span class="pre">int(1)</span></code>.</p>
+<p>For convenience of users, some drudge functions has got slightly different
+behaviour inside drudge scripts.  For instance, the <a class="reference internal" href="api/base.html#drudge.Tensor.simplify" title="drudge.Tensor.simplify"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.simplify()</span></code></a>
+method will eagerly compute the result and repartition the terms among the
+workers.  And tensors also have more readable string representation inside
+drudge scripts.</p>
+</div>
+<div class="section" id="examples-on-real-world-applications">
+<h2>Examples on real-world applications<a class="headerlink" href="#examples-on-real-world-applications" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="in-python-interface">
+<h3>In Python interface<a class="headerlink" href="#in-python-interface" title="Permalink to this headline">¶</a></h3>
+<p>In this tutorial, some simple examples are run directly inside a Python
+interpreter.  Actually drudge is designed to work inside Jupyter notebooks as
+well.  By calling the <a class="reference internal" href="api/base.html#drudge.Tensor.display" title="drudge.Tensor.display"><code class="xref py py-meth docutils literal"><span class="pre">Tensor.display()</span></code></a> method, tensor objects can be
+mathematically displayed in Jupyter sessions.  An example of interactive usage
+of drudge, we have a <a class="reference external" href="https://github.com/tschijnmo/drudge/blob/master/docs/examples/ccsd.ipynb">sample notebook</a> in <code class="docutils literal"><span class="pre">docs/examples/ccsd.ipynb</span></code> in the
+project source.  Also included is a <a class="reference external" href="https://github.com/tschijnmo/drudge/blob/master/docs/examples/gencc.py">general script</a> <code class="docutils literal"><span class="pre">gencc.py</span></code> for the
+automatic derivation of coupled-cluster theories, mostly to demonstrate using
+drudge programmatically.  And we also have a <a class="reference external" href="https://github.com/tschijnmo/drudge/blob/master/docs/examples/rccsd.py">script for RCCSD theory</a> to
+demonstrate its usage in large-scale spin-explicit coupled-cluster theories.</p>
+</div>
+<div class="section" id="as-drudge-scripts">
+<h3>As drudge scripts<a class="headerlink" href="#as-drudge-scripts" title="Permalink to this headline">¶</a></h3>
+<p>For drudge scripts, we have two example scripts both deriving the classical CCD
+theory.  Both of them is based on the following configuration script
+<code class="docutils literal"><span class="pre">conf_ph.py</span></code>,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;Configures a simple drudge for particle-hole model.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">dummy_spark</span> <span class="kn">import</span> <span class="n">SparkContext</span>
+<span class="kn">from</span> <span class="nn">drudge</span> <span class="kn">import</span> <span class="n">PartHoleDrudge</span>
+
+<span class="n">ctx</span> <span class="o">=</span> <span class="n">SparkContext</span><span class="p">()</span>
+<span class="n">dr</span> <span class="o">=</span> <span class="n">PartHoleDrudge</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+<span class="n">dr</span><span class="o">.</span><span class="n">full_simplify</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">DRUDGE</span> <span class="o">=</span> <span class="n">dr</span>
+</pre></div>
+</div>
+<p>Here we only set a simple <a class="reference internal" href="api/problems.html#drudge.PartHoleDrudge" title="drudge.PartHoleDrudge"><code class="xref py py-class docutils literal"><span class="pre">PartHoleDrudge</span></code></a> without much modification.
+To illustrate the most basic usage of drudge scripts, we have example
+<code class="docutils literal"><span class="pre">ccd.drs</span></code>,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="c1"># A simple example on using drudge script for CCD theory</span>
+<span class="c1">#</span>
+<span class="c1"># In this example, the most basic aspects of using drudge scripts is</span>
+<span class="c1"># illustrated.  It should be understandable for new-comers without much</span>
+<span class="c1"># previous Python background.</span>
+
+<span class="c1"># Define the cluster excitation operator.  Note that we need to inform the</span>
+<span class="c1"># drudge that the t amplitude tensor has the double bar symmetry of</span>
+<span class="c1"># t_{abij} = -t_{baij} = -t_{abji} = t_{baji}</span>
+<span class="n">set_dbbar_base</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Einstein summation convention can be used for easy tensor creation.</span>
+<span class="n">t2</span> <span class="o">=</span> <span class="n">einst</span><span class="p">(</span>
+    <span class="n">t</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="mi">4</span>
+<span class="p">)</span>
+
+<span class="c1"># Get the similarity-transformed Hamiltonian.  Note that ``|`` operator</span>
+<span class="c1"># computes the commutator between operators.</span>
+<span class="n">c0</span> <span class="o">=</span> <span class="n">ham</span>
+<span class="n">c1</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">c0</span> <span class="o">|</span> <span class="n">t2</span><span class="p">)</span>
+<span class="n">c2</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">c1</span> <span class="o">|</span> <span class="n">t2</span><span class="p">)</span>
+<span class="n">c3</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">c2</span> <span class="o">|</span> <span class="n">t2</span><span class="p">)</span>
+<span class="n">c4</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">c3</span> <span class="o">|</span> <span class="n">t2</span><span class="p">)</span>
+<span class="n">h_bar</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span>
+    <span class="n">c0</span> <span class="o">+</span> <span class="n">c1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">c2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">6</span><span class="p">)</span> <span class="o">*</span> <span class="n">c3</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">24</span><span class="p">)</span> <span class="o">*</span> <span class="n">c4</span>
+<span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Similarity-transformed Hamiltonian has {} terms&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+    <span class="n">n_terms</span><span class="p">(</span><span class="n">h_bar</span><span class="p">)</span>
+<span class="p">))</span>
+
+<span class="c1"># Derive the working equations by projection.</span>
+<span class="n">en_eqn</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">eval_fermi_vev</span><span class="p">(</span><span class="n">h_bar</span><span class="p">))</span>
+<span class="n">proj</span> <span class="o">=</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+<span class="n">t2_eqn</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">eval_fermi_vev</span><span class="p">(</span><span class="n">proj</span> <span class="o">*</span> <span class="n">h_bar</span><span class="p">))</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Working equation derived!&#39;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">report</span><span class="p">(</span><span class="s1">&#39;ccd.html&#39;</span><span class="p">,</span> <span class="s1">&#39;CCD theory&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">rep</span><span class="p">:</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;Energy equation&#39;</span><span class="p">,</span> <span class="n">en_eqn</span><span class="p">)</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;Doubles amplitude equation&#39;</span><span class="p">,</span> <span class="n">t2_eqn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With the comment described in the above script, we can see that drudge script
+can bare a lot of resemblance to the mathematical notation.  To make a
+derivation of the many-body theory, we basically just use the operators like
+<code class="docutils literal"><span class="pre">+</span></code>, <code class="docutils literal"><span class="pre">*</span></code>, and <code class="docutils literal"><span class="pre">|</span></code> to do arithmetic operations on the tensors and use
+<code class="docutils literal"><span class="pre">simplify</span></code> to get the result simplified.</p>
+<p>For another more advanced example, we have the <code class="docutils literal"><span class="pre">ccd_adv.drs</span></code> script,</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="c1"># An advanced example on using drudge script for CCD theory</span>
+<span class="c1">#</span>
+<span class="c1"># In this example, it is emphasized that drudge scripts are just Python scripts</span>
+<span class="c1"># with special execution.  So all Python constructions can be used for our</span>
+<span class="c1"># convenience.  At the same time, by using drudge scripts, we can have all the</span>
+<span class="c1"># syntactical sugar for making symbolic computation easy.</span>
+<span class="c1">#</span>
+
+<span class="n">set_dbbar_base</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">t2</span> <span class="o">=</span> <span class="n">einst</span><span class="p">(</span>
+    <span class="n">t</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="mi">4</span>
+<span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">compute_h_bar</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Compute the similarity transformed Hamiltonian.&quot;&quot;&quot;</span>
+    <span class="c1"># Here we use a Python loop to get the nested commutators.</span>
+    <span class="n">curr</span> <span class="o">=</span> <span class="n">ham</span>
+    <span class="n">h_bar</span> <span class="o">=</span> <span class="n">ham</span>
+    <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">curr</span> <span class="o">|</span> <span class="n">t2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">order</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">h_bar</span> <span class="o">+=</span> <span class="n">curr</span>
+    <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">h_bar</span><span class="p">)</span>
+
+<span class="c1"># By using the `memoise` function, the result can be automatically dumped into</span>
+<span class="c1"># the given pickle file, and read from it if it is already available.  This can</span>
+<span class="c1"># be convenient for large multi-step jobs.</span>
+<span class="n">h_bar</span> <span class="o">=</span> <span class="n">memoize</span><span class="p">(</span><span class="n">compute_h_bar</span><span class="p">,</span> <span class="s1">&#39;h_bar.pickle&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;H-bar has {} terms&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n_terms</span><span class="p">(</span><span class="n">h_bar</span><span class="p">)))</span>
+
+<span class="c1"># Derive the working equations by projection.  Here we make them into tensor</span>
+<span class="c1"># definition with explicit left-hand side, so that they can be used for</span>
+<span class="c1"># optimization.</span>
+<span class="n">e</span> <span class="o">&lt;&lt;=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">eval_fermi_vev</span><span class="p">(</span><span class="n">h_bar</span><span class="p">))</span>
+<span class="n">proj</span> <span class="o">=</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_dag</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">*</span> <span class="n">c_</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+<span class="n">r2</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;&lt;=</span> <span class="n">simplify</span><span class="p">(</span><span class="n">eval_fermi_vev</span><span class="p">(</span><span class="n">proj</span> <span class="o">*</span> <span class="n">h_bar</span><span class="p">))</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Working equation derived!&#39;</span><span class="p">)</span>
+
+<span class="c1"># When the gristmill package is also installed, the evaluation of the working</span>
+<span class="c1"># equations can also be optimized with it.</span>
+<span class="n">eval_seq</span> <span class="o">=</span> <span class="n">optimize</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">e</span><span class="p">,</span> <span class="n">r2</span><span class="p">],</span> <span class="n">substs</span><span class="o">=</span><span class="p">{</span><span class="n">no</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">nv</span><span class="p">:</span> <span class="mi">10000</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># In addition to HTML report, we can also have LaTeX report.  Note that the</span>
+<span class="c1"># report can be structured into sections with descriptions.  For LaTeX output,</span>
+<span class="c1"># the `dmath` environment from the `breqn` package can be used to break lines</span>
+<span class="c1"># automatically inside large equations.</span>
+
+<span class="c1"># Long descriptions of contents can be put in Python multi-line strings.</span>
+<span class="n">opt_description</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">The optimization is based on 1000 occupied orbitals and 10000 virtual orbitals,</span>
+<span class="s2">which should be representative of common problems for CCD theory.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="k">with</span> <span class="n">report</span><span class="p">(</span><span class="s1">&#39;ccd.tex&#39;</span><span class="p">,</span> <span class="s1">&#39;CCD theory&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">rep</span><span class="p">:</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Working equations&#39;</span><span class="p">)</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;The energy equation&#39;</span><span class="p">)</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">r2</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Doubles amplitude equation&#39;</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="s1">&#39;dmath&#39;</span><span class="p">)</span>
+    <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Optimized evaluation&#39;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">opt_description</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">eval_seq</span><span class="p">:</span>
+        <span class="n">rep</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="s1">&#39;dmath&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the example <code class="docutils literal"><span class="pre">ccd.drs</span></code>, it is attempted to be emphasized that drudge scripts
+are very similar to common mathematical notation and should be easy to get
+started.  In this <code class="docutils literal"><span class="pre">ccd_adv.drs</span></code> example, the power and flexibility of drudge
+scripts being actually Python scripts is emphasized.  Foremost, rather than
+spelling each order of commutation out, here the similarity-transformed
+Hamiltonian <span class="math">\(\bar{\mathbf{H}}\)</span> is computed by using a Python loop.  This
+can be helpful for repetitive tasks.  Also the computation of
+<span class="math">\(\bar{\mathbf{H}}\)</span> is put inside a function.  Being able to define and
+execute functions makes it easy to reuse code inside drudge scripts. Here, the
+function is given to the <a class="reference internal" href="api/base.html#drudge.Drudge.memoize" title="drudge.Drudge.memoize"><code class="xref py py-meth docutils literal"><span class="pre">Drudge.memoize()</span></code></a> function.  So its result is
+automatically dumped into the given pickle file.  When the file is already
+there, the result will be directly read and used with the execution of the
+function skipped.  This can be helpful for large multi-step jobs.</p>
+<p>Note that <code class="docutils literal"><span class="pre">&lt;&lt;=</span></code> is used to make the working equations as tensor definitions of
+class <a class="reference internal" href="api/base.html#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a>.  In drudge scripts,:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">variable</span> <span class="o">=</span> <span class="n">tensor</span>
+</pre></div>
+</div>
+<p>assigns the tensor <code class="docutils literal"><span class="pre">tensor</span></code> to the variable <code class="docutils literal"><span class="pre">variable</span></code>.  The variable is a
+normal Python variable and works in the normal Python way.  And the tensor is
+just a static expression of its mathematical content, with all the free symbols
+being free.  At the same time,:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">lhs</span> <span class="o">&lt;&lt;=</span> <span class="n">tensor</span>
+</pre></div>
+</div>
+<p>defines the <code class="docutils literal"><span class="pre">lhs</span></code> as the tensor, with the definition pushed into the name
+archive of the drudge.  By using <a class="reference internal" href="api/base.html#drudge.TensorDef" title="drudge.TensorDef"><code class="xref py py-class docutils literal"><span class="pre">TensorDef</span></code></a> objects, we also have a
+left-hand side, which enables the accompanying <a class="reference external" href="https://github.com/tschijnmo/gristmill">gristmill</a> package to optimize
+the evaluation of the entire array by its advanced algorithms.</p>
+<p>For the result, here they are written into a very structured LaTeX output, which
+can be easily compiled into PDF files.  Note that by using the
+<a class="reference internal" href="api/base.html#drudge.Report.add" title="drudge.Report.add"><code class="xref py py-meth docutils literal"><span class="pre">Report.add()</span></code></a> function with different arguments, we can create
+structured report with sections and descriptions for the equations.</p>
+</div>
+</div>
+<div class="section" id="common-caveats">
+<h2>Common caveats<a class="headerlink" href="#common-caveats" title="Permalink to this headline">¶</a></h2>
+<p>When using drudge, there are some common pitfalls that might confuse
+beginning users, here we attempt a small summary of the prominent ones for
+convenience.  Note that users are encouraged to go through SymPy tutorial
+first, where some common caveats about using SymPy is summarized.</p>
+<p class="rubric">Importing drudge</p>
+<p>In this tutorial, <code class="docutils literal"><span class="pre">import</span> <span class="pre">drudge</span></code> and <code class="docutils literal"><span class="pre">import</span> <span class="pre">sympy</span></code> is used and we need to
+give fully-qualified name to refer to objects in them.  Normally, it can be
+convenient to use <code class="docutils literal"><span class="pre">from</span> <span class="pre">drudge</span> <span class="pre">import</span> <span class="pre">*</span></code> to import everything from drudge. For
+these cases, it needs to be careful that the importation of all objects from
+drudge needs to follow the importation of all objects from SymPy, or the SymPy
+<code class="docutils literal"><span class="pre">Range</span></code> class will shallow the actual class for symbolic range in drudge.</p>
+<p class="rubric">Wrong names in drudge scripts</p>
+<p>In drudge scripts, all unresolved names evaluates to symbols with the given
+name, similar to the behaviour of dedicated computer algebra systems like
+Mathematica or Maple.  In this way, extra care need to be taken for names inside
+drudge scripts.  Although drudge attempts to give as sensible error message as
+possible, sometimes quite confusing errors can be given for a wrongly typed
+name.  For this cases, running drudge scripts inside a debugger can be helpful.
+Whenever the error comes from an object that is an <code class="docutils literal"><span class="pre">DrsSymbol</span></code> instance, it is
+highly-likely there is a typo in the drudge script at this place.  Inside the
+debugger, <code class="docutils literal"><span class="pre">up</span></code> command can be used to move the stack to the place in the
+drudge script, then the trouble-maker can be attempted to be identified.</p>
+<p class="rubric">Name clashing, symbol names and variable names</p>
+<p>In Python scripts, normally we would bind atomic symbols to variables named
+the same as the symbol itself, like:</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="n">i</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Sometimes we would later accidentally bind the variable with something else,
+this could stop the symbol being accessible by its name any more.  For
+example, after</p>
+<div class="highlight-Python"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">i</span></code> can no longer be used for the symbol <span class="math">\(i\)</span>.  This can give some highly
+obscure bugs.  Similarly, in drudge scripts, whenever a variable is created with
+a given name, symbols with the same name cannot be access by simply spelling the
+name out any more.  For example, with the above <code class="docutils literal"><span class="pre">for</span></code> loop, symbol <span class="math">\(i\)</span>,
+might not be accessed by <code class="docutils literal"><span class="pre">i</span></code> any more, which is actually bound to integer
+number 9 now.</p>
+<p>To resolve these issues, generally the variable name can be mangled some how,
+for instance, by appending an underscore in the variable name.</p>
+<p>Very similarly, sometimes obscure error could occur when symbolic objects like
+indexed bases and symbols are named in the same way.  For instance, when an
+indexed base is named in the same way as an index, it could be changed when the
+index is substituted.  So it is highly recommended that indexed bases and
+symbols are free from any name clashing.  For cases with clashing, the indexed
+base names could be mangled with something like trailing underscore to avoid
+problems.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Drudge tutorial for beginners</a><ul>
+<li><a class="reference internal" href="#get-started">Get started</a></li>
+<li><a class="reference internal" href="#tensor-manipulations">Tensor manipulations</a></li>
+<li><a class="reference internal" href="#drudge-scripts">Drudge scripts</a></li>
+<li><a class="reference internal" href="#examples-on-real-world-applications">Examples on real-world applications</a><ul>
+<li><a class="reference internal" href="#in-python-interface">In Python interface</a></li>
+<li><a class="reference internal" href="#as-drudge-scripts">As drudge scripts</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#common-caveats">Common caveats</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="releases/0_9_0.html" title="previous chapter">0.9.0</a></li>
+      <li>Next: <a href="api.html" title="next chapter">Drudge API reference guide</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tutorial.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/tutorial.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

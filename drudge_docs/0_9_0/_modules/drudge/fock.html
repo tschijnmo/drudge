@@ -1,0 +1,1097 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.fock &#8212; drudge 0.9.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.fock</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Drudge classes for working with operators on Fock spaces.</span>
+
+<span class="sd">In this module, several drudge instances are defined for working with creation</span>
+<span class="sd">and annihilation operators acting on fermion or boson Fock spaces.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">RDD</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">KroneckerDelta</span><span class="p">,</span> <span class="n">IndexedBase</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">Rational</span><span class="p">,</span> <span class="n">symbols</span><span class="p">,</span> <span class="n">conjugate</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">._tceparser</span> <span class="k">import</span> <span class="n">parse_tce_out</span>
+<span class="kn">from</span> <span class="nn">.canon</span> <span class="k">import</span> <span class="n">NEG</span><span class="p">,</span> <span class="n">IDENT</span>
+<span class="kn">from</span> <span class="nn">.canonpy</span> <span class="k">import</span> <span class="n">Perm</span>
+<span class="kn">from</span> <span class="nn">.drudge</span> <span class="k">import</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">TensorDef</span>
+<span class="kn">from</span> <span class="nn">.term</span> <span class="k">import</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">Range</span><span class="p">,</span> <span class="n">try_resolve_range</span><span class="p">,</span> <span class="n">Term</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">sympy_key</span><span class="p">,</span> <span class="n">ensure_expr</span><span class="p">,</span> <span class="n">EnumSymbs</span>
+<span class="kn">from</span> <span class="nn">.wick</span> <span class="k">import</span> <span class="n">WickDrudge</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># General fermion/boson algebra</span>
+<span class="c1"># -----------------------------</span>
+<span class="c1">#</span>
+
+
+<span class="k">class</span> <span class="nc">CranChar</span><span class="p">(</span><span class="n">EnumSymbs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Transformation characters of creation/annihilation operators.</span>
+
+<span class="sd">    It values, which can be accessed as the class attributes ``CR`` and ``AN``</span>
+<span class="sd">    also forwarded to module scope, should be used as the first index to vectors</span>
+<span class="sd">    representing creation and annihilation operators.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_symbs_</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;CR&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\dagger&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;AN&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+
+
+<span class="n">CR</span> <span class="o">=</span> <span class="n">CranChar</span><span class="o">.</span><span class="n">CR</span>
+<span class="n">AN</span> <span class="o">=</span> <span class="n">CranChar</span><span class="o">.</span><span class="n">AN</span>
+
+<span class="n">FERMI</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+<span class="n">BOSE</span> <span class="o">=</span> <span class="mi">1</span>
+
+
+<div class="viewcode-block" id="FockDrudge"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge">[docs]</a><span class="k">class</span> <span class="nc">FockDrudge</span><span class="p">(</span><span class="n">WickDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for doing fermion/boson operator algebra on Fock spaces.</span>
+
+<span class="sd">    This is the general base class for drudges working on fermion/boson operator</span>
+<span class="sd">    algebras.  Here general methods are defined for working on these algebraic</span>
+<span class="sd">    systems, but no problem specific information, like ranges or operator base,</span>
+<span class="sd">    is defined.  Generally, operators for Fock space problems has either</span>
+<span class="sd">    :py:data:`CR` or :py:data:`AN` as the first index to give their creation or</span>
+<span class="sd">    annihilation character.</span>
+
+<span class="sd">    To customize the details of the commutation rules, properties</span>
+<span class="sd">    :py:attr:`op_parser` and :py:attr:`ancr_contractor` can be overridden.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="FockDrudge.__init__"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">exch</span><span class="o">=</span><span class="n">FERMI</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        exch : {1, -1}</span>
+
+<span class="sd">            The exchange symmetry for the Fock space.  Constants</span>
+<span class="sd">            :py:data:`FERMI` and :py:data:`BOSE` can be used.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">exch</span> <span class="o">==</span> <span class="n">FERMI</span> <span class="ow">or</span> <span class="n">exch</span> <span class="o">==</span> <span class="n">BOSE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exch</span> <span class="o">=</span> <span class="n">exch</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid exchange&#39;</span><span class="p">,</span> <span class="n">exch</span><span class="p">,</span> <span class="s1">&#39;expecting plus/minus 1&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_tensor_method</span><span class="p">(</span><span class="s1">&#39;eval_vev&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_vev</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_tensor_method</span><span class="p">(</span><span class="s1">&#39;eval_phys_vev&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_phys_vev</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_tensor_method</span><span class="p">(</span><span class="s1">&#39;dagger&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dagger</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">contractor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the contractor for the algebra.</span>
+
+<span class="sd">        The operations are read here on-the-fly so that possibly customized</span>
+<span class="sd">        behaviour from the subclasses can be read.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">ancr_contractor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ancr_contractor</span>
+        <span class="n">op_parser</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_parser</span>
+
+        <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+            <span class="n">_contr_field_ops</span><span class="p">,</span> <span class="n">ancr_contractor</span><span class="o">=</span><span class="n">ancr_contractor</span><span class="p">,</span>
+            <span class="n">op_parser</span><span class="o">=</span><span class="n">op_parser</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">phase</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the phase for the commutation rules.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exch</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">comparator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the comparator for the normal ordering operation.&quot;&quot;&quot;</span>
+
+        <span class="n">op_parser</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_parser</span>
+
+        <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_compare_field_ops</span><span class="p">,</span> <span class="n">op_parser</span><span class="o">=</span><span class="n">op_parser</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">vec_colour</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the vector colour evaluator.&quot;&quot;&quot;</span>
+
+        <span class="n">op_parser</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_parser</span>
+
+        <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_get_field_op_colour</span><span class="p">,</span> <span class="n">op_parser</span><span class="o">=</span><span class="n">op_parser</span><span class="p">)</span>
+
+    <span class="n">OP_PARSER</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span>
+        <span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Term</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">CranChar</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Expr</span><span class="p">]]</span>
+    <span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">op_parser</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OP_PARSER</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Get the parser for field operators.</span>
+
+<span class="sd">        The result should be a callable taking an vector and return a triple of</span>
+<span class="sd">        operator base, operator character, and the actual indices to the</span>
+<span class="sd">        operator.  This can be helpful for cases where the interpretation of the</span>
+<span class="sd">        operators needs to be tweeked.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">parse_field_op</span>
+
+    <span class="n">ANCR_CONTRACTOR</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span>
+        <span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Expr</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Expr</span><span class="p">]],</span>
+        <span class="n">Expr</span>
+    <span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ancr_contractor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ANCR_CONTRACTOR</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Get the contractor for annihilation and creation operators.</span>
+
+<span class="sd">        In this drudge, the contraction between creation/creation,</span>
+<span class="sd">        annihilation/annihilation, and creation/annihilation operators are</span>
+<span class="sd">        fixed.  By this property, a callable for contracting annihilation</span>
+<span class="sd">        operators with a creation operator can be given.  It will be called with</span>
+<span class="sd">        the base and indices (excluding the character) of the annihilation</span>
+<span class="sd">        operators and the base and indices of the creation operator.  A simple</span>
+<span class="sd">        SymPy expression is expected in the result.</span>
+
+<span class="sd">        By default, the result will be a simple delta.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">_contr_ancr_by_delta</span>
+
+<div class="viewcode-block" id="FockDrudge.eval_vev"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.eval_vev">[docs]</a>    <span class="k">def</span> <span class="nf">eval_vev</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">contractor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate vacuum expectation value.</span>
+
+<span class="sd">        The contractor needs to be given as a callable accepting two operators.</span>
+<span class="sd">        And this function is also set as a tensor method by the same name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normal_order</span><span class="p">(</span>
+            <span class="n">tensor</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span> <span class="n">comparator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">contractor</span><span class="o">=</span><span class="n">contractor</span>
+        <span class="p">))</span></div>
+
+<div class="viewcode-block" id="FockDrudge.eval_phys_vev"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.eval_phys_vev">[docs]</a>    <span class="k">def</span> <span class="nf">eval_phys_vev</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate expectation value with respect to the physical vacuum.</span>
+
+<span class="sd">        Here the contractor from normal-ordering will be used.  And this</span>
+<span class="sd">        function is also set as a tensor method by the same name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normal_order</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span> <span class="n">comparator</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="FockDrudge.normal_order"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.normal_order">[docs]</a>    <span class="k">def</span> <span class="nf">normal_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Normal order the field operators.</span>
+
+<span class="sd">        Here the normal-ordering operation of general Wick drudge will be</span>
+<span class="sd">        invoked twice to ensure full simplification.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">step1</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">normal_order</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">normal_order</span><span class="p">(</span><span class="n">step1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FockDrudge.dagger"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.dagger">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">dagger</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">real</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the Hermitian adjoint of the given operator.</span>
+
+<span class="sd">        This method is also set to be a tensor method with the same name.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        tensor</span>
+<span class="sd">            The operator to take the Hermitian adjoint for.</span>
+
+<span class="sd">        real</span>
+<span class="sd">            If the amplitude is assumed to be real.  Note that this need not be</span>
+<span class="sd">            set if the amplitude is concrete real numbers.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">tensor</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">terms</span><span class="p">:</span> <span class="n">terms</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_get_dagger</span><span class="p">,</span> <span class="n">real</span><span class="o">=</span><span class="n">real</span><span class="p">))</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="FockDrudge.set_n_body_base"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.set_n_body_base">[docs]</a>    <span class="k">def</span> <span class="nf">set_n_body_base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="n">IndexedBase</span><span class="p">,</span> <span class="n">n_body</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set an indexed base as an n-body interaction.</span>
+
+<span class="sd">        The symmetry of an n-body interaction has full permutation symmetry</span>
+<span class="sd">        among the corresponding slots in the first and second half.</span>
+
+<span class="sd">        When the body count if less than two, no symmetry is added.  And the</span>
+<span class="sd">        added symmetry is for the given valence only.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Normalize the type of n_body.</span>
+        <span class="n">n_body</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_body</span><span class="p">)</span>
+
+        <span class="c1"># No symmetry going to be added for less than two body.</span>
+        <span class="k">if</span> <span class="n">n_body</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">begin1</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">end1</span> <span class="o">=</span> <span class="n">n_body</span>
+        <span class="n">begin2</span> <span class="o">=</span> <span class="n">end1</span>
+        <span class="n">end2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_body</span>
+
+        <span class="n">cycl</span> <span class="o">=</span> <span class="n">Perm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_form_cycl</span><span class="p">(</span><span class="n">begin1</span><span class="p">,</span> <span class="n">end1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_cycl</span><span class="p">(</span><span class="n">begin2</span><span class="p">,</span> <span class="n">end2</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">transp</span> <span class="o">=</span> <span class="n">Perm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_form_transp</span><span class="p">(</span><span class="n">begin1</span><span class="p">,</span> <span class="n">end1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_transp</span><span class="p">(</span><span class="n">begin2</span><span class="p">,</span> <span class="n">end2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_symm</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">cycl</span><span class="p">,</span> <span class="n">transp</span><span class="p">,</span> <span class="n">valence</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_body</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="FockDrudge.set_dbbar_base"><a class="viewcode-back" href="../../api/algebras.html#drudge.FockDrudge.set_dbbar_base">[docs]</a>    <span class="k">def</span> <span class="nf">set_dbbar_base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="n">IndexedBase</span><span class="p">,</span> <span class="n">n_body</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_body2</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set an indexed base as a double-bar interaction.</span>
+
+<span class="sd">        A double barred interaction has full permutation symmetry among its</span>
+<span class="sd">        first half of slots and its second half individually.  For fermion</span>
+<span class="sd">        field, the permutation is assumed to be anti-commutative.</span>
+
+<span class="sd">        The size of the second half can be given by another optional argument,</span>
+<span class="sd">        or it is assumed to have the same size as the first half.  It can also</span>
+<span class="sd">        be zero, which gives one chunk of symmetric slots only.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">n_body</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_body</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">n_body</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid body count&#39;</span><span class="p">,</span> <span class="n">n_body</span><span class="p">,</span>
+                <span class="s1">&#39;expecting a number greater than one&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">n_body2</span> <span class="o">=</span> <span class="n">n_body</span> <span class="k">if</span> <span class="n">n_body2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_body2</span><span class="p">)</span>
+        <span class="n">n_slots</span> <span class="o">=</span> <span class="n">n_body</span> <span class="o">+</span> <span class="n">n_body2</span>
+
+        <span class="n">transp_acc</span> <span class="o">=</span> <span class="n">NEG</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exch</span> <span class="o">==</span> <span class="n">FERMI</span> <span class="k">else</span> <span class="n">IDENT</span>
+        <span class="n">cycl_accs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">NEG</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exch</span> <span class="o">==</span> <span class="n">FERMI</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">IDENT</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">n_body</span><span class="p">,</span> <span class="n">n_body2</span><span class="p">]</span>
+        <span class="p">]</span>  <span class="c1"># When n_body2 is zero, this value is kinda wrong but not used.</span>
+
+        <span class="n">gens</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">second_half</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_body</span><span class="p">,</span> <span class="n">n_slots</span><span class="p">))</span>
+        <span class="n">gens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Perm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_form_cycl</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_body</span><span class="p">)</span> <span class="o">+</span> <span class="n">second_half</span><span class="p">,</span> <span class="n">cycl_accs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">))</span>
+        <span class="n">gens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Perm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_form_transp</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_body</span><span class="p">)</span> <span class="o">+</span> <span class="n">second_half</span><span class="p">,</span> <span class="n">transp_acc</span>
+        <span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">n_body2</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">first_half</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_body</span><span class="p">))</span>
+            <span class="n">gens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Perm</span><span class="p">(</span>
+                <span class="n">first_half</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_cycl</span><span class="p">(</span><span class="n">n_body</span><span class="p">,</span> <span class="n">n_slots</span><span class="p">),</span> <span class="n">cycl_accs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">))</span>
+            <span class="n">gens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Perm</span><span class="p">(</span>
+                <span class="n">first_half</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_transp</span><span class="p">(</span><span class="n">n_body</span><span class="p">,</span> <span class="n">n_slots</span><span class="p">),</span> <span class="n">transp_acc</span>
+            <span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_symm</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">gens</span><span class="p">,</span> <span class="n">valence</span><span class="o">=</span><span class="n">n_slots</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_form_cycl</span><span class="p">(</span><span class="n">begin</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the pre-image for a cyclic permutation over the given range.&quot;&quot;&quot;</span>
+        <span class="n">before_end</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">before_end</span><span class="p">]</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">begin</span><span class="p">,</span> <span class="n">before_end</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_form_transp</span><span class="p">(</span><span class="n">begin</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form a pre-image array with the first two points transposed.&quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">begin</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+        <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">_latex_vec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the LaTeX form of field operators.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">head</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">^{{</span><span class="si">{}</span><span class="s1">}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latex_sympy</span><span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_latex_sympy</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vec</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="k">return</span> <span class="sa">r</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_{{</span><span class="si">{}</span><span class="s1">}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">head</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+
+    <span class="n">_latex_vec_mul</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span></div>
+
+
+<span class="k">def</span> <span class="nf">parse_field_op</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">Term</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the operator label, character and actual indices.</span>
+
+<span class="sd">    ValueError will be raised if the given operator does not satisfy the format</span>
+<span class="sd">    for field operators.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">indices</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="p">(</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">CR</span> <span class="ow">and</span> <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">AN</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid field operator&#39;</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span>
+                         <span class="s1">&#39;expecting operator character&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">op</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+
+<span class="k">def</span> <span class="nf">_compare_field_ops</span><span class="p">(</span>
+        <span class="n">op1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">op2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span>
+        <span class="n">op_parser</span><span class="p">:</span> <span class="n">FockDrudge</span><span class="o">.</span><span class="n">OP_PARSER</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compare the given field operators.</span>
+
+<span class="sd">    Here we try to emulate physicists&#39; convention as much as possible.  The</span>
+<span class="sd">    annihilation operators are ordered in reversed direction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">label1</span><span class="p">,</span> <span class="n">char1</span><span class="p">,</span> <span class="n">indices1</span> <span class="o">=</span> <span class="n">op_parser</span><span class="p">(</span><span class="n">op1</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+    <span class="n">label2</span><span class="p">,</span> <span class="n">char2</span><span class="p">,</span> <span class="n">indices2</span> <span class="o">=</span> <span class="n">op_parser</span><span class="p">(</span><span class="n">op2</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">CR</span> <span class="ow">and</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">AN</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">AN</span> <span class="ow">and</span> <span class="n">char2</span> <span class="o">==</span> <span class="n">CR</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="n">key1</span> <span class="o">=</span> <span class="p">(</span><span class="n">label1</span><span class="p">,</span> <span class="p">[</span><span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices1</span><span class="p">])</span>
+    <span class="n">key2</span> <span class="o">=</span> <span class="p">(</span><span class="n">label2</span><span class="p">,</span> <span class="p">[</span><span class="n">sympy_key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices2</span><span class="p">])</span>
+
+    <span class="c1"># Equal key are always true for stable insert sort.</span>
+    <span class="k">if</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">CR</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">key1</span> <span class="o">&lt;=</span> <span class="n">key2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">key1</span> <span class="o">&gt;=</span> <span class="n">key2</span>
+
+
+<span class="k">def</span> <span class="nf">_contr_field_ops</span><span class="p">(</span><span class="n">op1</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">op2</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span>
+                     <span class="n">ancr_contractor</span><span class="p">:</span> <span class="n">FockDrudge</span><span class="o">.</span><span class="n">ANCR_CONTRACTOR</span><span class="p">,</span>
+                     <span class="n">op_parser</span><span class="p">:</span> <span class="n">FockDrudge</span><span class="o">.</span><span class="n">OP_PARSER</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Contract two field operators.</span>
+
+<span class="sd">    Here we work by the fermion-boson commutation rules.  The contractor is only</span>
+<span class="sd">    going to be called for annihilation creation pairs, with all others implied</span>
+<span class="sd">    by the algebra.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">label1</span><span class="p">,</span> <span class="n">char1</span><span class="p">,</span> <span class="n">indices1</span> <span class="o">=</span> <span class="n">op_parser</span><span class="p">(</span><span class="n">op1</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+    <span class="n">label2</span><span class="p">,</span> <span class="n">char2</span><span class="p">,</span> <span class="n">indices2</span> <span class="o">=</span> <span class="n">op_parser</span><span class="p">(</span><span class="n">op2</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">char2</span> <span class="ow">or</span> <span class="n">char1</span> <span class="o">==</span> <span class="n">CR</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">ancr_contractor</span><span class="p">(</span><span class="n">label1</span><span class="p">,</span> <span class="n">indices1</span><span class="p">,</span> <span class="n">label2</span><span class="p">,</span> <span class="n">indices2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_contr_ancr_by_delta</span><span class="p">(</span><span class="n">label1</span><span class="p">,</span> <span class="n">indices1</span><span class="p">,</span> <span class="n">label2</span><span class="p">,</span> <span class="n">indices2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Contract an annihilation and a creation operator by delta.&quot;&quot;&quot;</span>
+
+    <span class="c1"># For the delta contraction, some additional checking is needed for it to</span>
+    <span class="c1"># make sense.</span>
+
+    <span class="n">err_header</span> <span class="o">=</span> <span class="s1">&#39;Invalid field operators to contract by delta&#39;</span>
+
+    <span class="c1"># When the operators are on different base, it is likely that delta is not</span>
+    <span class="c1"># what is intended.</span>
+
+    <span class="k">if</span> <span class="n">label1</span> <span class="o">!=</span> <span class="n">label2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">err_header</span><span class="p">,</span> <span class="p">(</span><span class="n">label1</span><span class="p">,</span> <span class="n">label2</span><span class="p">),</span>
+                         <span class="s1">&#39;expecting the same base&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">err_header</span><span class="p">,</span> <span class="p">(</span><span class="n">indices1</span><span class="p">,</span> <span class="n">indices2</span><span class="p">),</span>
+                         <span class="s1">&#39;expecting same number of indices&#39;</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indices1</span><span class="p">,</span> <span class="n">indices2</span><span class="p">):</span>
+        <span class="c1"># TODO: Maybe support continuous indices here.</span>
+        <span class="n">res</span> <span class="o">*=</span> <span class="n">KroneckerDelta</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">def</span> <span class="nf">_get_field_op_colour</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">vec</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">op_parser</span><span class="p">:</span> <span class="n">FockDrudge</span><span class="o">.</span><span class="n">OP_PARSER</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the colour of field operators.</span>
+
+<span class="sd">    Here the annihilation part is specially treated for better compliance with</span>
+<span class="sd">    conventions in physics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">char</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">char</span> <span class="o">==</span> <span class="n">CR</span> <span class="ow">or</span> <span class="n">char</span> <span class="o">==</span> <span class="n">AN</span>
+    <span class="k">return</span> <span class="n">char</span><span class="p">,</span> <span class="n">idx</span> <span class="k">if</span> <span class="n">char</span> <span class="o">==</span> <span class="n">CR</span> <span class="k">else</span> <span class="o">-</span><span class="n">idx</span>
+
+
+<span class="k">def</span> <span class="nf">_get_dagger</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">,</span> <span class="n">real</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Take the dagger of a term.&quot;&quot;&quot;</span>
+
+    <span class="n">new_vecs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">vec</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">base</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">indices</span>
+        <span class="k">if</span> <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">CR</span><span class="p">:</span>
+            <span class="n">new_char</span> <span class="o">=</span> <span class="n">AN</span>
+        <span class="k">elif</span> <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">AN</span><span class="p">:</span>
+            <span class="n">new_char</span> <span class="o">=</span> <span class="n">CR</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid vector to take Hermitian adjoint&#39;</span><span class="p">,</span> <span class="n">vec</span><span class="p">,</span>
+                <span class="s1">&#39;expecting CR/AN character in first index&#39;</span>
+            <span class="p">)</span>
+        <span class="n">new_vecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">base</span><span class="p">[(</span><span class="n">new_char</span><span class="p">,)</span> <span class="o">+</span> <span class="n">indices</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
+        <span class="p">)</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">term</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">real</span> <span class="k">else</span> <span class="n">conjugate</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+        <span class="n">vecs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">new_vecs</span><span class="p">),</span> <span class="n">skip_vecs</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Detailed problems</span>
+<span class="c1"># -----------------</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">conserve_spin</span><span class="p">(</span><span class="o">*</span><span class="n">spin_symbs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get a callback giving true only if the given spin values are conserved.</span>
+
+<span class="sd">    Here by conserving the spin, we mean the very strict sense that the values</span>
+<span class="sd">    of the first half of the symbols in the given dictionary exactly matches the</span>
+<span class="sd">    corresponding values in the second half.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_symbs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spin_symbs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_symbs</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid spin symbols&#39;</span><span class="p">,</span> <span class="n">spin_symbs</span><span class="p">,</span>
+                         <span class="s1">&#39;expecting a even number of them&#39;</span><span class="p">)</span>
+    <span class="n">n_particles</span> <span class="o">=</span> <span class="n">n_symbs</span> <span class="o">//</span> <span class="mi">2</span>
+
+    <span class="n">outs</span> <span class="o">=</span> <span class="n">spin_symbs</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">n_particles</span><span class="p">]</span>
+    <span class="n">ins</span> <span class="o">=</span> <span class="n">spin_symbs</span><span class="p">[</span><span class="n">n_particles</span><span class="p">:</span><span class="n">n_symbs</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">test_conserve</span><span class="p">(</span><span class="n">symbs_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test if the spin values from the dictionary is conserved.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">symbs_dict</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">symbs_dict</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ins</span><span class="p">,</span> <span class="n">outs</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">test_conserve</span>
+
+
+<div class="viewcode-block" id="GenMBDrudge"><a class="viewcode-back" href="../../api/problems.html#drudge.GenMBDrudge">[docs]</a><span class="k">class</span> <span class="nc">GenMBDrudge</span><span class="p">(</span><span class="n">FockDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for general many-body problems.</span>
+
+<span class="sd">    In a general many-body problem, a state for the particle is given by a</span>
+<span class="sd">    symbolic **orbital** quantum numbers for the external degrees of freedom and</span>
+<span class="sd">    optionally a concrete **spin** quantum numbers for the internal states of</span>
+<span class="sd">    the particles.  Normally, there is just one orbital quantum number and one</span>
+<span class="sd">    or no spin quantum number.</span>
+
+<span class="sd">    In this model, a default Hamiltonian of the model is constructed from a</span>
+<span class="sd">    one-body and two-body interaction, both of them are assumed to be spin</span>
+<span class="sd">    conserving.</span>
+
+<span class="sd">    Also Einstein summation convention is assumed for this drudge in drudge</span>
+<span class="sd">    scripts.</span>
+
+<span class="sd">    .. attribute:: op</span>
+
+<span class="sd">        The vector base for the field operators.</span>
+
+<span class="sd">    .. attribute:: cr</span>
+
+<span class="sd">        The base for the creation operator.</span>
+
+<span class="sd">    .. attribute:: an</span>
+
+<span class="sd">        The base for the annihilation operator.</span>
+
+<span class="sd">    .. attribute:: orb_ranges</span>
+
+<span class="sd">        A list of all the ranges for the orbital quantum number.</span>
+
+<span class="sd">    .. attribute::  spin_vals</span>
+
+<span class="sd">        A list of all the explicit spin values.  None if spin values are not</span>
+<span class="sd">        given.</span>
+
+<span class="sd">    .. attribute:: spin_range</span>
+
+<span class="sd">        The symbolic range for spin values.  None if it is not given.</span>
+
+<span class="sd">    .. attribute:: orig_ham</span>
+
+<span class="sd">        The original form of the Hamiltonian without any simplification.</span>
+
+<span class="sd">    .. attribute:: ham</span>
+
+<span class="sd">        The simplified form of the Hamiltonian.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GenMBDrudge.__init__"><a class="viewcode-back" href="../../api/problems.html#drudge.GenMBDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">exch</span><span class="o">=</span><span class="n">FERMI</span><span class="p">,</span> <span class="n">op_label</span><span class="o">=</span><span class="s1">&#39;c&#39;</span><span class="p">,</span>
+                 <span class="n">orb</span><span class="o">=</span><span class="p">((</span><span class="n">Range</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">),</span> <span class="s1">&#39;abcdefghijklmnopq&#39;</span><span class="p">),),</span> <span class="n">spin</span><span class="o">=</span><span class="p">(),</span>
+                 <span class="n">one_body</span><span class="o">=</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;t&#39;</span><span class="p">),</span> <span class="n">two_body</span><span class="o">=</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">),</span>
+                 <span class="n">dbbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        exch</span>
+<span class="sd">            The exchange symmetry of the identical particle.</span>
+
+<span class="sd">        op_label</span>
+<span class="sd">            The label for the field operators.  The creation operator will be</span>
+<span class="sd">            registered in the names archive by name of this label with ``_dag``</span>
+<span class="sd">            appended.  And the annihilation operator will be registered with a</span>
+<span class="sd">            single trailing underscore.</span>
+
+<span class="sd">        orb</span>
+<span class="sd">            An iterable of range and dummies pairs for the orbital quantum</span>
+<span class="sd">            number, which is considered to be over the **direct sum** of all the</span>
+<span class="sd">            ranges given.  All the ranges and dummies will be registered to the</span>
+<span class="sd">            names archive by :py:meth:`Drudge.set_dumms`.</span>
+
+<span class="sd">        spin</span>
+<span class="sd">            The explicit spin quantum number.  It can be an empty sequence to</span>
+<span class="sd">            disable explicit spin.  Or it can be a sequence of SymPy expressions</span>
+<span class="sd">            to give explicit spin values, or a range and dummies pair for</span>
+<span class="sd">            symbolic spin.</span>
+
+<span class="sd">        one_body</span>
+<span class="sd">            The indexed base for the amplitude in the one-body part of the</span>
+<span class="sd">            Hamiltonian.  It will also be added to the name archive.</span>
+
+<span class="sd">        two_body</span>
+<span class="sd">            The indexed base for the two-body part of the Hamiltonian.  It will</span>
+<span class="sd">            also be added to the name archive.</span>
+
+<span class="sd">        dbbar : bool</span>
+<span class="sd">            If the two-body part of the Hamiltonian is double-bared.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">exch</span><span class="o">=</span><span class="n">exch</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Create the field operator</span>
+        <span class="c1">#</span>
+
+        <span class="n">op</span> <span class="o">=</span> <span class="n">Vec</span><span class="p">(</span><span class="n">op_label</span><span class="p">)</span>
+        <span class="n">cr</span> <span class="o">=</span> <span class="n">op</span><span class="p">[</span><span class="n">CR</span><span class="p">]</span>
+        <span class="n">an</span> <span class="o">=</span> <span class="n">op</span><span class="p">[</span><span class="n">AN</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">op</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cr</span> <span class="o">=</span> <span class="n">cr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">an</span> <span class="o">=</span> <span class="n">an</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span> <span class="n">an</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_dag&#39;</span><span class="p">:</span> <span class="n">cr</span>
+        <span class="p">})</span>
+
+        <span class="c1">#</span>
+        <span class="c1"># Hamiltonian creation</span>
+        <span class="c1">#</span>
+        <span class="c1"># Other aspects of the model will also be set during this stage.</span>
+        <span class="c1">#</span>
+
+        <span class="n">orb_ranges</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">range_</span><span class="p">,</span> <span class="n">dumms</span> <span class="ow">in</span> <span class="n">orb</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_dumms</span><span class="p">(</span><span class="n">range_</span><span class="p">,</span> <span class="n">dumms</span><span class="p">)</span>
+            <span class="n">orb_ranges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">range_</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orb_ranges</span> <span class="o">=</span> <span class="n">orb_ranges</span>
+
+        <span class="n">spin</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">spin</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spin</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">has_spin</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">spin_range</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_vals</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_range</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spin</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Range</span><span class="p">):</span>
+            <span class="n">has_spin</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spin</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;Invalid spin specification&#39;</span><span class="p">,</span> <span class="n">spin</span><span class="p">,</span>
+                    <span class="s1">&#39;expecting range/dummies pair.&#39;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_dumms</span><span class="p">(</span><span class="n">spin</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">spin</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">spin_range</span> <span class="o">=</span> <span class="n">spin</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_vals</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_range</span> <span class="o">=</span> <span class="n">spin_range</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">has_spin</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">spin_vals</span> <span class="o">=</span> <span class="p">[</span><span class="n">ensure_expr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">spin</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spin_vals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s1">&#39;Just one spin value is given: &#39;</span>
+                    <span class="s1">&#39;consider dropping it for better performance&#39;</span>
+                <span class="p">)</span>
+            <span class="n">spin_range</span> <span class="o">=</span> <span class="n">spin_vals</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_vals</span> <span class="o">=</span> <span class="n">spin_vals</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_range</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_resolver_for_dumms</span><span class="p">()</span>
+
+        <span class="c1"># These dummies are used temporarily and will soon be reset.  They are</span>
+        <span class="c1"># here, rather than the given dummies directly, because we might need to</span>
+        <span class="c1"># dummy for multiple orbital ranges.</span>
+        <span class="c1">#</span>
+        <span class="c1"># They are created as tuple so that they can be easily used for</span>
+        <span class="c1"># indexing.</span>
+
+        <span class="n">orb_dumms</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalOrbitPlaceholder</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">spin_dumms</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;internalSpinPlaceholder</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">orb_sums</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">orb_ranges</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">orb_dumms</span><span class="p">]</span>
+        <span class="n">spin_sums</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">spin_range</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">spin_dumms</span><span class="p">]</span>
+
+        <span class="c1"># Actual Hamiltonian building.</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">one_body</span> <span class="o">=</span> <span class="n">one_body</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">one_body</span><span class="p">)</span>  <span class="c1"># No symmetry for it.</span>
+
+        <span class="n">one_body_sums</span> <span class="o">=</span> <span class="n">orb_sums</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">has_spin</span><span class="p">:</span>
+            <span class="n">one_body_sums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spin_sums</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">has_spin</span><span class="p">:</span>
+            <span class="n">one_body_ops</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span>
+                <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">one_body_ops</span> <span class="o">=</span> <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+
+        <span class="n">one_body_ham</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">one_body_sums</span><span class="p">,</span> <span class="n">one_body</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[:</span><span class="mi">2</span><span class="p">]]</span> <span class="o">*</span> <span class="n">one_body_ops</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dbbar</span><span class="p">:</span>
+            <span class="n">two_body_coeff</span> <span class="o">=</span> <span class="n">Rational</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_dbbar_base</span><span class="p">(</span><span class="n">two_body</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">two_body_coeff</span> <span class="o">=</span> <span class="n">Rational</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_n_body_base</span><span class="p">(</span><span class="n">two_body</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">two_body</span> <span class="o">=</span> <span class="n">two_body</span>
+
+        <span class="n">two_body_sums</span> <span class="o">=</span> <span class="n">orb_sums</span>
+        <span class="k">if</span> <span class="n">has_spin</span><span class="p">:</span>
+            <span class="n">two_body_sums</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">spin_sums</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">has_spin</span><span class="p">:</span>
+            <span class="n">two_body_ops</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span>
+                <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span>
+                <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span>
+                <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">spin_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">two_body_ops</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="n">cr</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span>
+                <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span> <span class="o">*</span> <span class="n">an</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+            <span class="p">)</span>
+
+        <span class="n">two_body_ham</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">two_body_sums</span><span class="p">,</span> <span class="n">two_body_coeff</span> <span class="o">*</span> <span class="n">two_body</span><span class="p">[</span><span class="n">orb_dumms</span><span class="p">]</span> <span class="o">*</span> <span class="n">two_body_ops</span>
+        <span class="p">)</span>
+
+        <span class="c1"># We need to at lease remove the internal symbols.</span>
+        <span class="n">orig_ham</span> <span class="o">=</span> <span class="p">(</span><span class="n">one_body_ham</span> <span class="o">+</span> <span class="n">two_body_ham</span><span class="p">)</span><span class="o">.</span><span class="n">reset_dumms</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orig_ham</span> <span class="o">=</span> <span class="n">orig_ham</span>
+
+        <span class="n">simpled_ham</span> <span class="o">=</span> <span class="n">orig_ham</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ham</span> <span class="o">=</span> <span class="n">simpled_ham</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_einst</span> <span class="o">=</span> <span class="kc">True</span></div></div>
+
+
+<div class="viewcode-block" id="PartHoleDrudge"><a class="viewcode-back" href="../../api/problems.html#drudge.PartHoleDrudge">[docs]</a><span class="k">class</span> <span class="nc">PartHoleDrudge</span><span class="p">(</span><span class="n">GenMBDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for the particle-hole problems.</span>
+
+<span class="sd">    This is a shallow subclass of :py:class:`GenMBDrudge` for the particle-hole</span>
+<span class="sd">    problems.  It contains different forms of the Hamiltonian.</span>
+
+<span class="sd">    .. attribute:: orig_ham</span>
+
+<span class="sd">        The original form of the Hamiltonian, written in terms of bare one-body</span>
+<span class="sd">        and two-body interaction tensors without normal-ordering with respect to</span>
+<span class="sd">        the Fermion vacuum.</span>
+
+<span class="sd">    .. attribute:: full_ham</span>
+
+<span class="sd">        The full form of the Hamiltonian in terms of the bare interaction</span>
+<span class="sd">        tensors, normal-ordered with respect to the Fermi vacuum.</span>
+
+<span class="sd">    .. attribute:: ham_energy</span>
+
+<span class="sd">        The zero energy inside the full Hamiltonian.</span>
+
+<span class="sd">    .. attribute:: one_body_ham</span>
+
+<span class="sd">        The one-body part of the full Hamiltonian, written in terms of the bare</span>
+<span class="sd">        interaction tensors.</span>
+
+<span class="sd">    .. attribute:: ham</span>
+
+<span class="sd">        The most frequently used form of the Hamiltonian, written in terms of</span>
+<span class="sd">        Fock matrix and the two-body interaction tensor.</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DEFAULT_PART_DUMMS</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Symbol</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="s1">&#39;abcd&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;a</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">DEFAULT_HOLE_DUMMS</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Symbol</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="s1">&#39;ijkl&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;i</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="PartHoleDrudge.__init__"><a class="viewcode-back" href="../../api/problems.html#drudge.PartHoleDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">op_label</span><span class="o">=</span><span class="s1">&#39;c&#39;</span><span class="p">,</span>
+                 <span class="n">part_orb</span><span class="o">=</span><span class="p">(</span><span class="n">Range</span><span class="p">(</span><span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;nv&#39;</span><span class="p">)),</span> <span class="n">DEFAULT_PART_DUMMS</span><span class="p">),</span>
+                 <span class="n">hole_orb</span><span class="o">=</span><span class="p">(</span><span class="n">Range</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;no&#39;</span><span class="p">)),</span> <span class="n">DEFAULT_HOLE_DUMMS</span><span class="p">),</span>
+                 <span class="n">spin</span><span class="o">=</span><span class="p">(),</span>
+                 <span class="n">one_body</span><span class="o">=</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;t&#39;</span><span class="p">),</span> <span class="n">two_body</span><span class="o">=</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">),</span>
+                 <span class="n">fock</span><span class="o">=</span><span class="n">IndexedBase</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">),</span>
+                 <span class="n">dbbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the particle-hole drudge.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">part_range</span> <span class="o">=</span> <span class="n">part_orb</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hole_range</span> <span class="o">=</span> <span class="n">hole_orb</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">exch</span><span class="o">=</span><span class="n">FERMI</span><span class="p">,</span> <span class="n">op_label</span><span class="o">=</span><span class="n">op_label</span><span class="p">,</span>
+                         <span class="n">orb</span><span class="o">=</span><span class="p">(</span><span class="n">part_orb</span><span class="p">,</span> <span class="n">hole_orb</span><span class="p">),</span> <span class="n">spin</span><span class="o">=</span><span class="n">spin</span><span class="p">,</span>
+                         <span class="n">one_body</span><span class="o">=</span><span class="n">one_body</span><span class="p">,</span> <span class="n">two_body</span><span class="o">=</span><span class="n">two_body</span><span class="p">,</span> <span class="n">dbbar</span><span class="o">=</span><span class="n">dbbar</span><span class="p">,</span>
+                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">full_ham</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ham</span>
+        <span class="n">full_ham</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_ham</span> <span class="o">=</span> <span class="n">full_ham</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ham_energy</span> <span class="o">=</span> <span class="n">full_ham</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">term</span><span class="p">:</span> <span class="n">term</span><span class="o">.</span><span class="n">is_scalar</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">one_body_ham</span> <span class="o">=</span> <span class="n">full_ham</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">term</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="n">two_body_ham</span> <span class="o">=</span> <span class="n">full_ham</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">term</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">vecs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">)</span>
+
+        <span class="c1"># We need to rewrite the one-body part in terms of Fock matrices.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fock</span> <span class="o">=</span> <span class="n">fock</span>
+        <span class="n">one_body_terms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_body_ham</span><span class="o">.</span><span class="n">local_terms</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">amp</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">one_body</span><span class="p">):</span>
+                <span class="n">one_body_terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">subst</span><span class="p">({</span><span class="n">one_body</span><span class="p">:</span> <span class="n">fock</span><span class="p">}))</span>
+            <span class="k">continue</span>
+        <span class="n">rewritten_one_body_ham</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_tensor</span><span class="p">(</span><span class="n">one_body_terms</span><span class="p">)</span>
+
+        <span class="n">ham</span> <span class="o">=</span> <span class="n">rewritten_one_body_ham</span> <span class="o">+</span> <span class="n">two_body_ham</span>
+        <span class="n">ham</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ham</span> <span class="o">=</span> <span class="n">ham</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_tensor_method</span><span class="p">(</span><span class="s1">&#39;eval_fermi_vev&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_fermi_vev</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">no</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hole_range</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">nv</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">part_range</span><span class="o">.</span><span class="n">size</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">op_parser</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the special operator parser for particle-hole problems.</span>
+
+<span class="sd">        Here when the first index to the operator is resolved to be a hole</span>
+<span class="sd">        state, the creation/annihilation character of the operator will be</span>
+<span class="sd">        flipped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">resolvers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolvers</span>
+        <span class="n">hole_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hole_range</span>
+
+        <span class="k">def</span> <span class="nf">parse_parthole_ops</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="n">Term</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Parse the operator for particle/hole field operator.&quot;&quot;&quot;</span>
+            <span class="n">label</span><span class="p">,</span> <span class="n">char</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">parse_field_op</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+            <span class="n">orb_range</span> <span class="o">=</span> <span class="n">try_resolve_range</span><span class="p">(</span>
+                <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">),</span> <span class="n">resolvers</span><span class="o">.</span><span class="n">value</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">orb_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid orbit value&#39;</span><span class="p">,</span> <span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                 <span class="s1">&#39;expecting particle or hole&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">orb_range</span> <span class="o">==</span> <span class="n">hole_range</span><span class="p">:</span>
+                <span class="n">char</span> <span class="o">=</span> <span class="n">AN</span> <span class="k">if</span> <span class="n">char</span> <span class="o">==</span> <span class="n">CR</span> <span class="k">else</span> <span class="n">CR</span>
+            <span class="k">return</span> <span class="n">label</span><span class="p">,</span> <span class="n">char</span><span class="p">,</span> <span class="n">indices</span>
+
+        <span class="k">return</span> <span class="n">parse_parthole_ops</span>
+
+<div class="viewcode-block" id="PartHoleDrudge.eval_fermi_vev"><a class="viewcode-back" href="../../api/problems.html#drudge.PartHoleDrudge.eval_fermi_vev">[docs]</a>    <span class="k">def</span> <span class="nf">eval_fermi_vev</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate expectation value with respect to Fermi vacuum.</span>
+
+<span class="sd">        This is just an alias to the actual :py:meth:`FockDrudge.eval_phys_vev`</span>
+<span class="sd">        method to avoid confusion about the terminology in particle-hole</span>
+<span class="sd">        problems.  And it is set as a tensor method by the same name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_phys_vev</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PartHoleDrudge.parse_tce"><a class="viewcode-back" href="../../api/problems.html#drudge.PartHoleDrudge.parse_tce">[docs]</a>    <span class="k">def</span> <span class="nf">parse_tce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tce_out</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                  <span class="n">cc_bases</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">IndexedBase</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Parse TCE output into a tensor.</span>
+
+<span class="sd">        The CC amplitude bases should be given as a dictionary mapping from the</span>
+<span class="sd">        excitation order to the actual base.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">range_cb</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;The range call-back.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">part_range</span> <span class="k">if</span> <span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;p&#39;</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">hole_range</span>
+
+        <span class="k">def</span> <span class="nf">base_cb</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Get the indexed base for a name in TCE output.&quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fock</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;v&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_body</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">cc_bases</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid base&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s1">&#39;in TCE output.&#39;</span><span class="p">)</span>
+
+        <span class="n">terms</span><span class="p">,</span> <span class="n">free_vars</span> <span class="o">=</span> <span class="n">parse_tce_out</span><span class="p">(</span><span class="n">tce_out</span><span class="p">,</span> <span class="n">range_cb</span><span class="p">,</span> <span class="n">base_cb</span><span class="p">)</span>
+
+        <span class="c1"># Here we assume that the symbols from directly conversion from TCE</span>
+        <span class="c1"># output will not conflict with the canonical dummies.</span>
+        <span class="n">substs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">range_</span><span class="p">,</span> <span class="n">symbs</span> <span class="ow">in</span> <span class="n">free_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="nb">sorted</span><span class="p">(</span><span class="n">symbs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">:])),</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="n">range_</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="n">substs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">j</span>
+                <span class="k">continue</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_tensor</span><span class="p">([</span><span class="n">i</span><span class="o">.</span><span class="n">subst</span><span class="p">(</span><span class="n">substs</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">terms</span><span class="p">])</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">SpinOneHalf</span><span class="p">(</span><span class="n">EnumSymbs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Labels for an orthogonal basis for a spin one-half particle.</span>
+
+<span class="sd">    It values, which can be accessed as the class or module attributes ``UP``</span>
+<span class="sd">    and ``DOWN``, can optionally be used to denote the direction of a spin</span>
+<span class="sd">    one-half particle.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_symbs_</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;UP&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\uparrow&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;DOWN&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\downarrow&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+
+
+<span class="n">UP</span> <span class="o">=</span> <span class="n">SpinOneHalf</span><span class="o">.</span><span class="n">UP</span>
+<span class="n">DOWN</span> <span class="o">=</span> <span class="n">SpinOneHalf</span><span class="o">.</span><span class="n">DOWN</span>
+
+
+<div class="viewcode-block" id="SpinOneHalfGenDrudge"><a class="viewcode-back" href="../../api/problems.html#drudge.SpinOneHalfGenDrudge">[docs]</a><span class="k">class</span> <span class="nc">SpinOneHalfGenDrudge</span><span class="p">(</span><span class="n">GenMBDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for many-body problems of particles with explicit 1/2 spin.</span>
+
+<span class="sd">    This is just a shallow subclass of the drudge for general many-body</span>
+<span class="sd">    problems, with exchange set to fermi and has explicit spin values of</span>
+<span class="sd">    :py:data:`UP` and :py:data:`DOWN`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SpinOneHalfGenDrudge.__init__"><a class="viewcode-back" href="../../api/problems.html#drudge.SpinOneHalfGenDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the drudge object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">exch</span><span class="o">=</span><span class="n">FERMI</span><span class="p">,</span> <span class="n">spin</span><span class="o">=</span><span class="p">[</span><span class="n">UP</span><span class="p">,</span> <span class="n">DOWN</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="SpinOneHalfPartHoleDrudge"><a class="viewcode-back" href="../../api/problems.html#drudge.SpinOneHalfPartHoleDrudge">[docs]</a><span class="k">class</span> <span class="nc">SpinOneHalfPartHoleDrudge</span><span class="p">(</span><span class="n">PartHoleDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for the particle-hole problems with explicit one-half spin.</span>
+
+<span class="sd">    This is a shallow subclass over the general particle-hole drudge without</span>
+<span class="sd">    explicit spin.  The spin values are given explicitly, which are set to</span>
+<span class="sd">    :py:data:`UP` and :py:data:`DOWN` by default.  And the double-bar of the</span>
+<span class="sd">    two-body interaction is disabled.  And some additional dummies traditional</span>
+<span class="sd">    in the field are also added.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SpinOneHalfPartHoleDrudge.__init__"><a class="viewcode-back" href="../../api/problems.html#drudge.SpinOneHalfPartHoleDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+            <span class="n">part_orb</span><span class="o">=</span><span class="p">(</span>
+                    <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;nv&#39;</span><span class="p">)),</span>
+                    <span class="n">PartHoleDrudge</span><span class="o">.</span><span class="n">DEFAULT_PART_DUMMS</span> <span class="o">+</span> <span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;beta gamma&#39;</span><span class="p">)</span>
+            <span class="p">),</span>
+            <span class="n">hole_orb</span><span class="o">=</span><span class="p">(</span>
+                    <span class="n">Range</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;no&#39;</span><span class="p">)),</span>
+                    <span class="n">PartHoleDrudge</span><span class="o">.</span><span class="n">DEFAULT_HOLE_DUMMS</span> <span class="o">+</span> <span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;u v&#39;</span><span class="p">)</span>
+            <span class="p">),</span> <span class="n">spin</span><span class="o">=</span><span class="p">(</span><span class="n">UP</span><span class="p">,</span> <span class="n">DOWN</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the particle-hole drudge.&quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">spin</span><span class="o">=</span><span class="n">spin</span><span class="p">,</span> <span class="n">dbbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">part_orb</span><span class="o">=</span><span class="n">part_orb</span><span class="p">,</span> <span class="n">hole_orb</span><span class="o">=</span><span class="n">hole_orb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RestrictedPartHoleDrudge"><a class="viewcode-back" href="../../api/problems.html#drudge.RestrictedPartHoleDrudge">[docs]</a><span class="k">class</span> <span class="nc">RestrictedPartHoleDrudge</span><span class="p">(</span><span class="n">SpinOneHalfPartHoleDrudge</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drudge for the particle-hole problems on restricted reference.</span>
+
+<span class="sd">    Similar to :py:class:`SpinOneHalfPartHoldDrudge`, this drudge deals with</span>
+<span class="sd">    particle-hole problems with explicit one-half spin.  However, here the spin</span>
+<span class="sd">    quantum number is summed symbolically.  This gives **much** faster</span>
+<span class="sd">    derivations for theories based on restricted reference, but offers less</span>
+<span class="sd">    flexibility.</span>
+
+<span class="sd">    .. attribute:: spin_range</span>
+
+<span class="sd">        The symbolic range for spin values.</span>
+
+<span class="sd">    .. attribute:: spin_dumms</span>
+
+<span class="sd">        The dummies for the spin quantum number.</span>
+
+<span class="sd">    .. attribute:: e_</span>
+
+<span class="sd">        Tensor definition for the unitary group generators.  It should be</span>
+<span class="sd">        indexed with the upper and lower indices to the :math:`E` operator.  It</span>
+<span class="sd">        is also registered in the name archive as ``e_``.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RestrictedPartHoleDrudge.__init__"><a class="viewcode-back" href="../../api/problems.html#drudge.RestrictedPartHoleDrudge.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+            <span class="n">spin_range</span><span class="o">=</span><span class="n">Range</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\uparrow\downarrow&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">spin_dumms</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;sigma</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">)),</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the restricted particle-hole drudge.&quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">spin</span><span class="o">=</span><span class="p">(</span><span class="n">spin_range</span><span class="p">,</span> <span class="n">spin_dumms</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_resolver</span><span class="p">({</span>
+            <span class="n">UP</span><span class="p">:</span> <span class="n">spin_range</span><span class="p">,</span>
+            <span class="n">DOWN</span><span class="p">:</span> <span class="n">spin_range</span>
+        <span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spin_range</span> <span class="o">=</span> <span class="n">spin_range</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spin_dumms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="n">spin_range</span><span class="p">]</span>
+
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dumms</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="n">spin_range</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;p&#39;</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;q&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">e_</span> <span class="o">=</span> <span class="n">TensorDef</span><span class="p">(</span><span class="n">Vec</span><span class="p">(</span><span class="s1">&#39;E&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">spin_range</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cr</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">sigma</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="p">[</span><span class="n">q</span><span class="p">,</span> <span class="n">sigma</span><span class="p">]</span>
+        <span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">e_</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">e_</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

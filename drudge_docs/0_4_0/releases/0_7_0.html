@@ -1,0 +1,127 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>0.7.0 &#8212; drudge 0.9.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.9.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="0.8.0" href="0_8_0.html" />
+    <link rel="prev" title="0.6.0" href="0_6_0.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="id1">
+<h1>0.7.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>This releases adds some convenience operations defined for tensorial objects,
+like direct negation and division by scalars.  For instance, to negate a tensor
+<code class="docutils literal"><span class="pre">t</span></code>, now we can just write <code class="docutils literal"><span class="pre">-t</span></code> instead of the more cumbersome <code class="docutils literal"><span class="pre">-1</span> <span class="pre">*</span> <span class="pre">t</span></code>.
+Similarly, to divide it by two, we can now just write <code class="docutils literal"><span class="pre">t</span> <span class="pre">/</span> <span class="pre">2</span></code>, compared with
+the previous syntax of:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">t</span> <span class="o">*</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Rational</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The examples for CC theories are also updated for the new syntax.  And some
+other convenience enhancements are added.  For instance, now LaTeX or pdf report
+can directly be generated, with the structure of the report more flexible and
+tunable.  And the LaTeX formatting is enhanced with more options to fine tune
+its behaviour.  Also <code class="docutils literal"><span class="pre">memoize</span></code> method is added to the <code class="docutils literal"><span class="pre">Drudge</span></code> class for the
+convenience of caching intermediate results.</p>
+<p>Also multiple bugs are fixed,</p>
+<ul class="simple">
+<li>Now the code no longer crashes when a deltas contains no dummy.</li>
+<li>Incorrectness from highly cyclic delta resolution result is fixed.</li>
+<li>The dummies in simplified result for particle-hole problems are made
+conventional.</li>
+<li>Simplification of <code class="docutils literal"><span class="pre">TensorDef</span></code> now resets external dummies as well.</li>
+<li>Core dependency <code class="docutils literal"><span class="pre">libcanon</span></code> is updated to 0.1.2 such that the erroneous
+requirement of twice simplification for some complex expressions is fixed.</li>
+<li>A PySpark bug in <code class="docutils literal"><span class="pre">reduce</span></code> is circumvented by doing boolean reduction
+locally.</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../releases.html">Release history</a><ul>
+      <li>Previous: <a href="0_6_0.html" title="previous chapter">0.6.0</a></li>
+      <li>Next: <a href="0_8_0.html" title="next chapter">0.8.0</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/releases/0_7_0.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/releases/0_7_0.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,536 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>drudge.utils &#8212; drudge 0.3.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for drudge.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Small utilities.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="k">import</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">RDD</span><span class="p">,</span> <span class="n">SparkContext</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">sympify</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">SympifyError</span><span class="p">,</span> <span class="n">count_ops</span><span class="p">,</span> <span class="n">default_sort_key</span><span class="p">,</span>
+    <span class="n">AtomicExpr</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">S</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sympy.core.assumptions</span> <span class="k">import</span> <span class="n">ManagedProperties</span>
+<span class="kn">from</span> <span class="nn">sympy.core.sympify</span> <span class="k">import</span> <span class="n">CantSympify</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># SymPy utilities</span>
+<span class="c1"># ---------------</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">ensure_sympify</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">expected_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sympify the given object with checking and error reporting.</span>
+
+<span class="sd">    This is a shallow wrapper over SymPy sympify function to have error</span>
+<span class="sd">    reporting in consistent style and an optional type checking.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">header</span> <span class="o">=</span> <span class="s1">&#39;Invalid </span><span class="si">{}</span><span class="s1">: &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">role</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sympified</span> <span class="o">=</span> <span class="n">sympify</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">SympifyError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;failed to be simpified&#39;</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">expected_type</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sympified</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sympified</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">sympified</span><span class="p">,</span> <span class="s1">&#39;expecting&#39;</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_symb</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sympify the given object into a symbol.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ensure_sympify</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_expr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sympify the given object into an expression.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ensure_sympify</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">sympy_key</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the key for ordering SymPy expressions.</span>
+
+<span class="sd">    This function assumes that the given expression is already sympified.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">count_ops</span><span class="p">(</span><span class="n">expr</span><span class="p">),</span> <span class="n">default_sort_key</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">is_higher</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">priority</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test if the object has higher operation priority.</span>
+
+<span class="sd">    When the given object does not have defined priority, it is considered</span>
+<span class="sd">    lower.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;_op_priority&#39;</span><span class="p">,</span> <span class="n">priority</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">priority</span>
+
+
+<span class="k">class</span> <span class="nc">NonsympifiableFunc</span><span class="p">(</span><span class="n">CantSympify</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Utility for wrapping callable to be used for SymPy.</span>
+
+<span class="sd">    Inside SymPy functions like replace, things will first be attempted to be</span>
+<span class="sd">    sympified, which can be very expensive.  By wrapping callable inside this</span>
+<span class="sd">    class, sympification attempts will be aborted very early on.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;_func&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the object.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Dispatch to the wrapped callable.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_EnumSymbsMeta</span><span class="p">(</span><span class="n">ManagedProperties</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The meta class for enumeration symbols.</span>
+
+<span class="sd">    The primary purpose of this metaclass is to set the concrete singleton</span>
+<span class="sd">    values from the enumerated symbols set in the class body.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">SYMBS_INPUT</span> <span class="o">=</span> <span class="s1">&#39;_symbs_&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create the new concrete symbols class.&quot;&quot;&quot;</span>
+
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mcs</span><span class="o">.</span><span class="n">SYMBS_INPUT</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;Cannot find attribute &#39;</span> <span class="o">+</span> <span class="n">mcs</span><span class="o">.</span><span class="n">SYMBS_INPUT</span><span class="p">)</span>
+
+        <span class="n">symbs</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mcs</span><span class="o">.</span><span class="n">SYMBS_INPUT</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">symbs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Base class.</span>
+            <span class="k">return</span> <span class="bp">cls</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">symbs</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid symbols&#39;</span><span class="p">,</span> <span class="n">symbs</span><span class="p">,</span> <span class="s1">&#39;expecting a sequence&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">symbs</span><span class="p">:</span>
+            <span class="n">invalid</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">i</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">invalid</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;Invalid symbol&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span>
+                    <span class="s1">&#39;expecting pairs of identifier and LaTeX form.&#39;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid symbols &#39;</span><span class="p">,</span> <span class="n">symbs</span><span class="p">,</span> <span class="s1">&#39;expecting multiple of them&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbs</span><span class="p">):</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+
+<span class="k">class</span> <span class="nc">EnumSymbs</span><span class="p">(</span><span class="n">AtomicExpr</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">_EnumSymbsMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base class for enumeration symbols.</span>
+
+<span class="sd">    Subclasses can set `_symbs_` inside the class body to be a sequence of</span>
+<span class="sd">    string pairs.  Then attributes named after the first field of the pairs will</span>
+<span class="sd">    be created, with the LaTeX form controlled by the second pair.</span>
+
+<span class="sd">    The resulted values are valid SymPy expressions.  They are ordered according</span>
+<span class="sd">    to their order in the given enumeration sequence.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_symbs_</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">_VAL_FIELD</span> <span class="o">=</span> <span class="s1">&#39;_val_index&#39;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="n">_VAL_FIELD</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val_index</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the concrete symbol object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbs_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Base EnumSymbs class cannot be instantiated&#39;</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_VAL_FIELD</span><span class="p">,</span> <span class="n">val_index</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The argument for SymPy.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_VAL_FIELD</span><span class="p">)),</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the string representation of the symbol.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbs_</span><span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_VAL_FIELD</span><span class="p">)][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the machine readable string representation.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)])</span>
+
+    <span class="n">_op_priority</span> <span class="o">=</span> <span class="mf">20.0</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test two values for equality.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Hash the concrete symbol object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test two values for less than order.</span>
+
+<span class="sd">        The order will be based on the order given in the class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span>
+
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test two values for greater than.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">&gt;</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Subtract the current value with another.</span>
+
+<span class="sd">        This method is mainly to be able to work together with the Kronecker</span>
+<span class="sd">        delta class from SymPy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid operation for &#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span>
+                <span class="s1">&#39;concrete symbols can only be subtracted for the same type&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">sort_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_key</span><span class="p">(),</span>
+            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">sort_key</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">)),</span>
+            <span class="n">S</span><span class="o">.</span><span class="n">One</span><span class="o">.</span><span class="n">sort_key</span><span class="p">(),</span> <span class="n">S</span><span class="o">.</span><span class="n">One</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_latex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print itself as LaTeX code.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbs_</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="mi">1</span><span class="p">]</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Spark utilities</span>
+<span class="c1"># ---------------</span>
+<span class="c1">#</span>
+
+
+<span class="k">class</span> <span class="nc">BCastVar</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Automatically broadcast variables.</span>
+
+<span class="sd">    This class is a shallow encapsulation of a variable and its broadcast</span>
+<span class="sd">    into the spark context.  The variable can be redistributed automatically</span>
+<span class="sd">    after any change.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;_ctx&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_var&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_bcast&#39;</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">SparkContext</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the broadcast variable.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span> <span class="o">=</span> <span class="n">ctx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_var</span> <span class="o">=</span> <span class="n">var</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bcast</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the variable to mutate.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bcast</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ro</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the variable, read-only.</span>
+
+<span class="sd">        Note that this function only prevents the redistribution of the</span>
+<span class="sd">        variable.  It cannot force the variable not be mutated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bcast</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the broadcast variable.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bcast</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcast</span>
+
+
+<span class="k">def</span> <span class="nf">nest_bind</span><span class="p">(</span><span class="n">rdd</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">full_balance</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Nest the flat map of the given function.</span>
+
+<span class="sd">    When an entry no longer need processing, None can be returned by the call</span>
+<span class="sd">    back function.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">full_balance</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_nest_bind_full_balance</span><span class="p">(</span><span class="n">rdd</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_nest_bind_no_balance</span><span class="p">(</span><span class="n">rdd</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_nest_bind_full_balance</span><span class="p">(</span><span class="n">rdd</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Nest the flat map of the given function with full load balancing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ctx</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">context</span>
+
+    <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Wrapped function for nest bind.&quot;&quot;&quot;</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">vals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="kc">False</span><span class="p">,</span> <span class="n">obj</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="kc">True</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">]</span>
+
+    <span class="n">curr</span> <span class="o">=</span> <span class="n">rdd</span>
+    <span class="n">curr</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">while</span> <span class="n">curr</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">step_res</span> <span class="o">=</span> <span class="n">curr</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="n">wrapped</span><span class="p">)</span>
+        <span class="n">step_res</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="n">new_entries</span> <span class="o">=</span> <span class="n">step_res</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="ow">not</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">new_entries</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_entries</span><span class="p">)</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="n">step_res</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">curr</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+        <span class="k">continue</span>
+
+    <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_nest_bind_no_balance</span><span class="p">(</span><span class="n">rdd</span><span class="p">:</span> <span class="n">RDD</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Nest the flat map of the given function without load balancing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Wrapped function for nest bind.&quot;&quot;&quot;</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="p">]</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">curr</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">new_curr</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">curr</span><span class="p">:</span>
+                <span class="n">step_res</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">step_res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">new_curr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">step_res</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">curr</span> <span class="o">=</span> <span class="n">new_curr</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">return</span> <span class="n">rdd</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="n">wrapped</span><span class="p">)</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Misc utilities</span>
+<span class="c1"># --------------</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">ensure_pair</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">role</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Ensures that the given object is a pair.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid </span><span class="si">{}</span><span class="s1">: &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">role</span><span class="p">),</span> <span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;expecting pair&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Small user utilities</span>
+<span class="c1"># --------------------</span>
+<span class="c1">#</span>
+
+<div class="viewcode-block" id="sum_"><a class="viewcode-back" href="../../api/base.html#drudge.sum_">[docs]</a><span class="k">def</span> <span class="nf">sum_</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sum the values in the given iterable.</span>
+
+<span class="sd">    Different from the built-in summation function, here a value zero is created</span>
+<span class="sd">    only when the iterator is empty.  Or the summation is based on the first</span>
+<span class="sd">    item in the iterable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">init</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="prod_"><a class="viewcode-back" href="../../api/base.html#drudge.prod_">[docs]</a><span class="k">def</span> <span class="nf">prod_</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Product the values in the given iterable.</span>
+
+<span class="sd">    Similar to the summation utility function, here the initial value for the</span>
+<span class="sd">    reduction is the first element.  Different from the summation, here</span>
+<span class="sd">    a integer unity will be returned for empty iterator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">init</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Stopwatch"><a class="viewcode-back" href="../../api/base.html#drudge.Stopwatch">[docs]</a><span class="k">class</span> <span class="nc">Stopwatch</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Utility class for printing timing information.</span>
+
+<span class="sd">    This class helps to timing the progression of batch jobs.  It is capable of</span>
+<span class="sd">    getting and formatting the elapsed wall time between consecutive steps.</span>
+<span class="sd">    Note that the timing here might not be accurate to one second.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Stopwatch.__init__"><a class="viewcode-back" href="../../api/base.html#drudge.Stopwatch.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">print_cb</span><span class="o">=</span><span class="nb">print</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the stopwatch.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        print_cb</span>
+<span class="sd">            The function will be called with the formatted time-stamp.  By</span>
+<span class="sd">            default, it will just be written to stdout.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print</span> <span class="o">=</span> <span class="n">print_cb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tick</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Stopwatch.tick"><a class="viewcode-back" href="../../api/base.html#drudge.Stopwatch.tick">[docs]</a>    <span class="k">def</span> <span class="nf">tick</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reset the timer.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Stopwatch.tock"><a class="viewcode-back" href="../../api/base.html#drudge.Stopwatch.tock">[docs]</a>    <span class="k">def</span> <span class="nf">tock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Make a timestamp.</span>
+
+<span class="sd">        The formatted timestamp will be given to the callback of the current</span>
+<span class="sd">        stamper.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        label</span>
+<span class="sd">            The label for the current step.</span>
+
+<span class="sd">        tensor</span>
+<span class="sd">            When a tensor is given, it will be cached, counted its number of</span>
+<span class="sd">            terms.  This method has this parameter since if no reduction is</span>
+<span class="sd">            performed on the tensor, it might remain unevaluated inside Spark</span>
+<span class="sd">            and give misleading timing information.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">tensor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tensor</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+            <span class="n">n_terms</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> terms, &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">n_terms</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_terms</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">elapse</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="n">now</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print</span><span class="p">(</span>
+            <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> done, </span><span class="si">{}</span><span class="s1">wall time: </span><span class="si">{:.2f}</span><span class="s1"> s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">n_terms</span><span class="p">,</span> <span class="n">elapse</span><span class="p">)</span>
+        <span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
