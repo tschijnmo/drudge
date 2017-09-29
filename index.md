@@ -139,6 +139,6 @@ the U.S. Department of Energy, Office of Science, Basic Energy Sciences under
 Award DE-SC0012575.
 
 
-<script type="text/javascript"
-    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
+<script
+src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+type="text/javascript"></script>
