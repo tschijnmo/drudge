@@ -576,6 +576,9 @@ class GenMBDrudge(FockDrudge):
             The indexed base for the amplitude in the one-body part of the
             Hamiltonian.  It will also be added to the name archive.
 
+            For developers: if it is given as None, the Hamiltonian will not be
+            built.
+
         two_body
             The indexed base for the two-body part of the Hamiltonian.  It will
             also be added to the name archive.
@@ -586,6 +589,12 @@ class GenMBDrudge(FockDrudge):
         """
 
         super().__init__(*args, exch=exch, **kwargs)
+
+        #
+        # Setting configuration.
+        #
+
+        self.default_einst = True
 
         #
         # Create the field operator
@@ -604,9 +613,7 @@ class GenMBDrudge(FockDrudge):
         })
 
         #
-        # Hamiltonian creation
-        #
-        # Other aspects of the model will also be set during this stage.
+        # Ranges, dummies, and spins.
         #
 
         orb_ranges = []
@@ -671,7 +678,15 @@ class GenMBDrudge(FockDrudge):
         orb_sums = [(i, orb_ranges) for i in orb_dumms]
         spin_sums = [(i, spin_range) for i in spin_dumms]
 
+        #
         # Actual Hamiltonian building.
+        #
+        # It is disabled by a None one-body part.  Nothing should come after
+        # this.
+        #
+
+        if one_body is None:
+            return
 
         self.one_body = one_body
         self.set_name(one_body)  # No symmetry for it.
@@ -727,8 +742,6 @@ class GenMBDrudge(FockDrudge):
 
         simpled_ham = orig_ham.simplify()
         self.ham = simpled_ham
-
-        self.default_einst = True
 
 
 class PartHoleDrudge(GenMBDrudge):
