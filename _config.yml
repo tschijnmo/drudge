@@ -1,8 +1,13 @@
-theme: jekyll-theme-minimal
+theme: minima
 
-title: Drudge / gristmill
+title: Drudge / Gristmill
+author: Jinmo Zhao
+email: tschijnmotschau@gmail.com
+github_username: tschijnmo
 description: >
     Symbolic tensor and non-commutative algebra with powerful automatic code
     generation and optimization
 
 include: ['_static']
+
+header_pages: ['install.md', 'docs.md', 'news.html']

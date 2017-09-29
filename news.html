@@ -1,0 +1,19 @@
+---
+title: News
+layout: page
+---
+
+<h1>Drudge/Gristmill News</h1>
+
+<p>All latest announcements for the drudge/gristmill stack and the usage tips
+can be found here.</p>
+
+<ul>
+  {% for post in site.posts %}
+    <li>
+      <a href="{{ post.url }}">{{ post.title }}</a>
+      {{ post.excerpt }}
+    </li>
+  {% endfor %}
+</ul>
+
