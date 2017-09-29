@@ -1,0 +1,556 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gristmill.utils &#8212; gristmill 0.4.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gristmill.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;General utilities.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">drudge</span> <span class="k">import</span> <span class="n">prod_</span><span class="p">,</span> <span class="n">TensorDef</span>
+<span class="kn">from</span> <span class="nn">jinja2</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Environment</span><span class="p">,</span> <span class="n">PackageLoader</span><span class="p">,</span> <span class="n">ChoiceLoader</span><span class="p">,</span> <span class="n">DictLoader</span><span class="p">,</span> <span class="n">contextfilter</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">Poly</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Mul</span><span class="p">,</span> <span class="n">poly_from_expr</span><span class="p">,</span> <span class="n">Number</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Cost-related utilities.</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">get_cost_key</span><span class="p">(</span><span class="n">cost</span><span class="p">:</span> <span class="n">Expr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the key for ordering the cost.</span>
+
+<span class="sd">    The cost should be a polynomial of at most one undetermined variable.  The</span>
+<span class="sd">    result gives ordering of the cost agreeing with our common sense.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">symbs</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">)</span>
+    <span class="n">n_symbs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">n_symbs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="n">cost</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">n_symbs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">symb</span> <span class="o">=</span> <span class="n">symbs</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">coeffs</span> <span class="o">=</span> <span class="n">Poly</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">symb</span><span class="p">)</span><span class="o">.</span><span class="n">all_coeffs</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">coeffs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">coeffs</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;Invalid cost to compare&#39;</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span>
+            <span class="s1">&#39;expecting univariate polynomial or number&#39;</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">add_costs</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add the arguments as costs.</span>
+
+<span class="sd">    Here when one of the operand is unity, it will be taken as a zero in the</span>
+<span class="sd">    summation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">i</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span>
+
+
+<span class="k">def</span> <span class="nf">get_total_size</span><span class="p">(</span><span class="n">sums</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Expr</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Get the total size of a summation list.&quot;&quot;&quot;</span>
+
+    <span class="n">size</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sums</span><span class="p">:</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">if</span> <span class="n">curr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid range for optimization&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span>
+                <span class="s1">&#39;expecting a bound range.&#39;</span>
+            <span class="p">)</span>
+        <span class="n">size</span> <span class="o">*=</span> <span class="n">curr</span>
+        <span class="k">continue</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">Expr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">size</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid total size&#39;</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="s1">&#39;from sums&#39;</span><span class="p">,</span> <span class="n">sums</span><span class="p">)</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Public cost computation function.</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="get_flop_cost"><a class="viewcode-back" href="../../api.html#gristmill.get_flop_cost">[docs]</a><span class="k">def</span> <span class="nf">get_flop_cost</span><span class="p">(</span>
+        <span class="n">eval_seq</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="n">TensorDef</span><span class="p">],</span> <span class="n">leading</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ignore_consts</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the FLOP cost for the given evaluation sequence.</span>
+
+<span class="sd">    This function gives the count of floating-point operations, addition and</span>
+<span class="sd">    multiplication, involved by the evaluation sequence.  Note that the cost of</span>
+<span class="sd">    copying and initialization are not counted.  And this function is only</span>
+<span class="sd">    applicable where the amplitude of the terms are simple products.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    eval_seq</span>
+<span class="sd">        The evaluation sequence whose FLOP cost is to be estimated.  It should</span>
+<span class="sd">        be given as an iterable of tensor definitions.</span>
+
+<span class="sd">    leading</span>
+<span class="sd">        If only the cost terms with leading scaling be given.  When multiple</span>
+<span class="sd">        symbols are present in the range sizes, terms with the highest total</span>
+<span class="sd">        scaling is going to be picked.</span>
+
+<span class="sd">    ignore_consts</span>
+<span class="sd">        If the cost of scaling with constants can be ignored.  :math:`2 x_i y_j`</span>
+<span class="sd">        could count as just one FLOP when it is set, otherwise it would be two.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">cost</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">_get_flop_cost</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">ignore_consts</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">eval_seq</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_get_leading</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span> <span class="k">if</span> <span class="n">leading</span> <span class="k">else</span> <span class="n">cost</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_flop_cost</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">ignore_consts</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the FLOP cost of a tensor evaluation step.&quot;&quot;&quot;</span>
+
+    <span class="n">ext_size</span> <span class="o">=</span> <span class="n">get_total_size</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">exts</span><span class="p">)</span>
+
+    <span class="n">cost</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">n_terms</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">rhs_terms</span><span class="p">:</span>
+        <span class="n">sum_size</span> <span class="o">=</span> <span class="n">get_total_size</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="p">,</span> <span class="n">Mul</span><span class="p">):</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="o">.</span><span class="n">args</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">amp</span><span class="p">,)</span>
+
+        <span class="k">if</span> <span class="n">ignore_consts</span><span class="p">:</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">factors</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Number</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Minus one should be implemented via subtraction, hence renders no</span>
+            <span class="c1"># multiplication cost.</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">factors</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">n_factors</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">factors</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">n_mult</span> <span class="o">=</span> <span class="n">n_factors</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n_factors</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">sum_size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">n_add</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_add</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">add_costs</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="p">(</span><span class="n">n_add</span> <span class="o">+</span> <span class="n">n_mult</span><span class="p">)</span> <span class="o">*</span> <span class="n">ext_size</span> <span class="o">*</span> <span class="n">sum_size</span><span class="p">)</span>
+        <span class="n">n_terms</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">continue</span>
+
+    <span class="k">if</span> <span class="n">n_terms</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">add_costs</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="p">(</span><span class="n">n_terms</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">ext_size</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cost</span>
+
+
+<span class="k">def</span> <span class="nf">_get_leading</span><span class="p">(</span><span class="n">cost</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the leading terms in a cost polynomial.&quot;&quot;&quot;</span>
+
+    <span class="n">symbs</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">atoms</span><span class="p">(</span><span class="n">Symbol</span><span class="p">))</span>
+    <span class="n">poly</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">poly_from_expr</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="o">*</span><span class="n">symbs</span><span class="p">)</span>
+    <span class="n">terms</span> <span class="o">=</span> <span class="n">poly</span><span class="o">.</span><span class="n">terms</span><span class="p">()</span>
+
+    <span class="n">leading_deg</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">terms</span><span class="p">)</span>
+    <span class="n">leading_cost</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="n">coeff</span> <span class="o">*</span> <span class="n">prod_</span><span class="p">(</span><span class="n">i</span> <span class="o">**</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">symbs</span><span class="p">,</span> <span class="n">degs</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">degs</span><span class="p">,</span> <span class="n">coeff</span> <span class="ow">in</span> <span class="n">terms</span>
+        <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">degs</span><span class="p">)</span> <span class="o">==</span> <span class="n">leading_deg</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">leading_cost</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Disjoint set forest.</span>
+<span class="c1">#</span>
+
+<span class="k">class</span> <span class="nc">DSF</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Disjoint sets forest.</span>
+
+<span class="sd">    This is a very simple implementation of the disjoint set forest data</span>
+<span class="sd">    structure for finding the inseparable chunks of factors for given ranges to</span>
+<span class="sd">    keep.  Heuristics of union by rank and path compression are both applied.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    _contents</span>
+<span class="sd">        The original contents of the nodes.  The object that was used for</span>
+<span class="sd">        building the node.  Note that this class is designed with hashable and</span>
+<span class="sd">        simple things like integers in mind.</span>
+
+<span class="sd">    _parents</span>
+<span class="sd">        The parent of the nodes.  Given as index in the contents list.</span>
+
+<span class="sd">    _ranks</span>
+<span class="sd">        The rank of the nodes.</span>
+
+<span class="sd">    _locs</span>
+<span class="sd">        The dictionary mapping the contents of the nodes into its location in</span>
+<span class="sd">        this data structure.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        contents</span>
+<span class="sd">            An iterable of the contents of the nodes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_locs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">contents</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_locs</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">continue</span>
+
+    <span class="k">def</span> <span class="nf">union</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Put the given contents into union.</span>
+
+<span class="sd">        Note that the nodes to be unioned are given in terms of their contents</span>
+<span class="sd">        rather than their index. Also contents missing in the forest will just</span>
+<span class="sd">        be **ignored**, which is what is needed for the case of inseparable</span>
+<span class="sd">        chunk finding.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        contents</span>
+<span class="sd">            An iterable of the contents that are going to be put into the same</span>
+<span class="sd">            set.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">represent</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># The set that other sets will be unioned to.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">contents</span><span class="p">:</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_locs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">represent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">represent</span> <span class="o">=</span> <span class="n">loc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_union_idxes</span><span class="p">(</span><span class="n">represent</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The disjoints sets as actual sets.</span>
+
+<span class="sd">        This property will convert the disjoint sets in the internal data</span>
+<span class="sd">        structure into an actual list of sets.  A list of sets will be given,</span>
+<span class="sd">        where each set contains the contents of the nodes in the subset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># A dictionary with the set representative *index* as key and the</span>
+        <span class="c1"># sets of the *contents* in the subset as values.</span>
+        <span class="n">sets_dict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">):</span>
+            <span class="n">sets_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_set</span><span class="p">(</span><span class="n">i</span><span class="p">)]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">sets_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_union_idxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx1</span><span class="p">,</span> <span class="n">idx2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Union the subsets that the two given indices are in.&quot;&quot;&quot;</span>
+
+        <span class="n">set1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_set</span><span class="p">(</span><span class="n">idx1</span><span class="p">)</span>
+        <span class="n">set2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_set</span><span class="p">(</span><span class="n">idx2</span><span class="p">)</span>
+        <span class="n">rank1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">set1</span><span class="p">]</span>
+        <span class="n">rank2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">set2</span><span class="p">]</span>
+
+        <span class="c1"># Union by rank.</span>
+        <span class="k">if</span> <span class="n">rank1</span> <span class="o">&gt;</span> <span class="n">rank2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="p">[</span><span class="n">set2</span><span class="p">]</span> <span class="o">=</span> <span class="n">set1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="p">[</span><span class="n">set1</span><span class="p">]</span> <span class="o">=</span> <span class="n">set2</span>
+            <span class="k">if</span> <span class="n">rank1</span> <span class="o">==</span> <span class="n">rank2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">set2</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_find_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Find the representative index of the subset the given index is in.&quot;&quot;&quot;</span>
+
+        <span class="n">parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">!=</span> <span class="n">parent</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_set</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Jinja environment creation</span>
+<span class="c1"># --------------------------</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">create_jinja_env</span><span class="p">(</span><span class="n">add_filters</span><span class="p">,</span> <span class="n">add_globals</span><span class="p">,</span> <span class="n">add_tests</span><span class="p">,</span> <span class="n">add_templ</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a Jinja environment for template rendering.</span>
+
+<span class="sd">    This function will create a Jinja environment suitable for rendering tensor</span>
+<span class="sd">    expressions.  Notably the templates will be retrieved from the ``templates``</span>
+<span class="sd">    directory in the package.  And some filters and predicates will be added,</span>
+<span class="sd">    including</span>
+
+<span class="sd">    wrap_line</span>
+<span class="sd">    form_indent</span>
+<span class="sd">    non_empty</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Set the Jinja environment up.</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span>
+        <span class="n">trim_blocks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lstrip_blocks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">keep_trailing_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">loader</span><span class="o">=</span><span class="n">ChoiceLoader</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">PackageLoader</span><span class="p">(</span><span class="s1">&#39;gristmill&#39;</span><span class="p">)]</span> <span class="o">+</span>
+            <span class="p">([</span><span class="n">DictLoader</span><span class="p">(</span><span class="n">add_templ</span><span class="p">)]</span> <span class="k">if</span> <span class="n">add_templ</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[])</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Add the default filters and tests for all printers.</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s1">&#39;wrap_line&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wrap_line</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s1">&#39;form_indent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">form_indent</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">tests</span><span class="p">[</span><span class="s1">&#39;non_empty&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">non_empty</span>
+
+    <span class="c1"># Add the additional globals, filters, and tests.</span>
+    <span class="k">if</span> <span class="n">add_globals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">globals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_globals</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">add_filters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_filters</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">add_tests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">tests</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_tests</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">env</span>
+
+
+<span class="k">def</span> <span class="nf">wrap_line</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">breakable_regex</span><span class="p">,</span> <span class="n">line_cont</span><span class="p">,</span>
+              <span class="n">base_indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_width</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">rewrap</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrap the given line within the given width.</span>
+
+<span class="sd">    This function is going to be exported to be used by template writers in</span>
+<span class="sd">    Jinja as a filter.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    line</span>
+<span class="sd">        The line to be wrapped.</span>
+
+<span class="sd">    breakable_regex</span>
+<span class="sd">        The regular expression giving the places where the line can be broke.</span>
+<span class="sd">        The parts in the regular expression that needs to be kept can be put in</span>
+<span class="sd">        a capturing parentheses.</span>
+
+<span class="sd">    line_cont</span>
+<span class="sd">        The string to be put by the end of line to indicate line continuation.</span>
+
+<span class="sd">    base_indent</span>
+<span class="sd">        The base indentation for the lines.</span>
+
+<span class="sd">    max_width</span>
+<span class="sd">        The maximum width of the lines to wrap the given line within.</span>
+
+<span class="sd">    rewrap</span>
+<span class="sd">        if the line is going to be rewrapped.</span>
+
+<span class="sd">    Return</span>
+<span class="sd">    ------</span>
+<span class="sd">    A list of lines for the breaking of the given line.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># First compute the width that is available for actual content.</span>
+    <span class="n">avail_width</span> <span class="o">=</span> <span class="n">max_width</span> <span class="o">-</span> <span class="n">base_indent</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">line_cont</span><span class="p">)</span>
+
+    <span class="c1"># Remove all the new lines and old line-continuation and indentation for</span>
+    <span class="c1"># rewrapping.</span>
+    <span class="k">if</span> <span class="n">rewrap</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="n">line_cont</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">s*</span><span class="se">\n\\</span><span class="s1">s*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">line</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Break the given line according to the given regular expression.</span>
+    <span class="n">trunks</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">breakable_regex</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+    <span class="c1"># Have a shallow check and issue warning.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">trunks</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">avail_width</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s1">&#39;Trunk </span><span class="si">{}</span><span class="s1"> is longer than the given width of </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">i</span><span class="p">,</span> <span class="n">max_width</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Longer width or finer partition can be given.&#39;</span><span class="p">)</span>
+        <span class="k">continue</span>
+
+    <span class="c1"># Actually break the list of trunks into lines.</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">curr_line</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">trunk</span> <span class="ow">in</span> <span class="n">trunks</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">curr_line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">curr_line</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">trunk</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">avail_width</span><span class="p">:</span>
+            <span class="c1"># When we are able to add the trunk to the current line. Note that</span>
+            <span class="c1"># when the current line is empty, the next trunk will be forced to</span>
+            <span class="c1"># be added.</span>
+            <span class="n">curr_line</span> <span class="o">+=</span> <span class="n">trunk</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># When the current line is already filled up.</span>
+            <span class="c1">#</span>
+            <span class="c1"># First dump the current line.</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr_line</span><span class="p">)</span>
+            <span class="c1"># Then add the current trunk at the beginning of the next line. The</span>
+            <span class="c1"># left spaces could be striped.</span>
+            <span class="n">curr_line</span> <span class="o">=</span> <span class="n">trunk</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+
+        <span class="c1"># Go on to the next trunk.</span>
+        <span class="k">continue</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># We need to add the trailing current line after all the loop.</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr_line</span><span class="p">)</span>
+
+    <span class="c1"># Before returning, we need to decorate the lines with indentation and</span>
+    <span class="c1"># continuation suffix.</span>
+    <span class="n">decorated</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="n">base_indent</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">line_cont</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+        <span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">decorated</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">non_empty</span><span class="p">(</span><span class="n">sequence</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test if a given sequence is non-empty.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+
+<span class="nd">@contextfilter</span>
+<span class="k">def</span> <span class="nf">form_indent</span><span class="p">(</span><span class="n">eval_ctx</span><span class="p">,</span> <span class="n">num</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Form an indentation space block.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    eval_ctx</span>
+<span class="sd">        The evaluation context.</span>
+<span class="sd">    num</span>
+<span class="sd">        The number of the indentation. The size of the indentation is going to</span>
+<span class="sd">        be read from the context by attribute ``indent_size``.</span>
+
+<span class="sd">    Return</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    A block of white spaces.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="p">(</span>
+        <span class="n">eval_ctx</span><span class="p">[</span><span class="s1">&#39;indent_size&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">num</span> <span class="o">+</span> <span class="n">eval_ctx</span><span class="p">[</span><span class="s1">&#39;global_indent&#39;</span><span class="p">])</span>
+    <span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,7 @@
+0.8.0
+~~~~~
+
+The documentation has been slightly improved for this release.  Internally,
+this release upgrades for the latest NetworkX 2.0 library.  The code has been
+cleaned up for this better API.
+

@@ -24,3 +24,12 @@ format.
 
 ## Gristmill
 
+
+* 0.7.0 (latest): [html](gristmill_docs/0_7_0/index.html), [pdf](gristmill_docs/0_7_0/gristmill.pdf)
+* 0.6.0: [html](gristmill_docs/0_6_0/index.html), [pdf](gristmill_docs/0_6_0/gristmill.pdf)
+* 0.5.0: [html](gristmill_docs/0_5_0/index.html), [pdf](gristmill_docs/0_5_0/gristmill.pdf)
+* 0.4.0: [html](gristmill_docs/0_4_0/index.html), [pdf](gristmill_docs/0_4_0/gristmill.pdf)
+* 0.3.0: [html](gristmill_docs/0_3_0/index.html), [pdf](gristmill_docs/0_3_0/gristmill.pdf)
+* 0.2.0: [html](gristmill_docs/0_2_0/index.html), [pdf](gristmill_docs/0_2_0/gristmill.pdf)
+* 0.1.0: [html](gristmill_docs/0_1_0/index.html), [pdf](gristmill_docs/0_1_0/gristmill.pdf)
+

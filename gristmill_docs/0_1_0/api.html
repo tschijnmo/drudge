@@ -1,0 +1,459 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>API Reference &#8212; gristmill 0.1.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Introduction" href="intro.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal"><span class="pre">gristmill</span></code> package can be divided into two orthogonal parts,</p>
+<dl class="docutils">
+<dt>The evaluation optimization part,</dt>
+<dd>which transforms tensor definitions into a mathematically equivalent
+definition sequence with less floating-point operations required.</dd>
+<dt>The code generation part,</dt>
+<dd>which takes tensor definitions, either optimized or not, into computer code
+snippets.</dd>
+</dl>
+<div class="section" id="evaluation-optimization">
+<h2>Evaluation Optimization<a class="headerlink" href="#evaluation-optimization" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="gristmill.optimize">
+<code class="descclassname">gristmill.</code><code class="descname">optimize</code><span class="sig-paren">(</span><em>computs: typing.Iterable[drudge.drudge.TensorDef], substs=None, interm_fmt='tau^{}', simplify=True</em><span class="sig-paren">)</span> &#x2192; typing.List[drudge.drudge.TensorDef]<a class="reference internal" href="_modules/gristmill/optimize.html#optimize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.optimize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optimize the valuation of the given tensor contractions.</p>
+<p>This function will transform the given computations, given as tensor
+definitions, into another list computations mathematically equivalent to the
+given computation while requiring less floating-point operations (FLOPs).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>computs</strong> – The computations, can be given as an iterable of tensor definitions.</li>
+<li><strong>substs</strong> – A dictionary for making substitutions inside the sizes of ranges.  All
+the ranges need to have size in at most one undetermined variable after
+the substitution so that they can be totally ordered.</li>
+<li><strong>interm_fmt</strong> – The format for the names of the intermediates.</li>
+<li><strong>simplify</strong> – If the input is going to be simplified before processing.  It can be
+disabled when the input is already simplified.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gristmill.verify_eval_seq">
+<code class="descclassname">gristmill.</code><code class="descname">verify_eval_seq</code><span class="sig-paren">(</span><em>eval_seq: typing.Sequence[drudge.drudge.TensorDef], res: typing.Sequence[drudge.drudge.TensorDef], simplify=False</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/gristmill/optimize.html#verify_eval_seq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.verify_eval_seq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verify the correctness of an evaluation sequence for the results.</p>
+<p>The last entries of the evaluation sequence should be in one-to-one
+correspondence with the original form in the <code class="docutils literal"><span class="pre">res</span></code> argument.  This
+function returns <code class="docutils literal"><span class="pre">True</span></code> when the evaluation sequence is symbolically
+equivalent to the given raw form.  When a difference is found,
+<code class="docutils literal"><span class="pre">ValueError</span></code> will be raised with relevant information.</p>
+<p>Note that this function can be very slow for large evaluations.  But it is
+advised to be used for all optimizations in mission-critical tasks.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>eval_seq</strong> – The evaluation sequence to verify, can be the output from
+<a class="reference internal" href="#gristmill.optimize" title="gristmill.optimize"><code class="xref py py-func docutils literal"><span class="pre">optimize()</span></code></a> directly.</li>
+<li><strong>res</strong> – The original result to test the evaluation sequence against.  It can be
+the input to <a class="reference internal" href="#gristmill.optimize" title="gristmill.optimize"><code class="xref py py-func docutils literal"><span class="pre">optimize()</span></code></a> directly.</li>
+<li><strong>simplify</strong> – If simplification is going to be performed after each step of the
+back-substitution.  It is advised for larger complex evaluations.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gristmill.get_flop_cost">
+<code class="descclassname">gristmill.</code><code class="descname">get_flop_cost</code><span class="sig-paren">(</span><em>eval_seq: typing.Iterable[drudge.drudge.TensorDef], leading=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/utils.html#get_flop_cost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.get_flop_cost" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the FLOP cost for the given evaluation sequence.</p>
+<p>This function gives the count of floating-point operations, addition and
+multiplication, involved by the evaluation sequence.  Note that the cost of
+copying and initialization are not counted.  And this function is only
+applicable where the amplitude of the terms are simple products.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>eval_seq</strong> – The evaluation sequence whose FLOP cost is to be estimated.  It should
+be given as an iterable of tensor definitions.</li>
+<li><strong>leading</strong> – If only the cost terms with leading scaling be given.  When multiple
+symbols are present in the range sizes, terms with the highest total
+scaling is going to be picked.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="code-generation">
+<h2>Code generation<a class="headerlink" href="#code-generation" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="gristmill.BasePrinter">
+<em class="property">class </em><code class="descclassname">gristmill.</code><code class="descname">BasePrinter</code><span class="sig-paren">(</span><em>scal_printer: sympy.printing.printer.Printer</em>, <em>indexed_proc_cb=&lt;function BasePrinter.&lt;lambda&gt;&gt;</em>, <em>add_globals=None</em>, <em>add_filters=None</em>, <em>add_tests=None</em>, <em>add_templ=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#BasePrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.BasePrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base class for tensor printers.</p>
+<dl class="method">
+<dt id="gristmill.BasePrinter.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>scal_printer: sympy.printing.printer.Printer</em>, <em>indexed_proc_cb=&lt;function BasePrinter.&lt;lambda&gt;&gt;</em>, <em>add_globals=None</em>, <em>add_filters=None</em>, <em>add_tests=None</em>, <em>add_templ=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#BasePrinter.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.BasePrinter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes a base printer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>scal_printer</strong> – The SymPy printer for scalar quantities.</li>
+<li><strong>indexed_proc_cb</strong> – It is going to be called with context nodes with <code class="docutils literal"><span class="pre">base</span></code> and
+<code class="docutils literal"><span class="pre">indices</span></code> (in both the root and for each indexed factors, as
+described in <a class="reference internal" href="#gristmill.BasePrinter.transl" title="gristmill.BasePrinter.transl"><code class="xref py py-meth docutils literal"><span class="pre">transl()</span></code></a>) to do additional processing.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.BasePrinter.transl">
+<code class="descname">transl</code><span class="sig-paren">(</span><em>tensor_def: drudge.drudge.TensorDef</em><span class="sig-paren">)</span> &#x2192; types.SimpleNamespace<a class="reference internal" href="_modules/gristmill/generate.html#BasePrinter.transl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.BasePrinter.transl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Translate tensor definition into context for template rendering.</p>
+<p>This function will translate the given tensor definition into a simple
+namespace that could be easily used as the context in the actual Jinja
+template rendering.</p>
+<p>The context contains fields,</p>
+<dl class="docutils">
+<dt>base</dt>
+<dd>A printed form for the base of the tensor definition.</dd>
+<dt>indices</dt>
+<dd>A list of external indices.  For each entry, keys <code class="docutils literal"><span class="pre">index</span></code> and
+<code class="docutils literal"><span class="pre">range</span></code> are present to give the printed form of the index and the
+range it is over. For convenience, <code class="docutils literal"><span class="pre">lower</span></code>, <code class="docutils literal"><span class="pre">upper</span></code>, and
+<code class="docutils literal"><span class="pre">size</span></code> have the printed form of lower/upper bounds and the size of
+the range.</dd>
+<dt>terms</dt>
+<dd><p class="first">A list of terms for the tensor, with each entry being a simple
+namespace with keys,</p>
+<dl class="last docutils">
+<dt>sums</dt>
+<dd>A list of summations in the tensor term.  Its entries are in the
+same format as the external indices for tarrays.</dd>
+<dt>phase</dt>
+<dd><code class="docutils literal"><span class="pre">+</span></code> sign or <code class="docutils literal"><span class="pre">-</span></code> sign.  For the phase of the term.</dd>
+<dt>numerator</dt>
+<dd>The printed form of the numerator of the coefficient of the
+term.  It can be a simple <code class="docutils literal"><span class="pre">1</span></code> string.</dd>
+<dt>denominator</dt>
+<dd>The printed form of the denominator.</dd>
+<dt>indexed_factors</dt>
+<dd>The indexed factors of the term.  Each is given as a simple
+namespace with key <code class="docutils literal"><span class="pre">base</span></code> for the printed form of the base,
+and a key <code class="docutils literal"><span class="pre">indices</span></code> giving the indices to the key, in the same
+format as the <code class="docutils literal"><span class="pre">indices</span></code> field of the base context.</dd>
+<dt>other_factors</dt>
+<dd>Factors which are not simple indexed quantity, given as a list
+of the printed form directly.</dd>
+</dl>
+</dd>
+</dl>
+<p>The actual content of the context can also be customized by overriding
+the <a class="reference internal" href="#gristmill.BasePrinter.proc_ctx" title="gristmill.BasePrinter.proc_ctx"><code class="xref py py-meth docutils literal"><span class="pre">proc_ctx()</span></code></a> in subclasses.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.BasePrinter.proc_ctx">
+<code class="descname">proc_ctx</code><span class="sig-paren">(</span><em>tensor_def: drudge.drudge.TensorDef, term: typing.Union[drudge.term.Term, NoneType], tensor_entry: types.SimpleNamespace, term_entry: typing.Union[types.SimpleNamespace, NoneType]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#BasePrinter.proc_ctx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.BasePrinter.proc_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make additional processing of the rendering context.</p>
+<p>This method can be override to make additional processing on the
+rendering context described in <a class="reference internal" href="#gristmill.BasePrinter.transl" title="gristmill.BasePrinter.transl"><code class="xref py py-meth docutils literal"><span class="pre">transl()</span></code></a> to perform additional
+customization or to make more information available.</p>
+<p>It will be called for each of the terms during the processing.  And
+finally it will be called again with the term given as None for a final
+processing.</p>
+<p>By default, the indexed quantities nodes are processed by the user-given
+call-back.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.BasePrinter.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>templ_name: str</em>, <em>ctx: types.SimpleNamespace</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/gristmill/generate.html#BasePrinter.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.BasePrinter.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the given context for the given template.</p>
+<p>Meaningful subclass methods can call this function for actual
+functionality.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="gristmill.BasePrinter.__weakref__">
+<code class="descname">__weakref__</code><a class="headerlink" href="#gristmill.BasePrinter.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="gristmill.ImperativeCodePrinter">
+<em class="property">class </em><code class="descclassname">gristmill.</code><code class="descname">ImperativeCodePrinter</code><span class="sig-paren">(</span><em>scal_printer: sympy.printing.printer.Printer</em>, <em>print_indexed_cb</em>, <em>global_indent=1</em>, <em>indent_size=4</em>, <em>max_width=80</em>, <em>line_cont=''</em>, <em>breakable_regex='(\s*[+-]\s*)'</em>, <em>stmt_end=''</em>, <em>add_globals=None</em>, <em>add_filters=None</em>, <em>add_tests=None</em>, <em>add_templ=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#ImperativeCodePrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.ImperativeCodePrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Printer for automatic generation of naive imperative code.</p>
+<p>This printer supports the printing of the evaluation of tensor
+expressions by simple loops and arithmetic operations.</p>
+<p>This is mostly a base class that is going to be subclassed for different
+languages.  For each language, mostly just the options for the language
+could be given in the super initializer.  Most important ones are the
+printer for the scalar expressions and the formatter of loops, as well as
+some definition of literals and operators.</p>
+<dl class="method">
+<dt id="gristmill.ImperativeCodePrinter.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>scal_printer: sympy.printing.printer.Printer</em>, <em>print_indexed_cb</em>, <em>global_indent=1</em>, <em>indent_size=4</em>, <em>max_width=80</em>, <em>line_cont=''</em>, <em>breakable_regex='(\\s*[+-]\\s*)'</em>, <em>stmt_end=''</em>, <em>add_globals=None</em>, <em>add_filters=None</em>, <em>add_tests=None</em>, <em>add_templ=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#ImperativeCodePrinter.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.ImperativeCodePrinter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the automatic code printer.</p>
+<dl class="docutils">
+<dt>scal_printer</dt>
+<dd>A sympy printer used for the printing of scalar expressions.</dd>
+<dt>print_indexed_cb</dt>
+<dd>It will be called with the printed base, and the list of indices (as
+described in <a class="reference internal" href="#gristmill.BasePrinter.transl" title="gristmill.BasePrinter.transl"><code class="xref py py-meth docutils literal"><span class="pre">BasePrinter.transl()</span></code></a>) to return the string for
+the printed form.  This will be called after the given processing of
+indexed nodes.</dd>
+<dt>global_indent</dt>
+<dd>The base global indentation of the generated code.</dd>
+<dt>indent_size</dt>
+<dd>The size of the indentation.</dd>
+<dt>max_width</dt>
+<dd>The maximum width for each line.</dd>
+<dt>line_cont</dt>
+<dd>The string used for indicating line continuation.</dd>
+<dt>breakable_regex</dt>
+<dd>The regular expression used to break long expressions.</dd>
+<dt>stmt_end</dt>
+<dd>The ending of the statements.</dd>
+<dt>index_paren</dt>
+<dd>The pair of parenthesis for indexing arrays.</dd>
+</dl>
+<p>All options to the base class <a class="reference internal" href="#gristmill.BasePrinter" title="gristmill.BasePrinter"><code class="xref py py-class docutils literal"><span class="pre">BasePrinter</span></code></a> are also
+supported.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.ImperativeCodePrinter.proc_ctx">
+<code class="descname">proc_ctx</code><span class="sig-paren">(</span><em>tensor_def: drudge.drudge.TensorDef, term: typing.Union[drudge.term.Term, NoneType], tensor_entry: types.SimpleNamespace, term_entry: typing.Union[types.SimpleNamespace, NoneType]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#ImperativeCodePrinter.proc_ctx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.ImperativeCodePrinter.proc_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process the context.</p>
+<p>The indexed nodes will be printed by user-given printer and given to
+<code class="docutils literal"><span class="pre">indexed</span></code> attributes of the same node.  Also the term contexts will be
+given an attribute named <code class="docutils literal"><span class="pre">amp</span></code> for the whole amplitude part put
+together.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.ImperativeCodePrinter.print_eval">
+<code class="descname">print_eval</code><span class="sig-paren">(</span><em>ctx: types.SimpleNamespace</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#ImperativeCodePrinter.print_eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.ImperativeCodePrinter.print_eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print the evaluation of a tensor definition.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="gristmill.CCodePrinter">
+<code class="descclassname">gristmill.</code><code class="descname">CCodePrinter</code><a class="reference internal" href="_modules/sympy/printing/ccode.html#CCodePrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.CCodePrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">wrapper</span></code></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="gristmill.FortranPrinter">
+<em class="property">class </em><code class="descclassname">gristmill.</code><code class="descname">FortranPrinter</code><span class="sig-paren">(</span><em>openmp=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#FortranPrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.FortranPrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fortran code printer.</p>
+<p>In this class, just some parameters for the <em>new</em> Fortran programming
+language is fixed relative to the base <a class="reference internal" href="#gristmill.ImperativeCodePrinter" title="gristmill.ImperativeCodePrinter"><code class="xref py py-class docutils literal"><span class="pre">ImperativeCodePrinter</span></code></a>.</p>
+<dl class="method">
+<dt id="gristmill.FortranPrinter.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>openmp=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#FortranPrinter.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.FortranPrinter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a Fortran code printer.</p>
+<p>The printer class, the name of the template, and the line continuation
+symbol will be set automatically.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.FortranPrinter.print_decl_eval">
+<code class="descname">print_decl_eval</code><span class="sig-paren">(</span><em>tensor_defs: typing.Iterable[drudge.drudge.TensorDef], decl_type='real', explicit_bounds=False</em><span class="sig-paren">)</span> &#x2192; typing.Tuple[typing.List[str], typing.List[str]]<a class="reference internal" href="_modules/gristmill/generate.html#FortranPrinter.print_decl_eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.FortranPrinter.print_decl_eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print Fortran declarations and evaluations of tensor definitions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tensor_defs</strong> – The tensor definitions to print.</li>
+<li><strong>decl_type</strong> – The type to be declared for the tarrays.</li>
+<li><strong>explicit_bounds</strong> – If the lower and upper bounds should be written explicitly in the
+declaration.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><em>decls</em> – The list of declaration strings.</li>
+<li><em>evals</em> – The list of evaluation strings.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.FortranPrinter.print_decl">
+<code class="descname">print_decl</code><span class="sig-paren">(</span><em>ctx</em>, <em>decl_type</em>, <em>explicit_bounds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#FortranPrinter.print_decl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.FortranPrinter.print_decl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print the Fortran declaration of the LHS of a tensor definition.</p>
+<p>A string will be returned that forms the naive declaration of the
+given tarrays as local variables.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="gristmill.EinsumPrinter">
+<em class="property">class </em><code class="descclassname">gristmill.</code><code class="descname">EinsumPrinter</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#EinsumPrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.EinsumPrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Printer for the einsum function.</p>
+<p>For tensors that are classical tensor contractions, this printer generates
+code based on the NumPy <code class="docutils literal"><span class="pre">einsum</span></code> function.  For contractions supported,
+the code from this printer can also be used for Tensorflow.</p>
+<dl class="method">
+<dt id="gristmill.EinsumPrinter.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gristmill/generate.html#EinsumPrinter.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.EinsumPrinter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the printer.</p>
+<p>All keyword arguments are forwarded to the base class
+<a class="reference internal" href="#gristmill.BasePrinter" title="gristmill.BasePrinter"><code class="xref py py-class docutils literal"><span class="pre">BasePrinter</span></code></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gristmill.EinsumPrinter.print_eval">
+<code class="descname">print_eval</code><span class="sig-paren">(</span><em>tensor_defs: typing.Iterable[drudge.drudge.TensorDef], base_indent=4</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/gristmill/generate.html#EinsumPrinter.print_eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gristmill.EinsumPrinter.print_eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print the evaluation of the tensor definitions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tensor_defs</strong> – The tensor definitions for the evaluations.</li>
+<li><strong>base_indent</strong> – The base indent of the generated code.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">The code for evaluations.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#evaluation-optimization">Evaluation Optimization</a></li>
+<li><a class="reference internal" href="#code-generation">Code generation</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="intro.html" title="previous chapter">Introduction</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/api.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

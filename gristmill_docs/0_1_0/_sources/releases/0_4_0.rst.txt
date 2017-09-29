@@ -1,0 +1,7 @@
+0.4.0
+~~~~~
+
+This is a very small release.  A bug on scalar intermediates is fixed by Roman
+Schutski and a helper function ``mangle_base`` is added to mangle name of
+indexed bases in code printing with greater ease.
+

@@ -1,0 +1,9 @@
+0.3.0
+~~~~~
+
+This release primarily features the addition of product optimization
+strategies.  It was hoped that the new default ``SEARCHED`` will provide big
+improvement over the previous behaviour, which can now be accessed by ``BEST``.
+Unfortunately, the improvement is only marginal.  But the new strategy
+``GREEDY`` could be used for large problems defying deeper optimizations.
+

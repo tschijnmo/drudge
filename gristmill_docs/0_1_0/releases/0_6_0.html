@@ -1,0 +1,122 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>0.6.0 &#8212; gristmill 0.7.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="0.7.0" href="0_7_0.html" />
+    <link rel="prev" title="0.5.0" href="0_5_0.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="id1">
+<h1>0.6.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>This release is another release of gristmill with significant update.  First,
+the user interface for optimization has been updated for cleanness.  The complex
+optimization strategy has been replaced with separate options for the function
+call.</p>
+<p>Also internally, the code has been significantly cleaned up and improved. The
+primary driving force for the revisions are the lessons learned when writing the
+manuscripts for the optimization methodologies.  Now the code has been made
+completely in sync with the description in the manuscripts.  This also brings
+significant performance boost.  For instance, for the optimization for problems
+with terms composed of a large number of factors, the contraction optimization
+algorithm has been upgraded with bits replacing hash tables for storing and
+manipulating factor/summation sets.  Improvements by several orders-of-magnitude
+in performance can be seen in problems with say 20 factors.  Even for problems
+with a small number of factors, usually performance boost by about ten times can
+be expected from the improvements in the summation optimizer.</p>
+<p>A minor new feature is the addition of an option (<code class="docutils literal"><span class="pre">remove_shallow</span></code>) to disable
+the inlining of shallow intermediates in the optimizer.  This can be used in
+cases where the default behaviour is undesired.  Also an option named
+<code class="docutils literal"><span class="pre">req_an_opt</span></code> can be used to possibly accelerate the optimization for
+large-scale problems at the sacrifice of optimization quality.  Also the tests
+has been cleaned up for better coverage.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Release history</a><ul>
+      <li>Previous: <a href="0_5_0.html" title="previous chapter">0.5.0</a></li>
+      <li>Next: <a href="0_7_0.html" title="next chapter">0.7.0</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/releases/0_6_0.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/releases/0_6_0.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

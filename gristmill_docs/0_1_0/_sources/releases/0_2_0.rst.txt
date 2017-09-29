@@ -1,0 +1,9 @@
+0.2.0
+~~~~~
+
+This is mostly a bug fix release.  Problems in the handling of bounds in Fortran
+printer and in the treatment purely scalar intermediates without any external
+indices are fixed.  And the handling of summations are improved with less
+intermediates by removing duplicated and shallowly-defined ones.  Most
+importantly, the automatic result checker has been fixed.
+

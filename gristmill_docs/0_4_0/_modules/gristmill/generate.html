@@ -1,0 +1,805 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gristmill.generate &#8212; gristmill 0.4.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gristmill.generate</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Generate source code from optimized computations.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">drudge</span> <span class="k">import</span> <span class="n">TensorDef</span><span class="p">,</span> <span class="n">Term</span><span class="p">,</span> <span class="n">Range</span><span class="p">,</span> <span class="n">prod_</span>
+<span class="kn">from</span> <span class="nn">drudge.term</span> <span class="k">import</span> <span class="n">try_resolve_range</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Expr</span><span class="p">,</span> <span class="n">Mul</span><span class="p">,</span> <span class="n">Pow</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Rational</span><span class="p">,</span> <span class="n">Add</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">,</span> <span class="n">IndexedBase</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sympy.printing.ccode</span> <span class="k">import</span> <span class="n">CCodePrinter</span>
+<span class="kn">from</span> <span class="nn">sympy.printing.fcode</span> <span class="k">import</span> <span class="n">FCodePrinter</span>
+<span class="kn">from</span> <span class="nn">sympy.printing.printer</span> <span class="k">import</span> <span class="n">Printer</span>
+<span class="kn">from</span> <span class="nn">sympy.printing.python</span> <span class="k">import</span> <span class="n">PythonPrinter</span>
+
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">create_jinja_env</span>
+
+
+<div class="viewcode-block" id="BasePrinter"><a class="viewcode-back" href="../../api.html#gristmill.BasePrinter">[docs]</a><span class="k">class</span> <span class="nc">BasePrinter</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;The base class for tensor printers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BasePrinter.__init__"><a class="viewcode-back" href="../../api.html#gristmill.BasePrinter.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scal_printer</span><span class="p">:</span> <span class="n">Printer</span><span class="p">,</span> <span class="n">indexed_proc_cb</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">add_globals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_tests</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">add_templ</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initializes a base printer.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        scal_printer</span>
+<span class="sd">            The SymPy printer for scalar quantities.</span>
+
+<span class="sd">        indexed_proc_cb</span>
+<span class="sd">            It is going to be called with context nodes with ``base`` and</span>
+<span class="sd">            ``indices`` (in both the root and for each indexed factors, as</span>
+<span class="sd">            described in :py:meth:`transl`) to do additional processing.  For</span>
+<span class="sd">            most tasks, :py:func:`mangle_base` can be helpful.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">env</span> <span class="o">=</span> <span class="n">create_jinja_env</span><span class="p">(</span><span class="n">add_filters</span><span class="p">,</span> <span class="n">add_globals</span><span class="p">,</span> <span class="n">add_tests</span><span class="p">,</span> <span class="n">add_templ</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scal_printer</span> <span class="o">=</span> <span class="n">scal_printer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_indexed_proc</span> <span class="o">=</span> <span class="n">indexed_proc_cb</span></div>
+
+<div class="viewcode-block" id="BasePrinter.transl"><a class="viewcode-back" href="../../api.html#gristmill.BasePrinter.transl">[docs]</a>    <span class="k">def</span> <span class="nf">transl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor_def</span><span class="p">:</span> <span class="n">TensorDef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Translate tensor definition into context for template rendering.</span>
+
+<span class="sd">        This function will translate the given tensor definition into a simple</span>
+<span class="sd">        namespace that could be easily used as the context in the actual Jinja</span>
+<span class="sd">        template rendering.</span>
+
+<span class="sd">        The context contains fields,</span>
+
+<span class="sd">        base</span>
+<span class="sd">            A printed form for the base of the tensor definition.</span>
+
+<span class="sd">        indices</span>
+<span class="sd">            A list of external indices.  For each entry, keys ``index`` and</span>
+<span class="sd">            ``range`` are present to give the printed form of the index and the</span>
+<span class="sd">            range it is over. For convenience, ``lower``, ``upper``, and</span>
+<span class="sd">            ``size`` have the printed form of lower/upper bounds and the size of</span>
+<span class="sd">            the range.  We also have ``lower_expr``, ``upper_expr``, and</span>
+<span class="sd">            ``size_expr`` for the unprinted expression of them.</span>
+
+<span class="sd">        terms</span>
+<span class="sd">            A list of terms for the tensor, with each entry being a simple</span>
+<span class="sd">            namespace with keys,</span>
+
+<span class="sd">            sums</span>
+<span class="sd">                A list of summations in the tensor term.  Its entries are in the</span>
+<span class="sd">                same format as the external indices for tarrays.</span>
+
+<span class="sd">            phase</span>
+<span class="sd">                ``+`` sign or ``-`` sign.  For the phase of the term.</span>
+
+<span class="sd">            numerator</span>
+<span class="sd">                The printed form of the numerator of the coefficient of the</span>
+<span class="sd">                term.  It can be a simple ``1`` string.</span>
+
+<span class="sd">            denominator</span>
+<span class="sd">                The printed form of the denominator.</span>
+
+<span class="sd">            indexed_factors</span>
+<span class="sd">                The indexed factors of the term.  Each is given as a simple</span>
+<span class="sd">                namespace with key ``base`` for the printed form of the base,</span>
+<span class="sd">                and a key ``indices`` giving the indices to the key, in the same</span>
+<span class="sd">                format as the ``indices`` field of the base context.</span>
+
+<span class="sd">            other_factors</span>
+<span class="sd">                Factors which are not simple indexed quantity, given as a list</span>
+<span class="sd">                of the printed form directly.</span>
+
+<span class="sd">        The actual content of the context can also be customized by overriding</span>
+<span class="sd">        the :py:meth:`proc_ctx` in subclasses.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">()</span>
+
+        <span class="n">base</span> <span class="o">=</span> <span class="n">tensor_def</span><span class="o">.</span><span class="n">base</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span>
+            <span class="n">base</span><span class="o">.</span><span class="n">label</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">IndexedBase</span><span class="p">)</span> <span class="k">else</span> <span class="n">base</span>
+        <span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_indices_ctx</span><span class="p">(</span><span class="n">tensor_def</span><span class="o">.</span><span class="n">exts</span><span class="p">)</span>
+
+        <span class="c1"># The stack keeping track of the external and internal indices for range</span>
+        <span class="c1"># resolution.</span>
+        <span class="n">indices_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">tensor_def</span><span class="o">.</span><span class="n">exts</span><span class="p">)</span>
+        <span class="n">resolvers</span> <span class="o">=</span> <span class="n">tensor_def</span><span class="o">.</span><span class="n">rhs</span><span class="o">.</span><span class="n">drudge</span><span class="o">.</span><span class="n">resolvers</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="n">terms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">terms</span> <span class="o">=</span> <span class="n">terms</span>
+
+        <span class="c1"># Render each term in turn.</span>
+        <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">tensor_def</span><span class="o">.</span><span class="n">rhs_terms</span><span class="p">:</span>
+
+            <span class="n">term_ctx</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">()</span>
+            <span class="n">terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term_ctx</span><span class="p">)</span>
+
+            <span class="n">indices_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">)</span>
+            <span class="n">term_ctx</span><span class="o">.</span><span class="n">sums</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_indices_ctx</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">)</span>
+
+            <span class="n">factors</span><span class="p">,</span> <span class="n">coeff</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">amp_factors</span>
+
+            <span class="n">coeff</span> <span class="o">=</span> <span class="n">coeff</span><span class="o">.</span><span class="n">together</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coeff</span><span class="p">,</span> <span class="n">Mul</span><span class="p">):</span>
+                <span class="n">coeff_factors</span> <span class="o">=</span> <span class="n">coeff</span><span class="o">.</span><span class="n">args</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">coeff_factors</span> <span class="o">=</span> <span class="p">(</span><span class="n">coeff</span><span class="p">,)</span>
+
+            <span class="n">phase</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">numerator</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">denominator</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">factor</span> <span class="ow">in</span> <span class="n">coeff_factors</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">Integer</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">factor</span><span class="o">.</span><span class="n">is_negative</span><span class="p">:</span>
+                        <span class="n">phase</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+                        <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="n">factor</span>
+                    <span class="k">if</span> <span class="n">factor</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">numerator</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">Rational</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">[</span>
+                        <span class="p">(</span><span class="n">factor</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">numerator</span><span class="p">),</span> <span class="p">(</span><span class="n">factor</span><span class="o">.</span><span class="n">q</span><span class="p">,</span> <span class="n">denominator</span><span class="p">)</span>
+                    <span class="p">]:</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">phase</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+                            <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="n">i</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">j</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">Pow</span><span class="p">)</span> <span class="ow">and</span> <span class="n">factor</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">is_negative</span><span class="p">:</span>
+                    <span class="n">denominator</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">factor</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">numerator</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">term_ctx</span><span class="o">.</span><span class="n">phase</span> <span class="o">=</span> <span class="s1">&#39;+&#39;</span> <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s1">&#39;-&#39;</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">numerator</span><span class="p">,</span> <span class="s1">&#39;numerator&#39;</span><span class="p">,</span> <span class="n">Add</span><span class="p">),</span>
+                <span class="p">(</span><span class="n">denominator</span><span class="p">,</span> <span class="s1">&#39;denominator&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">Add</span><span class="p">,</span> <span class="n">Mul</span><span class="p">))</span>
+            <span class="p">]:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">prod_</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">printed_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                    <span class="n">printed_val</span> <span class="o">=</span> <span class="s1">&#39;(&#39;</span> <span class="o">+</span> <span class="n">printed_val</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">term_ctx</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">printed_val</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">indexed_factors</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">term_ctx</span><span class="o">.</span><span class="n">indexed_factors</span> <span class="o">=</span> <span class="n">indexed_factors</span>
+            <span class="n">other_factors</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">term_ctx</span><span class="o">.</span><span class="n">other_factors</span> <span class="o">=</span> <span class="n">other_factors</span>
+            <span class="k">for</span> <span class="n">factor</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">:</span>
+
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">Indexed</span><span class="p">):</span>
+                    <span class="n">factor_ctx</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">()</span>
+                    <span class="n">factor_ctx</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">factor</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+                    <span class="n">factor_ctx</span><span class="o">.</span><span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_indices_ctx</span><span class="p">((</span>
+                        <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">try_resolve_range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">indices_dict</span><span class="p">,</span> <span class="n">resolvers</span><span class="p">))</span>
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">factor</span><span class="o">.</span><span class="n">indices</span>
+                    <span class="p">),</span> <span class="n">enforce</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="n">indexed_factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">factor_ctx</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">other_factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">factor</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">proc_ctx</span><span class="p">(</span><span class="n">tensor_def</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">term_ctx</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">term</span><span class="o">.</span><span class="n">sums</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">indices_dict</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">continue</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">proc_ctx</span><span class="p">(</span><span class="n">tensor_def</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ctx</span></div>
+
+<div class="viewcode-block" id="BasePrinter.proc_ctx"><a class="viewcode-back" href="../../api.html#gristmill.BasePrinter.proc_ctx">[docs]</a>    <span class="k">def</span> <span class="nf">proc_ctx</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">tensor_def</span><span class="p">:</span> <span class="n">TensorDef</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Term</span><span class="p">],</span>
+            <span class="n">tensor_entry</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">,</span>
+            <span class="n">term_entry</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">]</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Make additional processing of the rendering context.</span>
+
+<span class="sd">        This method can be override to make additional processing on the</span>
+<span class="sd">        rendering context described in :py:meth:`transl` to perform additional</span>
+<span class="sd">        customization or to make more information available.</span>
+
+<span class="sd">        It will be called for each of the terms during the processing.  And</span>
+<span class="sd">        finally it will be called again with the term given as None for a final</span>
+<span class="sd">        processing.</span>
+
+<span class="sd">        By default, the indexed quantities nodes are processed by the user-given</span>
+<span class="sd">        call-back.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">term</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_indexed_proc</span><span class="p">(</span><span class="n">tensor_entry</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">term_entry</span><span class="o">.</span><span class="n">indexed_factors</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_indexed_proc</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">continue</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="BasePrinter.render"><a class="viewcode-back" href="../../api.html#gristmill.BasePrinter.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">templ_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Render the given context for the given template.</span>
+
+<span class="sd">        Meaningful subclass methods can call this function for actual</span>
+<span class="sd">        functionality.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">templ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="n">templ_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">templ</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_form_indices_ctx</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">pairs</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Expr</span><span class="p">,</span> <span class="n">Range</span><span class="p">]],</span>
+            <span class="n">enforce</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form indices context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">range_</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">range_</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">range_</span><span class="o">.</span><span class="n">bounded</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">enforce</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s1">&#39;Invalid range to print&#39;</span><span class="p">,</span> <span class="n">range_</span><span class="p">,</span> <span class="s1">&#39;for&#39;</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span>
+                        <span class="s1">&#39;expecting a bounded range.&#39;</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lower</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">upper</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">size</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">lower_expr</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">upper_expr</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">size_expr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lower_expr</span> <span class="o">=</span> <span class="n">range_</span><span class="o">.</span><span class="n">lower</span>
+                <span class="n">upper_expr</span> <span class="o">=</span> <span class="n">range_</span><span class="o">.</span><span class="n">upper</span>
+                <span class="n">size_expr</span> <span class="o">=</span> <span class="n">range_</span><span class="o">.</span><span class="n">size</span>
+                <span class="n">lower</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">lower_expr</span><span class="p">)</span>
+                <span class="n">upper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">upper_expr</span><span class="p">)</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">size_expr</span><span class="p">)</span>
+
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">(</span>
+                <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">index</span><span class="p">),</span> <span class="nb">range</span><span class="o">=</span><span class="n">range_</span><span class="p">,</span>
+                <span class="n">lower</span><span class="o">=</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="n">upper</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
+                <span class="n">lower_expr</span><span class="o">=</span><span class="n">lower_expr</span><span class="p">,</span> <span class="n">upper_expr</span><span class="o">=</span><span class="n">upper_expr</span><span class="p">,</span>
+                <span class="n">size_expr</span><span class="o">=</span><span class="n">size_expr</span>
+            <span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">_print_scal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">:</span> <span class="n">Expr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print a scalar.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scal_printer</span><span class="o">.</span><span class="n">doprint</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="mangle_base"><a class="viewcode-back" href="../../api.html#gristmill.mangle_base">[docs]</a><span class="k">def</span> <span class="nf">mangle_base</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Mangle the base names in the indexed nodes in template context.</span>
+
+<span class="sd">    A function taking the printed string for an indexed base and a list of its</span>
+<span class="sd">    indices, as described in :py:meth:`BasePrinter.transl`, to return a new</span>
+<span class="sd">    mangled base name can be given to get a function call-back compatible with</span>
+<span class="sd">    the ``indexed_proc_cb`` argument of :py:meth:`BasePrinter.__init__`</span>
+<span class="sd">    constructor.</span>
+
+<span class="sd">    This function can also be used as a function decorator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_mangle_base</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Mangle the base name according to user-given mangling function.&quot;&quot;&quot;</span>
+        <span class="n">node</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">base</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">return</span> <span class="n">_mangle_base</span></div>
+
+
+<span class="c1">#</span>
+<span class="c1"># The imperative code printers</span>
+<span class="c1"># ----------------------------</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="ImperativeCodePrinter"><a class="viewcode-back" href="../../api.html#gristmill.ImperativeCodePrinter">[docs]</a><span class="k">class</span> <span class="nc">ImperativeCodePrinter</span><span class="p">(</span><span class="n">BasePrinter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Printer for automatic generation of naive imperative code.</span>
+
+<span class="sd">    This printer supports the printing of the evaluation of tensor</span>
+<span class="sd">    expressions by simple loops and arithmetic operations.</span>
+
+<span class="sd">    This is mostly a base class that is going to be subclassed for different</span>
+<span class="sd">    languages.  For each language, mostly just the options for the language</span>
+<span class="sd">    could be given in the super initializer.  Most important ones are the</span>
+<span class="sd">    printer for the scalar expressions and the formatter of loops, as well as</span>
+<span class="sd">    some definition of literals and operators.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ImperativeCodePrinter.__init__"><a class="viewcode-back" href="../../api.html#gristmill.ImperativeCodePrinter.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scal_printer</span><span class="p">:</span> <span class="n">Printer</span><span class="p">,</span> <span class="n">print_indexed_cb</span><span class="p">,</span>
+                 <span class="n">global_indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">indent_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">max_width</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>
+                 <span class="n">line_cont</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">breakable_regex</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;(\s*[+-]\s*)&#39;</span><span class="p">,</span> <span class="n">stmt_end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+                 <span class="n">add_globals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">add_tests</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_templ</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the automatic code printer.</span>
+
+<span class="sd">        scal_printer</span>
+<span class="sd">            A sympy printer used for the printing of scalar expressions.</span>
+
+<span class="sd">        print_indexed_cb</span>
+<span class="sd">            It will be called with the printed base, and the list of indices (as</span>
+<span class="sd">            described in :py:meth:`BasePrinter.transl`) to return the string for</span>
+<span class="sd">            the printed form.  This will be called after the given processing of</span>
+<span class="sd">            indexed nodes.</span>
+
+<span class="sd">        global_indent</span>
+<span class="sd">            The base global indentation of the generated code.</span>
+
+<span class="sd">        indent_size</span>
+<span class="sd">            The size of the indentation.</span>
+
+<span class="sd">        max_width</span>
+<span class="sd">            The maximum width for each line.</span>
+
+<span class="sd">        line_cont</span>
+<span class="sd">            The string used for indicating line continuation.</span>
+
+<span class="sd">        breakable_regex</span>
+<span class="sd">            The regular expression used to break long expressions.</span>
+
+<span class="sd">        stmt_end</span>
+<span class="sd">            The ending of the statements.</span>
+
+<span class="sd">        index_paren</span>
+<span class="sd">            The pair of parenthesis for indexing arrays.</span>
+
+<span class="sd">        All options to the base class :py:class:`BasePrinter` are also</span>
+<span class="sd">        supported.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Some globals for template rendering.</span>
+        <span class="n">default_globals</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;global_indent&#39;</span><span class="p">:</span> <span class="n">global_indent</span><span class="p">,</span>
+            <span class="s1">&#39;indent_size&#39;</span><span class="p">:</span> <span class="n">indent_size</span><span class="p">,</span>
+            <span class="s1">&#39;max_width&#39;</span><span class="p">:</span> <span class="n">max_width</span><span class="p">,</span>
+            <span class="s1">&#39;line_cont&#39;</span><span class="p">:</span> <span class="n">line_cont</span><span class="p">,</span>
+            <span class="s1">&#39;breakable_regex&#39;</span><span class="p">:</span> <span class="n">breakable_regex</span><span class="p">,</span>
+            <span class="s1">&#39;stmt_end&#39;</span><span class="p">:</span> <span class="n">stmt_end</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">add_globals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">default_globals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_globals</span><span class="p">)</span>
+
+        <span class="c1"># Initialize the base class.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">scal_printer</span><span class="p">,</span>
+            <span class="n">add_globals</span><span class="o">=</span><span class="n">default_globals</span><span class="p">,</span>
+            <span class="n">add_filters</span><span class="o">=</span><span class="n">add_filters</span><span class="p">,</span> <span class="n">add_tests</span><span class="o">=</span><span class="n">add_tests</span><span class="p">,</span> <span class="n">add_templ</span><span class="o">=</span><span class="n">add_templ</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_indexed</span> <span class="o">=</span> <span class="n">print_indexed_cb</span></div>
+
+<div class="viewcode-block" id="ImperativeCodePrinter.proc_ctx"><a class="viewcode-back" href="../../api.html#gristmill.ImperativeCodePrinter.proc_ctx">[docs]</a>    <span class="k">def</span> <span class="nf">proc_ctx</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">tensor_def</span><span class="p">:</span> <span class="n">TensorDef</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Term</span><span class="p">],</span>
+            <span class="n">tensor_entry</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">,</span>
+            <span class="n">term_entry</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">]</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process the context.</span>
+
+<span class="sd">        The indexed nodes will be printed by user-given printer and given to</span>
+<span class="sd">        ``indexed`` attributes of the same node.  Also the term contexts will be</span>
+<span class="sd">        given an attribute named ``amp`` for the whole amplitude part put</span>
+<span class="sd">        together.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># This does the processing of the indexed nodes.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">proc_ctx</span><span class="p">(</span><span class="n">tensor_def</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">tensor_entry</span><span class="p">,</span> <span class="n">term_entry</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">term</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tensor_entry</span><span class="o">.</span><span class="n">indexed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_indexed</span><span class="p">(</span>
+                <span class="n">tensor_entry</span><span class="o">.</span><span class="n">base</span><span class="p">,</span> <span class="n">tensor_entry</span><span class="o">.</span><span class="n">indices</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="n">term_entry</span><span class="o">.</span><span class="n">numerator</span> <span class="o">!=</span> <span class="s1">&#39;1&#39;</span><span class="p">:</span>
+                <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term_entry</span><span class="o">.</span><span class="n">numerator</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">term_entry</span><span class="o">.</span><span class="n">indexed_factors</span><span class="p">:</span>
+                <span class="n">i</span><span class="o">.</span><span class="n">indexed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_indexed</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">base</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+                <span class="n">factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">indexed</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">factors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">term_entry</span><span class="o">.</span><span class="n">other_factors</span><span class="p">)</span>
+
+            <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39; * &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">factors</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">term_entry</span><span class="o">.</span><span class="n">denominator</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">term_entry</span><span class="o">.</span><span class="n">denominator</span><span class="p">])</span>
+
+            <span class="n">term_entry</span><span class="o">.</span><span class="n">amp</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="ImperativeCodePrinter.print_eval"><a class="viewcode-back" href="../../api.html#gristmill.ImperativeCodePrinter.print_eval">[docs]</a>    <span class="k">def</span> <span class="nf">print_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print the evaluation of a tensor definition.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;imperative&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">CPrinter</span><span class="p">(</span><span class="n">ImperativeCodePrinter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;C code printer.</span>
+
+<span class="sd">    In this class, just some parameters for C programming language is fixed</span>
+<span class="sd">    relative to the base :py:class:`ImperativeCodePrinter`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize a C code printer.</span>
+
+<span class="sd">        The printer class, the name of the template, the line continuation</span>
+<span class="sd">        symbol, and the statement ending will be set automatically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">CCodePrinter</span><span class="p">(),</span>
+            <span class="k">lambda</span> <span class="n">base</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">base</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+                <span class="s1">&#39;[</span><span class="si">{}</span><span class="s1">]&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span>
+            <span class="p">]),</span>
+            <span class="n">line_cont</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">stmt_end</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">,</span>
+            <span class="n">add_filters</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;form_loop_beg&#39;</span><span class="p">:</span> <span class="n">_form_c_loop_beg</span><span class="p">,</span>
+                <span class="s1">&#39;form_loop_end&#39;</span><span class="p">:</span> <span class="n">_form_c_loop_end</span><span class="p">,</span>
+            <span class="p">},</span> <span class="n">add_globals</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;zero_literal&#39;</span><span class="p">:</span> <span class="s1">&#39;0.0&#39;</span>
+            <span class="p">},</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Some filters for C programming language</span>
+<span class="c1">#</span>
+
+
+<span class="k">def</span> <span class="nf">_form_c_loop_beg</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Form the loop beginning for C.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s1">&#39;for(</span><span class="si">{index}</span><span class="s1">=</span><span class="si">{lower}</span><span class="s1">; </span><span class="si">{index}</span><span class="s1">&lt;</span><span class="si">{upper}</span><span class="s1">, </span><span class="si">{index}</span><span class="s1">++)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">upper</span>
+    <span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; {&#39;</span>
+
+
+<span class="k">def</span> <span class="nf">_form_c_loop_end</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Form the loop ending for C.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s1">&#39;}&#39;</span>
+
+
+<div class="viewcode-block" id="FortranPrinter"><a class="viewcode-back" href="../../api.html#gristmill.FortranPrinter">[docs]</a><span class="k">class</span> <span class="nc">FortranPrinter</span><span class="p">(</span><span class="n">ImperativeCodePrinter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Fortran code printer.</span>
+
+<span class="sd">    In this class, just some parameters for the *new* Fortran programming</span>
+<span class="sd">    language is fixed relative to the base :py:class:`ImperativeCodePrinter`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="FortranPrinter.__init__"><a class="viewcode-back" href="../../api.html#gristmill.FortranPrinter.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">openmp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize a Fortran code printer.</span>
+
+<span class="sd">        The printer class, the name of the template, and the line continuation</span>
+<span class="sd">        symbol will be set automatically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">openmp</span><span class="p">:</span>
+            <span class="n">add_templ</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;tensor_prelude&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_PARALLEL_PRELUDE</span><span class="p">,</span>
+                <span class="s1">&#39;tensor_finale&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_PARALLEL_FINALE</span><span class="p">,</span>
+                <span class="s1">&#39;init_prelude&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_INIT_PRELUDE</span><span class="p">,</span>
+                <span class="s1">&#39;init_finale&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_INIT_FINALE</span><span class="p">,</span>
+                <span class="s1">&#39;term_prelude&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_TERM_PRELUDE</span><span class="p">,</span>
+                <span class="s1">&#39;term_finale&#39;</span><span class="p">:</span> <span class="n">_FORTRAN_OMP_TERM_FINALE</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">add_templ</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">FCodePrinter</span><span class="p">(</span><span class="n">settings</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;source_format&#39;</span><span class="p">:</span> <span class="s1">&#39;free&#39;</span><span class="p">}),</span>
+            <span class="k">lambda</span> <span class="n">base</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="n">base</span> <span class="o">+</span> <span class="p">(</span>
+                <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="n">i</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span>
+                <span class="p">))</span>
+            <span class="p">),</span>
+            <span class="n">line_cont</span><span class="o">=</span><span class="s1">&#39;&amp;&#39;</span><span class="p">,</span>
+            <span class="n">add_filters</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;form_loop_beg&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_fortran_loop_beg</span><span class="p">,</span>
+                <span class="s1">&#39;form_loop_end&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_form_fortran_loop_end</span><span class="p">,</span>
+            <span class="p">},</span> <span class="n">add_globals</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;zero_literal&#39;</span><span class="p">:</span> <span class="s1">&#39;0.0&#39;</span>
+            <span class="p">},</span> <span class="n">add_templ</span><span class="o">=</span><span class="n">add_templ</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="FortranPrinter.print_decl_eval"><a class="viewcode-back" href="../../api.html#gristmill.FortranPrinter.print_decl_eval">[docs]</a>    <span class="k">def</span> <span class="nf">print_decl_eval</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">tensor_defs</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="n">TensorDef</span><span class="p">],</span>
+            <span class="n">decl_type</span><span class="o">=</span><span class="s1">&#39;real&#39;</span><span class="p">,</span> <span class="n">explicit_bounds</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot;Print Fortran declarations and evaluations of tensor definitions.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        tensor_defs</span>
+<span class="sd">            The tensor definitions to print.</span>
+
+<span class="sd">        decl_type</span>
+<span class="sd">            The type to be declared for the tarrays.</span>
+
+<span class="sd">        explicit_bounds</span>
+<span class="sd">            If the lower and upper bounds should be written explicitly in the</span>
+<span class="sd">            declaration.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        decls</span>
+<span class="sd">            The list of declaration strings.</span>
+
+<span class="sd">        evals</span>
+<span class="sd">            The list of evaluation strings.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">decls</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">evals</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">tensor_def</span> <span class="ow">in</span> <span class="n">tensor_defs</span><span class="p">:</span>
+            <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transl</span><span class="p">(</span><span class="n">tensor_def</span><span class="p">)</span>
+            <span class="n">decls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">print_decl</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">decl_type</span><span class="p">,</span> <span class="n">explicit_bounds</span><span class="p">))</span>
+            <span class="n">evals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">print_eval</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">decls</span><span class="p">,</span> <span class="n">evals</span></div>
+
+<div class="viewcode-block" id="FortranPrinter.print_decl"><a class="viewcode-back" href="../../api.html#gristmill.FortranPrinter.print_decl">[docs]</a>    <span class="k">def</span> <span class="nf">print_decl</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">decl_type</span><span class="p">,</span> <span class="n">explicit_bounds</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print the Fortran declaration of the LHS of a tensor definition.</span>
+
+<span class="sd">        A string will be returned that forms the naive declaration of the</span>
+<span class="sd">        given tarrays as local variables.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sizes_decl</span> <span class="o">=</span> <span class="s1">&#39;, dimension(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="s1">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_print_lower</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">lower_expr</span><span class="p">),</span> <span class="n">i</span><span class="o">.</span><span class="n">upper</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">explicit_bounds</span> <span class="k">else</span> <span class="n">i</span><span class="o">.</span><span class="n">size</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">indices</span>
+            <span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sizes_decl</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">base_indent</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">globals</span><span class="p">[</span><span class="s1">&#39;global_indent&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">globals</span><span class="p">[</span><span class="s1">&#39;indent_size&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">indentation</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="n">base_indent</span>
+
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="n">indentation</span><span class="p">,</span> <span class="n">decl_type</span><span class="p">,</span> <span class="n">sizes_decl</span><span class="p">,</span> <span class="s1">&#39; :: &#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">base</span>
+        <span class="p">])</span></div>
+
+    <span class="k">def</span> <span class="nf">_print_lower</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower</span><span class="p">:</span> <span class="n">Expr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print the lower bound based on the Fortran convention.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_scal</span><span class="p">(</span><span class="n">lower</span> <span class="o">+</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_form_fortran_loop_beg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the loop beginning for Fortran.&quot;&quot;&quot;</span>
+
+        <span class="n">lower</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_lower</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">lower_expr</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s1">&#39;do </span><span class="si">{index}</span><span class="s1">=</span><span class="si">{lower}</span><span class="s1">, </span><span class="si">{upper}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">upper</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_form_fortran_loop_end</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Form the loop ending for Fortran.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;end do&#39;</span></div>
+
+
+<span class="n">_FORTRAN_OMP_PARALLEL_PRELUDE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">!$omp parallel default(shared)</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_FORTRAN_OMP_PARALLEL_FINALE</span> <span class="o">=</span> <span class="s2">&quot;!$omp end parallel</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+<span class="n">_FORTRAN_OMP_INIT_PRELUDE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">{</span><span class="si">% i</span><span class="s2">f n_ext &gt; 0 %}</span>
+<span class="s2">!$omp do schedule(static)</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">lse %}</span>
+<span class="s2">!$omp single</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">ndif %}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">_FORTRAN_OMP_INIT_FINALE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">{</span><span class="si">% i</span><span class="s2">f n_ext &gt; 0 %}</span>
+<span class="s2">!$omp end do</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">lse %}</span>
+<span class="s2">!$omp end single</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">ndif %}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_FORTRAN_OMP_TERM_PRELUDE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">{</span><span class="si">% i</span><span class="s2">f n_ext &gt; 0 %}</span>
+<span class="s2">!$omp do schedule(static)</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">lse %}</span>
+<span class="s2">{</span><span class="si">% i</span><span class="s2">f (term.sums | length) &gt; 0 %}</span>
+<span class="s2">!$omp do schedule(static) reduction(+:{{ lhs }})</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">lse %}</span>
+<span class="s2">!$omp single</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">ndif %}</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">ndif %}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_FORTRAN_OMP_TERM_FINALE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">{</span><span class="si">% i</span><span class="s2">f (n_ext + (term.sums | length)) &gt; 0 %}</span>
+<span class="s2">!$omp end do</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">lse %}</span>
+<span class="s2">!$omp end single</span>
+<span class="s2">{</span><span class="si">% e</span><span class="s2">ndif %}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># Einsum printer</span>
+<span class="c1"># --------------</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="EinsumPrinter"><a class="viewcode-back" href="../../api.html#gristmill.EinsumPrinter">[docs]</a><span class="k">class</span> <span class="nc">EinsumPrinter</span><span class="p">(</span><span class="n">BasePrinter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Printer for the einsum function.</span>
+
+<span class="sd">    For tensors that are classical tensor contractions, this printer generates</span>
+<span class="sd">    code based on the NumPy ``einsum`` function.  For contractions supported,</span>
+<span class="sd">    the code from this printer can also be used for Tensorflow.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EinsumPrinter.__init__"><a class="viewcode-back" href="../../api.html#gristmill.EinsumPrinter.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the printer.</span>
+
+<span class="sd">        All keyword arguments are forwarded to the base class</span>
+<span class="sd">        :py:class:`BasePrinter`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">PythonPrinter</span><span class="p">(),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EinsumPrinter.print_eval"><a class="viewcode-back" href="../../api.html#gristmill.EinsumPrinter.print_eval">[docs]</a>    <span class="k">def</span> <span class="nf">print_eval</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">tensor_defs</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="n">TensorDef</span><span class="p">],</span>
+            <span class="n">base_indent</span><span class="o">=</span><span class="mi">4</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Print the evaluation of the tensor definitions.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        tensor_defs</span>
+<span class="sd">            The tensor definitions for the evaluations.</span>
+
+<span class="sd">        base_indent</span>
+<span class="sd">            The base indent of the generated code.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        The code for evaluations.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">ctxs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">tensor_def</span> <span class="ow">in</span> <span class="n">tensor_defs</span><span class="p">:</span>
+            <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transl</span><span class="p">(</span><span class="n">tensor_def</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">terms</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">other_factors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s1">&#39;Factors unable to be handled by einsum&#39;</span><span class="p">,</span>
+                        <span class="n">i</span><span class="o">.</span><span class="n">other_factors</span>
+                    <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">ctxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">code</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;einsum&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ctxs</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">indent</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="n">base_indent</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jinmo Zhao and Gustavo E Scuseria.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
