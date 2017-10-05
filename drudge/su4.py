@@ -1,4 +1,4 @@
-"""Drudge for SU(2) Lie algebra."""
+"""Drudge for SU(4) Lie algebra."""
 
 import collections
 import functools
