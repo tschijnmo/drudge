@@ -125,7 +125,30 @@ class SU4LatticeDrudge(GenQuadDrudge):
     def swapper(self) -> GenQuadDrudge.Swapper:
         """The swapper for the spin algebra."""
         return self._swapper
-
+    
+    def eval_exp(h_tsr: Tensor,n1: Symbol):
+        """Function to evaluate the expectation on hartree fock ground state of
+        n-particle Lipkin Hamiltonian
+        """
+        global n_part = n1 #glo0bal variable to be used in function get_vev_of_term
+        return Tensor(dr,h_tsr.terms.flatMap(get_vev_of_term))
+    
+    def get_vev_of_term(term):
+        """Gives the vev of a given term - to be used in eval_exp(...) function
+        """
+        vecs = term.vecs
+        t_amp = term.amp #coefficient of the term
+        for i in vecs:
+            if i.base == self.cartan1:
+                t_amp = t_amp*(-n_part/2)
+            elif i.base == self.cartan2:
+                t_amp = t_amp*(-n_part/2)
+            elif i.base == self.yzz:
+                t_amp = t_amp*(n/4)
+            else:
+                return []
+                break
+        return [Term(sums=term.sums,amp = t_amp,vecs=())]
 
 
 _SU4Spec = collections.namedtuple('_SU4Spec',[
