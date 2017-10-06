@@ -6,7 +6,7 @@ import operator
 
 from sympy import Integer, KroneckerDelta, Rational, Symbol
 
-from drudge import Tensor, TensorDef
+from drudge import *
 from drudge.genquad import GenQuadDrudge
 from drudge.term import Vec
 from drudge.utils import sympy_key
@@ -139,11 +139,11 @@ class SU4LatticeDrudge(GenQuadDrudge):
             t_amp = term.amp #coefficient of the term itself
             for i in vecs:
                 if i.base == ctan1:
-                    t_amp = t_amp*(-n/2)
+                    t_amp = t_amp*(-n1/2)
                 elif i.base == ctan2:
-                    t_amp = t_amp*(-n/2)
+                    t_amp = t_amp*(-n1/2)
                 elif i.base == yizz:
-                    t_amp = t_amp*(n/4)
+                    t_amp = t_amp*(n1/4)
                 else:
                     return []
                     break
