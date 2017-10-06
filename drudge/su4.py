@@ -30,11 +30,10 @@ class SU4LatticeDrudge(GenQuadDrudge):
     
     def __init__(
             self, ctx, cartan1=Vec('J^z'), raise1=Vec('J^+'), lower1=Vec('J^-'),
-            root=Integer(1), norm1=Integer(2), cartan2=Vec('K^z'), 
-            raise2=Vec('K^+'), lower2=Vec('K^-'), norm2=Integer(2),
-            ypp=Vec('Y^{++}'), ypm=Vec('Y^{+-}'), ymp=Vec('Y^{-+}'),
-            ymm=Vec('Y^{--}'), yzz=Vec('Y^{zz}'), ypz=Vec('Y^{+z}'),
-            yzp=Vec('Y^{z+}'), ymz=Vec('Y^{-z}'), yzm=Vec('Y^{z-}'),
+            root=Integer(1), cartan2=Vec('K^z'), raise2=Vec('K^+'), 
+            lower2=Vec('K^-'), ypp=Vec('Y^{++}'), ypm=Vec('Y^{+-}'), 
+            ymp=Vec('Y^{-+}'), ymm=Vec('Y^{--}'), yzz=Vec('Y^{zz}'), 
+            ypz=Vec('Y^{+z}'), yzp=Vec('Y^{z+}'), ymz=Vec('Y^{-z}'), yzm=Vec('Y^{z-}'),
             **kwargs
     ):
         """Initialize the drudge.
@@ -45,18 +44,22 @@ class SU4LatticeDrudge(GenQuadDrudge):
         ctx
             The Spark context for the drudge.
 
-        2 cartans
+        2 cartan
             The basis operator for the Cartan subalgebra (:math:`J^z` operator
             for spin problem).  It is registered in the name archive by the
             first letter in its label followed by an underscore.
 
-        raise_
+        2 raise
             The raising operator.  It is also also registered in the name
             archive by the first letter in its label followed by ``_p``.
 
-        lower
+        2lower
             The lowering operator, registered by the first letter followed by
             ``_m``.
+        
+        9 Cross operators (Y_ab)
+            Mix of the two SU(2)'s described by the cartans, raise and lower
+            operators above.
 
         root
             The coefficient for the commutator between the Cartan and shift
