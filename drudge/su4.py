@@ -66,6 +66,7 @@ class SU4LatticeDrudge(GenQuadDrudge):
             operators.
 
         norm
+            (Feature removed from SU2 -> SU4, seems unused)
             The coefficient for the commutator between the raising and lowering
             operators.
 
@@ -112,8 +113,8 @@ class SU4LatticeDrudge(GenQuadDrudge):
         
         spec = _SU4Spec(
             cartan1=cartan1, raise1=raise1, lower1=lower1, root=root, 
-            norm1=norm1, cartan2=cartan2, raise2=raise2, lower2=lower2, 
-            norm2=norm2, ypp=ypp, ymm=ymm, yzz=yzz, ypm=ypm,
+            cartan2=cartan2, raise2=raise2, lower2=lower2, 
+            ypp=ypp, ymm=ymm, yzz=yzz, ypm=ypm,
             ymp=ymp, ypz=ypz, yzp=yzp, ymz=ymz, yzm=yzm
         )
         self._spec = spec
@@ -132,11 +133,9 @@ _SU4Spec = collections.namedtuple('_SU4Spec',[
     'raise1',
     'lower1',
     'root',
-    'norm1',
     'cartan2',
     'raise2',
     'lower2',
-    'norm2',
     'ypp',
     'ymm',
     'yzz',
@@ -171,8 +170,6 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
     ), _UNITY)
     
     root = spec.root
-    norm1 = spec.norm1
-    norm2 = spec.norm2
     
     if char1 == _YPP:
         
