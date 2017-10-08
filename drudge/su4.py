@@ -4,10 +4,9 @@ import collections
 import functools
 import operator
 
-from sympy import Integer, KroneckerDelta, Rational
+from sympy import Integer, KroneckerDelta, Rational, Symbol
 
-#from drudge import *
-
+from drudge import *
 from drudge.genquad import GenQuadDrudge
 from drudge.term import Vec
 from drudge.utils import sympy_key
@@ -120,35 +119,37 @@ class SU4LatticeDrudge(GenQuadDrudge):
         self._spec = spec
         
         self._swapper = functools.partial(_swap_su4, spec=spec)
-
+    
     @property
     def swapper(self) -> GenQuadDrudge.Swapper:
         """The swapper for the spin algebra."""
         return self._swapper
     
-    def eval_exp(h_tsr: Tensor,n1: Symbol):
+    def eval_exp(self,h_tsr: Tensor, n1: Symbol):
         """Function to evaluate the expectation on hartree fock ground state of
         n-particle Lipkin Hamiltonian
         """
-        global n_part = n1 #glo0bal variable to be used in function get_vev_of_term
-        return Tensor(dr,h_tsr.terms.flatMap(get_vev_of_term))
-    
-    def get_vev_of_term(term):
-        """Gives the vev of a given term - to be used in eval_exp(...) function
-        """
-        vecs = term.vecs
-        t_amp = term.amp #coefficient of the term
-        for i in vecs:
-            if i.base == self.cartan1:
-                t_amp = t_amp*(-n_part/2)
-            elif i.base == self.cartan2:
-                t_amp = t_amp*(-n_part/2)
-            elif i.base == self.yzz:
-                t_amp = t_amp*(n/4)
-            else:
-                return []
-                break
-        return [Term(sums=term.sums,amp = t_amp,vecs=())]
+        ctan1 = self.cartan1
+        ctan2 = self.cartan2
+        yizz = self.yzz
+        
+        def get_vev_of_term(term):
+            """Return the vev of a given term"""
+            vecs = term.vecs
+            t_amp = term.amp #coefficient of the term itself
+            for i in vecs:
+                if i.base == ctan1:
+                    t_amp = t_amp*(-n1/2)
+                elif i.base == ctan2:
+                    t_amp = t_amp*(-n1/2)
+                elif i.base == yizz:
+                    t_amp = t_amp*(n1/4)
+                else:
+                    return []
+                    break
+            return [Term(sums=term.sums,amp = t_amp,vecs=())]
+        return h_tsr.bind(get_vev_of_term)
+
 
 
 _SU4Spec = collections.namedtuple('_SU4Spec',[
