@@ -392,17 +392,17 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
         if char2 == _YPP:
             return _UNITY, Rational(1,2) * delta * spec.raise2[indice1]
         elif char2 == _RAISE1:
-            return _UNITY, NEGTWO * delta * spec.yzz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzz[indice1]
         elif char2 == _RAISE2:
             return _UNITY, root * delta * spec.ymp[indice1]
         elif char2 == _YPZ:
-            return _UNITY, NEGHALF * delta * spec.cartan1[indice1]
+            return _UNITY, _NEGHALF * delta * spec.cartan1[indice1]
         elif char2 == _YZP:
             return _UNITY, _NOUGHT
         elif char2 == _YPM:
-            return _UNITY, NEGHALF * delta * spec.lower2[indice1]
+            return _UNITY, _NEGHALF * delta * spec.lower2[indice1]
         elif char2 == _YZZ:
-            return _UNITY, QUARTER * delta * spec.lower1[indice1]
+            return _UNITY, _QUARTER * delta * spec.lower1[indice1]
         elif char2 == _CARTAN1:
             return _UNITY, root * delta * spec.ymz[indice1]
         elif char2 == _CARTAN2:
@@ -424,21 +424,21 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
         elif char2 == _RAISE1:
             return _UNITY, root * delta * spec.ypm[indice1]
         elif char2 == _RAISE2:
-            return _UNITY, NEGTWO * delta * spec.yzz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzz[indice1]
         elif char2 == _YPZ:
             return _UNITY, _NOUGHT
         elif char2 == _YZP:
-            return _UNITY, NEGHALF * delta * spec.cartan2[indice1]
+            return _UNITY, _NEGHALF * delta * spec.cartan2[indice1]
         elif char2 == _YPM:
             return _UNITY, _NOUGHT
         elif char2 == _YZZ:
-            return _UNITY, -QUARTEr * delta * spec.lower2[indice1]
+            return _UNITY, _QUARTER * delta * spec.lower2[indice1]
         elif char2 == _CARTAN1:
             return _UNITY, _NOUGHT
         elif char2 == _CARTAN2:
             return _UNITY, root * delta * spec.yzm[indice1]
         elif char2 == _YMP:
-            return _UNITY, NEGHALF * delta * spec.lower1[indice1]
+            return _UNITY, _NEGHALF * delta * spec.lower1[indice1]
         elif char2 == _YMZ:
             return _UNITY, _NOUGHT
         elif char2 == _YZM:
@@ -452,17 +452,17 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
     elif char1 == _LOWER1:
         
         if char2 == _YPP:
-            return _UNITY, NEGTWO * delta * spec.yzp[incide1]
+            return _UNITY, _NEGTWO * delta * spec.yzp[indice1]
         elif char2 == _RAISE1:
-            return _UNITY, NEGTWO * delta * spec.cartan1[indice1]
+            return _UNITY, _NEGTWO * delta * spec.cartan1[indice1]
         elif char2 == _RAISE2:
             return _UNITY, _NOUGHT
         elif char2 == _YPZ:
-            return _UNITY, NEGTWO * delta * spec.yzz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzz[indice1]
         elif char2 == _YZP:
             return _UNITY, root * delta * spec.ymp[indice1]
         elif char2 == _YPM:
-            return _UNITY, NEGTWO * delta * spec.yzm[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzm[indice1]
         elif char2 == _YZZ:
             return _UNITY, root * delta * spec.ymz[indice1]
         elif char2 == _CARTAN1:
@@ -486,15 +486,15 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
     elif char1 == _LOWER2:
         
         if char2 == _YPP:
-            return _UNITY, NEGTWO * delta * spec.ypz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.ypz[indice1]
         elif char2 == _RAISE1:
             return _UNITY, _NOUGHT
         elif char2 == _RAISE2:
-            return _UNITY, NEGTWO *delta * spec.cartan2[indice1]
+            return _UNITY, _NEGTWO *delta * spec.cartan2[indice1]
         elif char2 == _YPZ:
             return _UNITY, root * delta * spec.ypm[indice1]
         elif char2 == _YZP:
-            return _UNITY, NEGTWO * delta * spec.yzz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzz[indice1]
         elif char2 == _YPM:
             return _UNITY, _NOUGHT
         elif char2 == _YZZ:
@@ -504,7 +504,7 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
         elif char2 == _CARTAN2:
             return _UNITY, root * delta * spec.lower2[indice1]
         elif char2 == _YMP:
-            return _UNITY, NEGTWO * delta * spec.ymz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.ymz[indice1]
         elif char2 == _YMZ:
             return _UNITY, root * delta * spec.ymm[indice1]
         elif char2 == _YZM:
@@ -524,9 +524,9 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
         if char2 == _YPP:
             return _UNITY, -root * delta * (spec.cartan1[indice1] + spec.cartan2[indice1])
         elif char2 == _RAISE1:
-            return _UNTIY, NEGTWO * delta * spec.yzm[indice1]
+            return _UNITY, _NEGTWO * delta * spec.yzm[indice1]
         elif char2 == _RAISE2:
-            return _UNITY, NEGTWO * delta * spec.ymz[indice1]
+            return _UNITY, _NEGTWO * delta * spec.ymz[indice1]
         elif char2 == _YPZ:
             return _UNITY, Rational(1,2) * delta * spec.lower2[indice1]
         elif char2 == _YZP:
