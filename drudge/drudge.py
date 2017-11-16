@@ -2231,16 +2231,19 @@ class Drudge:
                 sum_args, summand, predicate=predicate
             ))
 
-    def einst(self, summand) -> Tensor:
+    def einst(self, summand, auto_exts: bool = False) -> typing.Union[
+        Tensor, typing.Tuple[Tensor, typing.AbstractSet[Symbol]]
+    ]:
         """Create a tensor from Einstein summation convention.
 
         By calling this function, summations according to the Einstein summation
-        convention will be added to the terms.  Note that for a symbol to be
-        recognized as a summation, it must appear exactly twice in its
+        convention will be added to the terms.  Note that this function is
+        mostly designed for the most conventional tensor problems.  For a symbol
+        to be recognized as a summation, it must appear twice or more in its
         **original form** in indices, and its range needs to be able to be
-        resolved.  When a symbol is suspiciously an Einstein summation dummy but
-        does not satisfy the requirement precisely, it will **not** be added as
-        a summation, but a warning will also be given for reference.
+        resolved.  When a symbol is used in compound form as tensor indices, it
+        will be considered to be for non-conventional purposes and will no
+        longer be automatically recognized as summations.
 
         For instance, we can have the following fairly conventional Einstein
         form,
@@ -2256,40 +2259,90 @@ class Drudge:
             >>> str(tensor)
             'sum_{b} x[a, b]*x[b, c]'
 
-        However, when a dummy is not in the most conventional form, the
-        summations cannot be automatically added.  For instance,
-
-        .. doctest::
-
-            >>> tensor = dr.einst(x[a, b] * x[b, b])
-            >>> str(tensor)
-            'x[a, b]*x[b, b]'
-
-        ``b`` is not summed over since it is repeated three times.  Note also
-        that the symbol must be able to be resolved its range for it to be
-        summed automatically.
-
         Note that in addition to creating tensors from scratch, this method can
         also be called on an existing tensor to add new summations.  In that
         case, no existing summations will be touched.
 
+        Parameters
+        ----------
+
+        summand
+
+            The summand to be applied the Einstein summation convention.
+
+        auto_exts
+
+            If external indices will tried to be recognized automatically and
+            returned as a second return value.  For each term, symbols appearing
+            exactly once **in its raw form as indices** will be considered as
+            external indices.  When the set of external indices are the same for
+            all terms, it will be returned as the second return value, or a
+            ``ValueError`` will be raised.
+
         """
 
         resolvers = self.resolvers
-        if isinstance(summand, Tensor):
-            summand_terms = summand.expand().terms
-            return Tensor(self, summand_terms.map(
-                lambda x: einst_term(x, resolvers.value)
-            ), expanded=True)
-        else:
-            # We need to expand the possibly parenthesized user input.
-            summand_terms = []
-            for i in parse_terms(summand):
-                summand_terms.extend(i.expand())
 
-            return self.create_tensor(
-                [einst_term(i, resolvers.value) for i in summand_terms]
+        # Separate the cases for local and distributed terms for optimization.
+        if isinstance(summand, Tensor):
+
+            einst_res = summand.expand().terms.map(
+                lambda x: einst_term(x, resolvers.value)
+            ).cache()
+            tensor = Tensor(
+                self, einst_res.map(operator.itemgetter(0)), expanded=True
             )
+
+            if not auto_exts:
+                exts_union = None
+                exts_inters = None
+            else:
+
+                def seq_op(curr, new):
+                    """Merge current externals with a new Einstein result."""
+                    curr[0].update(new[1])
+                    curr[1] = _inters(curr[1], new[1])
+                    return curr
+
+                def comb_op(curr, new):
+                    """Merge externals from different partitions."""
+                    curr[0].update(new[0])
+                    curr[1] = _inters(curr[1], new[1])
+                    return curr
+
+                exts_union, exts_inters = einst_res.aggregate(
+                    [set(), None], seq_op, comb_op
+                )
+
+        else:
+            res_terms = []
+            exts_union = set()
+            exts_inters = None
+
+            for i in parse_terms(summand):
+                # We need to expand the possibly parenthesized user input.
+                for j in i.expand():
+                    term, exts = einst_term(j, resolvers.value)
+                    res_terms.append(term)
+                    exts_union |= exts
+                    exts_inters = _inters(exts_inters, exts)
+                    continue
+                continue
+            tensor = self.create_tensor(res_terms)
+
+        # End splitting between distributed and local input.
+
+        if not auto_exts:
+            return tensor
+
+        if exts_union != exts_inters:
+            diff = exts_union - exts_inters
+            raise ValueError(
+                'Invalid external indices for Einstein convention',
+                diff, 'appeared only in some terms'
+            )
+
+        return tensor, exts_inters
 
     def create_tensor(self, terms):
         """Create a tensor with the terms given in the argument.
@@ -2826,6 +2879,19 @@ def _union(orig, new):
     """Union the two sets and return the first."""
     orig |= new
     return orig
+
+
+def _inters(orig, new):
+    """Make the interaction of two sets.
+
+    If the original is a None value, a new set will be created with elements
+    from the new set.
+    """
+    if orig is None:
+        return set(new)
+    else:
+        orig &= new
+        return orig
 
 
 def _decompose_term(term):

@@ -1434,29 +1434,25 @@ def _cat_sums(sums1, sums2):
     return sums
 
 
-def einst_term(term: Term, resolvers):
+def einst_term(term: Term, resolvers) -> typing.Tuple[
+    Term, typing.AbstractSet[Symbol]
+]:
     """Add summations according to the Einstein convention to a term.
 
-    In order for problems easy to be detected for users, here we just add the
-    most certain Einstein summations, while give warnings when there is anything
-    looking like a summation but is not added because of something suspicious.
+    The likely external indices for the term is also returned.
     """
 
-    # Strategy, find all indices to indexed bases, and replace them with
-    # placeholder symbols so that we can detect other free symbols in the
-    # amplitude as well.
+    # Gather all indices to the indexed quantities.
 
-    next_idx = [0]
     indices = []
 
-    def replace_cb(_, *curr_indices):
-        """Replace indexed quantities."""
-        indices.extend(curr_indices)
-        placeholder = Symbol('internalEinstPlaceholder{}'.format(next_idx[0]))
-        next_idx[0] += 1
-        return placeholder
+    def proc_indexed(*args):
+        """Get the indices to the indexed bases."""
+        assert len(args) > 1
+        indices.extend(args[1:])
+        return Indexed(*args)
 
-    res_amp = term.amp.replace(Indexed, NonsympifiableFunc(replace_cb))
+    term.amp.replace(Indexed, NonsympifiableFunc(proc_indexed))
     for i in term.vecs:
         indices.extend(i.indices)
 
@@ -1473,44 +1469,38 @@ def einst_term(term: Term, resolvers):
 
     existing_dumms = term.dumms
     new_sums = []
+    exts = set()
     for symb, use in use_tally.items():
 
         if symb in existing_dumms:
             continue
 
-        if use[0] != 2 and use[0] + use[1] != 2:
-            # No chance to be an Einstein summation.
-            continue
-
         if use[1] != 0:
-            warnings.warn(
-                'Symbol {} is not summed due to its usage in complex indices'
-                    .format(symb)
-            )
-            continue
-        if res_amp.has(symb):
-            warnings.warn(
-                'Symbol {} is not summed due to its usage in the amplitude'
-                    .format(symb)
-            )
+            # Non-conventional indices.
             continue
 
-        range_ = try_resolve_range(symb, {}, resolvers)
-        if range_ is None:
-            warnings.warn(
-                'Symbol {} is not summed for the incapability to resolve range'
-                    .format(symb)
-            )
-            continue
+        if use[0] == 1:
+            # External candidate.
+            exts.add(symb)
+        else:
+            # Summation candidate.
+            range_ = try_resolve_range(symb, {}, resolvers)
+            if range_ is None:
+                warnings.warn(
+                    'Symbol {} is not summed for the incapability to resolve '
+                    'range'
+                        .format(symb)
+                )
+                continue
 
-        # Now we have an Einstein summation.
-        new_sums.append((symb, range_))
+            # Now we have an Einstein summation.
+            new_sums.append((symb, range_))
         continue
 
     # Make summation from Einstein convention deterministic.
     new_sums.sort(key=lambda x: (x[1].sort_key, x[0].name))
 
-    return Term(_cat_sums(term.sums, new_sums), term.amp, term.vecs)
+    return Term(_cat_sums(term.sums, new_sums), term.amp, term.vecs), exts
 
 
 def parse_term(term):
