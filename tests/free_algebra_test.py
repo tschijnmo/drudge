@@ -603,6 +603,34 @@ def test_tensor_def_creation_and_basic_properties(free_alg):
     assert y_def[1].simplify() == dr.einst(o[1, j] * x[j]).simplify()
 
 
+def test_einstein_convention(free_alg):
+    """Test Einstein summation convention utility.
+
+    In this test, more complex aspects of the Einstein convention facility is
+    tested.  Especially for the external indices and definition creation.
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    o = IndexedBase('o')
+    v = IndexedBase('v')
+    w = IndexedBase('w')
+    i, j = p.R_dumms[:2]
+
+    raw_amp_1 = o[i, j] * v[j]
+    raw_amp_2 = o[i, j] * w[j]
+    raw_amp = raw_amp_1 + raw_amp_2
+
+    for inp in [raw_amp, dr.sum(raw_amp)]:
+        tensor, exts = dr.einst(inp, auto_exts=True)
+        terms = tensor.local_terms
+        assert all(i.sums == ((j, p.R),) for i in terms)
+        assert {terms[0].amp, terms[1].amp} == {raw_amp_1, raw_amp_2}
+        assert all(len(i.vecs) == 0 for i in terms)
+        assert exts == {i}
+
+
 def test_tensor_def_simplification(free_alg):
     """Test basic tensor definition simplification and dummy manipulation.
     """
