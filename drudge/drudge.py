@@ -2380,18 +2380,35 @@ class Drudge:
         tensor = content if isinstance(content, Tensor) else self.sum(content)
         return TensorDef(base, exts, tensor)
 
-    def define_einst(self, *args) -> TensorDef:
+    def define_einst(self, *args, auto_exts=False) -> TensorDef:
         """Make a tensor definition based on Einstein summation convention.
 
-        Basically the same function as the :py:meth:`define`, just the content
-        will be interpreted according to the Einstein summation convention.
+        This method basically performs function very similar to the
+        :py:meth:`define` method, just the content will be interpreted according
+        to the Einstein summation convention.  When the argument ``auto_exts``
+        is set, the lhs of the definition is read in the same way as the
+        :py:meth:`define` method.  When it is turned on, the lhs can be given
+        only by a base and the external indices will be attempted to be
+        inferred, as described in :py:meth:`einst`.
+
         """
 
         if len(args) == 0:
             raise ValueError('Expecting arguments for definition.')
 
-        base, exts = self._parse_def_lhs(args[:-1])
-        tensor = self.einst(args[-1])
+        if auto_exts:
+            if len(args) != 2:
+                raise TypeError(
+                    'Invalid number of arguments, base and rhs expected!'
+                )
+            tensor, exts = self.einst(args[-1], auto_exts=True)
+            exts = self._form_exts(exts)
+            exts.sort(key=lambda x: (x[1], x[0]))
+            base = args[0]
+        else:
+            tensor = self.einst(args[-1])
+            base, exts = self._parse_def_lhs(args[:-1])
+
         return TensorDef(base, exts, tensor)
 
     def _parse_def_lhs(self, args):
@@ -2407,21 +2424,29 @@ class Drudge:
             arg = args[0]
             if isinstance(arg, (Indexed, Vec)):
                 base = arg.base
-                exts = []
-                for i in arg.indices:
-                    range_ = try_resolve_range(i, {}, self.resolvers.value)
-                    if range_ is None:
-                        raise ValueError(
-                            'Invalid index', i, 'in', args,
-                            'range cannot be resolved'
-                        )
-                    exts.append((i, range_))
-                    continue
+                exts = self._form_exts(arg.indices)
                 return base, exts
             else:
                 return arg, ()
         else:
             return args[0], args[1:]
+
+    def _form_exts(self, indices):
+        """Form dummy/range pairs from symbols.
+
+        The range is resolved based on the resolver, or ValueError will be
+        raised.
+        """
+        exts = []
+        for i in indices:
+            range_ = try_resolve_range(i, {}, self.resolvers.value)
+            if range_ is None:
+                raise ValueError(
+                    'Invalid index', i, 'range cannot be resolved'
+                )
+            exts.append((i, range_))
+            continue
+        return exts
 
     def def_(self, *args) -> TensorDef:
         """Make a tensor definition according to convention set in drudge.
