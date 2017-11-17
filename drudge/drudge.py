@@ -1425,12 +1425,6 @@ class TensorDef(Tensor):
                 )
             continue
 
-        if not isinstance(base, (Vec, IndexedBase, Symbol)):
-            raise TypeError(
-                'Invalid base for tensor definition', base,
-                'expecting vector or scalar base'
-            )
-
         # Normalize the base.
         base_name = str(base)
         is_scalar = self.is_scalar
