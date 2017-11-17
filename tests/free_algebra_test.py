@@ -630,6 +630,13 @@ def test_einstein_convention(free_alg):
         assert all(len(i.vecs) == 0 for i in terms)
         assert exts == {i}
 
+    # Test the automatic definition formation.
+    tensor_def = dr.define_einst('r', raw_amp, auto_exts=True)
+    assert len(tensor_def.exts) == 1
+    assert tensor_def.base == IndexedBase('r')
+    assert tensor_def.exts[0] == (i, p.R)
+    assert tensor_def.rhs == dr.einst(raw_amp)
+
 
 def test_tensor_def_simplification(free_alg):
     """Test basic tensor definition simplification and dummy manipulation.
