@@ -95,10 +95,18 @@ class Report:
                 for i in ['begin', 'end']
             ]
 
+        if content is None:
+            expr = None
+        elif hasattr(content, 'latex'):
+            expr = content.latex(**kwargs)
+        else:
+            # Try to use raw SymPy LaTeX printing.
+            expr = ScalarLatexPrinter().doprint(content)
+
         self._sects.append({
             'title': title,
             'description': description,
-            'expr': content.latex(**kwargs) if content is not None else None,
+            'expr': expr,
             'opening': opening,
             'closing': closing
         })
