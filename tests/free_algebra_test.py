@@ -616,25 +616,32 @@ def test_einstein_convention(free_alg):
     o = IndexedBase('o')
     v = IndexedBase('v')
     w = IndexedBase('w')
-    i, j = p.R_dumms[:2]
+    i, j, k = p.R_dumms[:3]
 
-    raw_amp_1 = o[i, j] * v[j]
-    raw_amp_2 = o[i, j] * w[j]
+    raw_amp_1 = o[i, k] * v[k, j]
+    raw_amp_2 = o[i, k] * w[k, j]
     raw_amp = raw_amp_1 + raw_amp_2
 
     for inp in [raw_amp, dr.sum(raw_amp)]:
         tensor, exts = dr.einst(inp, auto_exts=True)
+        assert exts == {i, j}
         terms = tensor.local_terms
-        assert all(i.sums == ((j, p.R),) for i in terms)
-        assert {terms[0].amp, terms[1].amp} == {raw_amp_1, raw_amp_2}
-        assert all(len(i.vecs) == 0 for i in terms)
-        assert exts == {i}
+        for idx, term in enumerate(terms):
+            assert len(term.sums) == 1
+            assert term.sums[0] == (k, p.R)
+            if idx == 0:
+                assert term.amp == raw_amp_1
+            elif idx == 1:
+                assert term.amp == raw_amp_2
+            assert len(term.vecs) == 0
+            continue
 
     # Test the automatic definition formation.
     tensor_def = dr.define_einst('r', raw_amp, auto_exts=True)
-    assert len(tensor_def.exts) == 1
-    assert tensor_def.base == IndexedBase('r')
+    assert len(tensor_def.exts) == 2
     assert tensor_def.exts[0] == (i, p.R)
+    assert tensor_def.exts[1] == (j, p.R)
+    assert tensor_def.base == IndexedBase('r')
     assert tensor_def.rhs == dr.einst(raw_amp)
 
 
