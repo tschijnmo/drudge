@@ -23,7 +23,7 @@ from .term import (
     subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
     rewrite_term
 )
-from .utils import ensure_symb, BCastVar, nest_bind, prod_
+from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
 
 
 class Tensor:
@@ -2403,7 +2403,7 @@ class Drudge:
                 )
             tensor, exts = self.einst(args[-1], auto_exts=True)
             exts = self._form_exts(exts)
-            exts.sort(key=lambda x: (x[1], x[0]))
+            exts.sort(key=lambda x: (x[1], sympy_key(x[0])))
             base = args[0]
         else:
             tensor = self.einst(args[-1])
