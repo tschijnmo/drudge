@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  test_dummy:
+    docker:
+      - image: tschijnmo/drudgedevel:latest
+    steps:
+      - checkout
+      - run:
+          name: Run tests with dummy Spark
+          environment:
+            DUMMY_SPARK: 1
+          command: |
+            python3 setup.py build
+            python3 setup.py install
+            cd tests
+            pytest -sv
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - test_dummy
+
