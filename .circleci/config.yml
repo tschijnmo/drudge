@@ -5,6 +5,7 @@ jobs:
       - image: tschijnmo/drudgedevel:latest
     steps:
       - checkout
+      - run: git submodule update --init --recursive
       - run:
           name: Run tests with dummy Spark
           environment:
