@@ -2580,7 +2580,7 @@ class Drudge:
 
         if not no_sum:
             parts.extend(r'\sum_{{{} \in {}}}'.format(
-                i, j.label
+                self._latex_sympy(i), j.label
             ) for i, j in term.sums)
 
         if coeff_latex is not None:
