@@ -2557,6 +2557,8 @@ class Drudge:
         else:
             raise TypeError('Invalid object to form into LaTeX.')
 
+        inp = inp.shallow_expand()
+
         n_terms = inp.n_terms
         inp_terms = inp.local_terms
 
