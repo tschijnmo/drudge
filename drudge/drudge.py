@@ -1313,6 +1313,15 @@ class Tensor:
             lambda x: x.map(action, skip_vecs=skip_vecs)
         ))
 
+    def map2amps(self, action):
+        """Map the given action to the amplitudes in the tensor.
+
+        This method is a plain wrapper for calling :py:meth:`map2scalars` with
+        vectors skipped.
+        """
+
+        return self.map2scalars(action, skip_vecs=True)
+
     #
     # Operations from the drudge
     #

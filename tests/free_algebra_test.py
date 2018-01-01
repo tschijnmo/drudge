@@ -186,6 +186,7 @@ def test_tensor_has_basic_operations(free_alg):
     assert res == dr.sum((i, r), y[i] * v[i, c])
     res = tensor.map2scalars(lambda x: x.xreplace(substs), skip_vecs=True)
     assert res == dr.sum((i, r), y[i] * v[i, j])
+    assert res == tensor.map2amps(lambda x: x.xreplace(substs))
 
     # Test base presence.
     tensor = dr.einst(x[i] * v[i])
