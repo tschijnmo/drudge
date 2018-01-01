@@ -159,6 +159,18 @@ def test_tensor_has_basic_operations(free_alg):
     assert tensor.n_terms == 1
     expanded = tensor.expand()
     assert expanded.n_terms == 2
+    # Make sure shallow expansion does not delve into the tree.
+    shallowly_expanded = tensor.shallow_expand()
+    assert shallowly_expanded.n_terms == 1
+
+    # Make sure shallow expansion does the job on the top-level.
+    y = IndexedBase('y')
+    tensor = dr.sum((i, r), (x[i] * (c + d) + y[i]) * v[i])
+    assert tensor.n_terms == 1
+    expanded = tensor.expand()
+    assert expanded.n_terms == 3
+    shallowly_expanded = tensor.shallow_expand()
+    assert shallowly_expanded.n_terms == 2
 
     # Here we also test concrete summation facility.
     expected = dr.sum(
