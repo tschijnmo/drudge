@@ -177,6 +177,9 @@ def test_drs_env():
     assert env['Symbol'] is Symbol
     assert env['range'] is range
 
+    # Specially excluded items from some path entries.
+    assert isinstance(env['N'], DrsSymbol)
+
 
 CONF_SCRIPT = """
 from dummy_spark import SparkContext

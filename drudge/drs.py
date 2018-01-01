@@ -299,28 +299,30 @@ class DrsEnv(dict):
         super().__init__()
 
         self._drudge = dr
-        path = [dr.names]
+        path = [(dr.names, frozenset())]
         self._path = path
 
         if specials is not None:
-            path.append(specials)
+            path.append((specials, frozenset()))
 
-        path.append(dr)
+        path.append((dr, frozenset()))
         import drudge
-        path.append(drudge)
+        path.append((drudge, frozenset()))
 
         try:
             import gristmill
         except ModuleNotFoundError:
             pass
         else:
-            path.append(gristmill)
+            path.append((gristmill, frozenset()))
 
         import sympy
-        path.append(sympy)
+        path.append((sympy, frozenset([
+            'N'
+        ])))
 
         import builtins
-        path.append(builtins)
+        path.append((builtins, frozenset()))
 
     def __missing__(self, key: str):
         """Get the missing name.
@@ -332,9 +334,9 @@ class DrsEnv(dict):
         if key.startswith('__') and key.endswith('__'):
             raise KeyError(key)
 
-        for i in self._path:
-            if hasattr(i, key):
-                resolv = getattr(i, key)
+        for entry, excl in self._path:
+            if hasattr(entry, key) and key not in excl:
+                resolv = getattr(entry, key)
                 break
             else:
                 continue
