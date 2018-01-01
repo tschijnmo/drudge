@@ -2543,7 +2543,8 @@ class Drudge:
             of tensors with terms with many factors, special command
             ``\invismult`` can be used, which just makes a small space but
             enables the factors to be automatically split by the ``breqn``
-            package.
+            package.  Note that this option has effect only for expanded terms,
+            where the scalar multiplication occurs on the top-level.
 
         """
 
@@ -2556,8 +2557,6 @@ class Drudge:
             prefix = ''
         else:
             raise TypeError('Invalid object to form into LaTeX.')
-
-        inp = inp.shallow_expand()
 
         n_terms = inp.n_terms
         inp_terms = inp.local_terms
@@ -2591,38 +2590,51 @@ class Drudge:
 
         parts = []
 
-        factors, coeff = term.amp_factors
-        if coeff == 1:
-            coeff_latex = None
-        elif coeff == -1:
-            parts.append('-')
-            coeff_latex = None
-        else:
-            coeff_latex = self._latex_sympy(coeff)
-            if coeff_latex[0] == '-':
+        # Here we treat the amplitude first so that a possible minus sign can be
+        # put before the term.
+        amp_parts = []
+
+        if isinstance(term.amp, Add):
+            # In this case, we need a big parenthesis for the amplitude.
+            first_try = self._latex_sympy(term.amp)
+            if first_try[0] == '-':
                 parts.append('-')
-                coeff_latex = coeff_latex[1:]
+                amp_latex = self._latex_sympy(-term.amp)
+            else:
+                amp_latex = first_try
+
+            amp_parts.append(' '.join([
+                r'\left(', amp_latex, r'\right)'
+            ]))
+        else:
+            factors, coeff = term.amp_factors
+
+            if coeff == 1:
+                pass
+            elif coeff == -1:
+                parts.append('-')
+            else:
+                coeff_latex = self._latex_sympy(coeff)
+                if coeff_latex[0] == '-':
+                    parts.append('-')
+                    amp_parts.append(coeff_latex[1:])
+
+            if len(factors) > 0:
+                scalar_mul = ''.join([' ', scalar_mul, ' '])
+
+                amp_parts.append(scalar_mul.join(
+                    self._latex_sympy(i) for i in factors
+                ))
+
+        if not term.is_scalar:
+            amp_parts.append(scalar_mul)
 
         if not no_sum:
             parts.extend(r'\sum_{{{} \in {}}}'.format(
                 self._latex_sympy(i), j.label
             ) for i, j in term.sums)
 
-        if coeff_latex is not None:
-            parts.append(coeff_latex)
-
-        if len(factors) > 0:
-            scalar_mul = ''.join([' ', scalar_mul, ' '])
-
-            if coeff_latex is not None:
-                parts.append(scalar_mul)
-
-            parts.append(scalar_mul.join(
-                self._latex_sympy(i) for i in factors
-            ))
-
-            if not term.is_scalar:
-                parts.append(scalar_mul)
+        parts.append(' '.join(amp_parts))
 
         vecs = self._latex_vec_mul.join(
             self._latex_vec(i) for i in term.vecs
