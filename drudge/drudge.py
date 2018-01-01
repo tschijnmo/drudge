@@ -13,7 +13,9 @@ from collections.abc import Iterable, Sequence
 
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
-from sympy import IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr
+from sympy import (
+    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add
+)
 
 from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
@@ -506,6 +508,27 @@ class Tensor:
     def _expand(terms):
         """Get terms after they are fully expanded."""
         return terms.flatMap(lambda term: term.expand())
+
+    def shallow_expand(self):
+        """Expand terms with addition amplitudes into multiple terms.
+
+        Different from the :py:meth:`expand` method, this method only expands
+        a term when its amplitude is written as an addition on the
+        top-level.  This is useful for cases where the inner structures of the
+        amplitude expression tree is intended to be preserved.
+        """
+        return self.bind(self._shallow_expand)
+
+    @staticmethod
+    def _shallow_expand(term: Term) -> typing.Iterable[Term]:
+        """Expand a term shallowly."""
+        if isinstance(term.amp, Add):
+            return [
+                Term(sums=term.sums, amp=i, vecs=term.vecs)
+                for i in term.amp.args
+            ]
+        else:
+            return [term]
 
     def sort(self):
         """Sort the terms in the tensor.
