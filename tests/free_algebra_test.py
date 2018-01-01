@@ -196,6 +196,40 @@ def test_tensor_has_basic_operations(free_alg):
     assert not tensor.has_base(Vec('w'))
 
 
+def test_adv_merging(free_alg):
+    """Test advanced merging options."""
+
+    dr = free_alg
+    m, n, a, b, c = symbols('m n a b c')
+    orig = m * a * b + n * a * c
+    factored = (m * b + n * c) * a
+    tensor = dr.sum(orig).expand()
+    assert tensor.n_terms == 2
+
+    res = tensor.merge()
+    assert res.n_terms == 1
+    amp = res.local_terms[0].amp
+    assert amp == orig
+
+    res = tensor.merge(consts=(m, n))
+    assert res.n_terms == 2
+
+    res = tensor.merge(consts=(m, n, b, c))
+    assert res.n_terms == 1
+    amp = res.local_terms[0].amp
+    assert amp == factored
+    assert amp != orig
+
+    res = tensor.merge(gens=(a, b))
+    assert res.n_terms == 2
+
+    res = tensor.merge(gens=(a,))
+    assert res.n_terms == 1
+    amp = res.local_terms[0].amp
+    assert amp == factored
+    assert amp != orig
+
+
 def test_tensor_can_be_simplified_amp(free_alg):
     """Test the amplitude simplification for tensors.
 
