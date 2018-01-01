@@ -126,8 +126,8 @@ def test_tensor_has_basic_operations(free_alg):
     r = p.R
     v = p.v
     tensor = (
-        dr.sum((l, r), x[i, l] * v[l]) +
-        dr.sum((m, r), x[j, m] * v[m])
+            dr.sum((l, r), x[i, l] * v[l]) +
+            dr.sum((m, r), x[j, m] * v[m])
     )
 
     # Without dummy resetting, they cannot be merged.
@@ -141,8 +141,8 @@ def test_tensor_has_basic_operations(free_alg):
     # Reset dummy.
     reset = tensor.reset_dumms()
     expected = (
-        dr.sum((k, r), x[i, k] * v[k]) +
-        dr.sum((k, r), x[j, k] * v[k])
+            dr.sum((k, r), x[i, k] * v[k]) +
+            dr.sum((k, r), x[j, k] * v[k])
     )
     assert reset == expected
     assert reset.local_terms == expected.local_terms
@@ -216,12 +216,12 @@ def test_tensor_can_be_simplified_amp(free_alg):
     theta = sympify('theta')
 
     tensor = (
-        dr.sum((i, r), sin(theta) ** 2 * x[i] * v[i]) +
-        dr.sum(
-            (i, r), (j, r),
-            cos(theta) ** 2 * x[j] * KroneckerDelta(i, j) * v[i]
-        ) +
-        dr.sum((i, r), (alpha, s), KroneckerDelta(i, alpha) * y[i] * v[i])
+            dr.sum((i, r), sin(theta) ** 2 * x[i] * v[i]) +
+            dr.sum(
+                (i, r), (j, r),
+                cos(theta) ** 2 * x[j] * KroneckerDelta(i, j) * v[i]
+            ) +
+            dr.sum((i, r), (alpha, s), KroneckerDelta(i, alpha) * y[i] * v[i])
     )
     assert tensor.n_terms == 3
 
@@ -257,8 +257,8 @@ def test_tensor_can_be_canonicalized(free_alg):
 
     # Anti-symmetric real matrix.
     tensor = (
-        dr.sum((i, r), (j, r), m[i, j] * v[i] * v[j]) +
-        dr.sum((i, r), (j, r), m[j, i] * v[i] * v[j])
+            dr.sum((i, r), (j, r), m[i, j] * v[i] * v[j]) +
+            dr.sum((i, r), (j, r), m[j, i] * v[i] * v[j])
     )
     assert tensor.n_terms == 2
 
@@ -308,8 +308,8 @@ def test_tensor_math_ops(free_alg):
     prod = v1_1 * w1_1
     # Test scalar multiplication here as well.
     expected = (
-        2 * a + a * v1 + 2 * w1 +
-        dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j])
+            2 * a + a * v1 + 2 * w1 +
+            dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j])
     )
     assert prod.simplify() == expected.simplify()
 
@@ -319,8 +319,8 @@ def test_tensor_math_ops(free_alg):
     # Here the tensor subtraction can also be tested.
     comm_v1w1 = v1 | w1
     expected = (
-        dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j]) -
-        dr.sum((i, r), (j, r), x[j] * x[i] * w[i] * v[j])
+            dr.sum((i, r), (j, r), x[i] * x[j] * v[i] * w[j]) -
+            dr.sum((i, r), (j, r), x[j] * x[i] * w[i] * v[j])
     )
     assert comm_v1w1.simplify() == expected.simplify()
 
