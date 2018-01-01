@@ -1011,7 +1011,7 @@ class Tensor:
         """
 
         free_vars_local = (
-            self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
+                self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
         )
         if excl is not None:
             free_vars_local |= excl
@@ -1203,8 +1203,8 @@ class Tensor:
 
             symms = self._drudge.symms.value
             if_symm = (
-                variable.base in symms or
-                (variable.base, len(variable.indices)) in symms
+                    variable.base in symms or
+                    (variable.base, len(variable.indices)) in symms
             )
             if if_symm:
                 warnings.warn(
@@ -1432,8 +1432,8 @@ class TensorDef(Tensor):
         self._exts = []
         for i in exts:
             explicit_ext = (
-                isinstance(i, Sequence) and len(i) == 2 and
-                isinstance(i[0], Symbol) and isinstance(i[1], Range)
+                    isinstance(i, Sequence) and len(i) == 2 and
+                    isinstance(i[0], Symbol) and isinstance(i[1], Range)
             )
             if explicit_ext:
                 self._exts.append(tuple(i))
@@ -2006,7 +2006,7 @@ class Drudge:
             group = Group(gens)
 
         valid_valence = (valence is None or (
-            isinstance(valence, int) and valence > 1
+                isinstance(valence, int) and valence > 1
         ))
         if not valid_valence:
             raise ValueError(
