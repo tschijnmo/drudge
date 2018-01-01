@@ -542,29 +542,47 @@ class Tensor:
         """Sort the terms in the tensor."""
         return terms.sortBy(lambda term: term.sort_key)
 
-    def merge(self):
-        """Merge terms with the same vector and summation part.
+    def merge(self, consts=None, gens=None):
+        """Merge some terms.
 
-        This function merges terms only when their summation list and vector
-        part are *syntactically* the same.  So it is more useful when the
-        canonicalization has been performed and the dummies reset.
+        This function attempts to merge some terms into smaller number of terms.
+        Two terms can be merged only when their summation list, vector part, and
+        selected factors are *syntactically* the same.  So it is more useful
+        when the canonicalization has been performed and the dummies reset.
+
+        When simple merge is disabled, nothing is put into the selected factors,
+        all terms with the same summations and vectors are tried to be merged.
+        When simple merge is enabled, inside the amplitude, any factor
+        containing one of the dummy variables and all indexed quantities are put
+        into the selected factors.  By default, all other factors are considered
+        to be symbols standing for some constants and will be merged.  If the
+        ``consts`` argument is given, only the symbols given there will be
+        considered to be constant symbols for coefficients, with all factors
+        with any other symbol put into the selected factors.  If the ``gens``
+        argument is given, only symbols given here are considered to be
+        generators of the polynomial, with all others considered to be
+        constants.
+
         """
 
         # All the traits could be invalidated by merging.
         return Tensor(
-            self._drudge, self._merge(self._terms)
+            self._drudge, self._merge(self._terms, consts, gens)
         )
 
-    def _merge(self, terms):
+    def _merge(self, terms, consts, gens):
         """Get the term when they are attempted to be merged."""
-        if not self._drudge.simple_merge:
+        if not self._drudge.simple_merge and consts is None and gens is None:
             return terms.map(
                 lambda term: ((term.sums, term.vecs), term.amp)
             ).reduceByKey(operator.add).map(
                 lambda x: Term(x[0][0], x[1], x[0][1])
             )
         else:
-            return terms.map(_decompose_term).reduceByKey(operator.add).map(
+            specials = _DecomposeSpecials(consts, gens)
+            return terms.map(
+                functools.partial(_decompose_term, specials=specials)
+            ).reduceByKey(operator.add).map(
                 lambda x: Term(x[0][0], x[1] * x[0][2], x[0][1])
             )
 
@@ -670,7 +688,7 @@ class Tensor:
 
         free_vars = self._get_free_vars(terms)
         terms = self._reset_dumms(terms, excl=free_vars)
-        terms = self._merge(terms)
+        terms = self._merge(terms, None, None)
 
         # Finally simplify the merged amplitude again.
         if self._drudge.full_simplify:
@@ -2959,7 +2977,45 @@ def _inters(orig, new):
         return orig
 
 
-def _decompose_term(term):
+class _DecomposeSpecials:
+    """Container of special symbols during amplitude decomposition for merging.
+
+    When the merging is in constant symbol mode, a symbol is considered to be
+    contained only when it is not a constant symbol.  During generators mode, a
+    symbol is considered special only when it is one of the given generators.
+    In default mode, no symbol is considered special.
+    """
+
+    __slots__ = [
+        '_consts',
+        '_gens'
+    ]
+
+    def __init__(self, consts=None, gens=None):
+        """Initialize the container."""
+
+        self._consts = None
+        self._gens = None
+
+        if consts is not None:
+            self._consts = frozenset(consts)
+            assert gens is None
+        elif gens is not None:
+            self._gens = frozenset(gens)
+            assert consts is None
+
+    def __contains__(self, item):
+        """Test if a symbol requires special treatment."""
+        if self._consts is not None:
+            return item not in self._consts
+        elif self._gens is not None:
+            return item in self._gens
+        else:
+            # By default, we do not give special treatment to any symbol.
+            return False
+
+
+def _decompose_term(term, specials):
     """Decompose a term for simple merging.
 
     The given term will be decomposed into a pair, where the first field has the
@@ -2967,7 +3023,7 @@ def _decompose_term(term):
     And the second field contains factors involving no dummies.
     """
 
-    factors, coeff = term.amp_factors
+    factors, coeff = term.get_amp_factors(specials)
     return (
         (term.sums, term.vecs, prod_(factors)),
         coeff
