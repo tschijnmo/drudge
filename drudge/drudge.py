@@ -2645,6 +2645,8 @@ class Drudge:
                 if coeff_latex[0] == '-':
                     parts.append('-')
                     amp_parts.append(coeff_latex[1:])
+                else:
+                    amp_parts.append(coeff_latex)
 
             if len(factors) > 0:
                 scalar_mul = ''.join([' ', scalar_mul, ' '])
