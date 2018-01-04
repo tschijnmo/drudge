@@ -26,10 +26,10 @@ class SU2LatticeDrudge(GenQuadDrudge):
 
     def __init__(
             self, ctx, cartan=Vec('J^z'), raise_=Vec('J^+'), lower=Vec('J^-'),
-            root=Integer(1), norm=Integer(2),
+            root=Integer(1), norm=Integer(2), trail=Integer(0),
             **kwargs
     ):
-        """Initialize the drudge.
+        r"""Initialize the drudge.
 
         Parameters
         ----------
@@ -58,9 +58,39 @@ class SU2LatticeDrudge(GenQuadDrudge):
             The coefficient for the commutator between the raising and lowering
             operators.
 
+        trail
+            A trailing scalar to be added to the Cartan generator in the
+            commutator between the raising and lowering operators.
+
         kwargs
             All other keyword arguments are given to the base class
             :py:class:`GenQuadDrudge`.
+
+        The commutation
+        ---------------
+
+        With a generator of the Cartan subalgebra denoted :math:`h`, and its
+        raising and lowering operators by :math:`e` and :math:`f`, the
+        commutation rules among the generators with the same index can be
+        summarized as,
+
+        .. math::
+
+            [h, e] = root \cdot e
+
+        .. math::
+
+            [f, e] = -norm \cdot h - trail \,
+                \left( [e, f] = norm \cdot h + trail \right)
+
+        and
+
+        .. math::
+
+            [f, h] = root \cdot f \,
+                \left( [h, f] = -root \cdot f \right)
+
+        This is a slight generalization of the common Serre relations.
 
         """
         super().__init__(ctx, **kwargs)
@@ -76,7 +106,7 @@ class SU2LatticeDrudge(GenQuadDrudge):
 
         spec = _SU2Spec(
             cartan=cartan, raise_=raise_, lower=lower,
-            root=root, norm=norm
+            root=root, norm=norm, trail=trail
         )
         self._spec = spec
 
@@ -93,7 +123,8 @@ _SU2Spec = collections.namedtuple('_SU2Spec', [
     'raise_',
     'lower',
     'root',
-    'norm'
+    'norm',
+    'trail'
 ])
 
 
@@ -115,6 +146,7 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
 
     root = spec.root
     norm = spec.norm
+    trail = spec.trail
 
     if char1 == _RAISE:
 
@@ -143,7 +175,10 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
     elif char1 == _LOWER:
 
         if char2 == _RAISE:
-            return _UNITY, -norm * delta * spec.cartan[indice1]
+            comm = -norm * delta * spec.cartan[indice1]
+            if trail != 0:
+                comm -= trail
+            return _UNITY, comm
         elif char2 == _CARTAN:
             return _UNITY, root * delta * vec1
         else:
