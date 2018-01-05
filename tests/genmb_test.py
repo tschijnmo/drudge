@@ -102,6 +102,20 @@ def test_genmb_simplify_simple_expressions(
     assert res == expected
 
 
+def test_genmb_simplifies_nilpotent_operators(genmb):
+    """Test simplification of tensors vanishing by nilpotency."""
+
+    dr = genmb
+    p = dr.names
+    c_dag = p.c_dag
+    c_ = p.c_
+    a = p.a
+
+    assert dr.sum(c_dag[a] * c_dag[a]).simplify() == 0
+    assert dr.sum(c_[a] * c_[a]).simplify() == 0
+    assert dr.sum(c_dag[a] * c_[a]).simplify().n_terms == 1
+
+
 def test_genmb_gives_conventional_dummies(genmb):
     """Test dummy placement in canonicalization facility on many-body drudge.
     """
