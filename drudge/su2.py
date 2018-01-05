@@ -175,9 +175,10 @@ def _swap_su2(vec1: Vec, vec2: Vec, *, spec: _SU2Spec):
     elif char1 == _LOWER:
 
         if char2 == _RAISE:
-            comm = -norm * delta * spec.cartan[indice1]
-            if trail != 0:
-                comm -= trail
+            comm = -norm * delta * (
+                spec.cartan[indice1] if trail == 0
+                else spec.cartan[indice1] + trail
+            )
             return _UNITY, comm
         elif char2 == _CARTAN:
             return _UNITY, root * delta * vec1
