@@ -48,7 +48,7 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
             hole_range=Range('O', 0, Symbol('no')),
             hole_dumm=PartHoleDrudge.DEFAULT_HOLE_DUMMS,
             energies=IndexedBase('epsilon'), interact=IndexedBase('G'),
-            cartan=Vec('N'), raise_=Vec(r'P^\dag'), lower=Vec('P'),
+            cartan=Vec('N'), raise_=Vec(r'P^\dagger'), lower=Vec('P'),
             root=Integer(2), norm=Integer(1), trail=Integer(-1),
             **kwargs
     ):

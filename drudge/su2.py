@@ -104,6 +104,8 @@ class SU2LatticeDrudge(GenQuadDrudge):
         """The swapper for the spin algebra."""
         return self._swapper
 
+    _latex_vec_mul = ' '
+
 
 _SU2Spec = collections.namedtuple('_SU2Spec', [
     'cartan',
