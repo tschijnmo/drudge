@@ -12,12 +12,24 @@ from .utils import sympy_key
 
 
 class SU2LatticeDrudge(GenQuadDrudge):
-    """Drudge for a lattice of SU(2) algebras.
+    r"""Drudge for a lattice of su(2) algebras.
 
-    This drudge has the commutation rules for SU(2) algebras in Cartan-Weyl form
-    (Ladder operators).  Here both the shift and Cartan operators can have
-    additional *lattice indices*.  Operators on different lattice sites always
-    commute.
+    This drudge has the commutation rules for :math:`\mathfrak{su}(2)` algebras
+    in Cartan-Weyl form (Ladder operators).  Here both the shift and Cartan
+    operators can have additional *lattice indices*.  Operators on different
+    lattice sites always commute.  In detail, with a generator of the Cartan
+    subalgebra denoted :math:`h`, and its raising and lowering operators by
+    :math:`e` and :math:`f`, the commutation rules among the generators with the
+    same index can be summarized as,
+
+    .. math::
+
+        [h, e] &= root \cdot e \\
+        [f, e] &= -norm \cdot h - trail \\
+        [f, h] &= root \cdot f \\
+
+    where :math:`root`, :math:`norm`, and :math:`trail` are all tunable.  This
+    is a slight generalization of the common Serre relations.
 
     The the normal-ordering operation would try to put raising operators before
     the Cartan operators, which come before the lowering operators.
@@ -66,33 +78,8 @@ class SU2LatticeDrudge(GenQuadDrudge):
             All other keyword arguments are given to the base class
             :py:class:`GenQuadDrudge`.
 
-        The commutation
-        ---------------
-
-        With a generator of the Cartan subalgebra denoted :math:`h`, and its
-        raising and lowering operators by :math:`e` and :math:`f`, the
-        commutation rules among the generators with the same index can be
-        summarized as,
-
-        .. math::
-
-            [h, e] = root \cdot e
-
-        .. math::
-
-            [f, e] = -norm \cdot h - trail \,
-                \left( [e, f] = norm \cdot h + trail \right)
-
-        and
-
-        .. math::
-
-            [f, h] = root \cdot f \,
-                \left( [h, f] = -root \cdot f \right)
-
-        This is a slight generalization of the common Serre relations.
-
         """
+
         super().__init__(ctx, **kwargs)
 
         self.cartan = cartan
