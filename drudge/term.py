@@ -140,7 +140,7 @@ class Range:
         """Compare equality of two ranges.
         """
         return isinstance(other, type(self)) and (
-            self.args == other.args
+                self.args == other.args
         )
 
     def __repr__(self):
@@ -433,8 +433,9 @@ class Vec(ATerms, CantSympify):
     def __eq__(self, other):
         """Compares the equality of two vectors."""
         return (
-            (isinstance(self, type(other)) or isinstance(other, type(self))) and
-            self._label == other.label and self._indices == other.indices
+                (isinstance(self, type(other)) or
+                 isinstance(other, type(self))) and
+                self._label == other.label and self._indices == other.indices
         )
 
     @property
@@ -1613,7 +1614,12 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
     ]
 
     if len(dumms) == 0:
-        return KroneckerDelta(arg1, arg2), None
+        range1 = try_resolve_range(arg1, sums_dict, resolvers)
+        range2 = try_resolve_range(arg2, sums_dict, resolvers)
+        if range1 == range2:
+            return KroneckerDelta(arg1, arg2), None
+        else:
+            return _NAUGHT, None
 
     eqn = Eq(arg1, arg2)
 
