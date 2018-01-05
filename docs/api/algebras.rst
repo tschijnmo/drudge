@@ -68,3 +68,7 @@ Concrete quadratic algebras
 .. autoclass:: SU2LatticeDrudge
     :members:
     :special-members:
+
+.. autoclass:: ReducedBCSDrudge
+    :members:
+    :special-members:
