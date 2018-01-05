@@ -2973,7 +2973,9 @@ def _inters(orig, new):
     from the new set.  When both operands are None, the result is None.
     """
     if orig is None:
-        return set(new) if new is not None else None
+        return new
+    elif new is None:
+        return orig
     else:
         orig &= new
         return orig
