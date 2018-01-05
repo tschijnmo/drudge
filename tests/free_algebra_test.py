@@ -275,6 +275,17 @@ def test_tensor_can_be_simplified_amp(free_alg):
     assert simpl == expected
 
 
+def test_simplify_delta_of_two_ranges(free_alg):
+    """Test simplification of delta of two disjoint ranges."""
+
+    dr = free_alg
+    p = dr.names
+    tensor = dr.sum(KroneckerDelta(p.i, p.alpha) * p.v)
+    assert tensor.n_terms == 1
+    assert tensor.simplify_deltas() == 0
+    assert tensor.simplify() == 0
+
+
 def test_tensor_can_be_canonicalized(free_alg):
     """Test tensor canonicalization in simplification.
 
