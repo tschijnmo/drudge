@@ -192,7 +192,10 @@ class FockDrudge(WickDrudge):
         """
 
         step1 = super().normal_order(terms, **kwargs)
-        return super().normal_order(step1, **kwargs)
+        res = super().normal_order(step1, **kwargs)
+        if self._exch == FERMI:
+            res = res.filter(_is_not_zero_by_nilp)
+        return res
 
     @staticmethod
     def dagger(tensor: Tensor, real=False):
@@ -458,6 +461,16 @@ def _get_dagger(term: Term, real: bool):
     )
 
 
+def _is_not_zero_by_nilp(term: Term):
+    """Test if a term is not zero by nilpotency of the operators.
+    """
+    vecs = term.vecs
+    return all(
+        vecs[i] != vecs[i + 1]
+        for i in range(0, len(vecs) - 1)
+    )
+
+
 #
 # Detailed problems
 # -----------------
@@ -697,8 +710,8 @@ class GenMBDrudge(FockDrudge):
 
         if has_spin:
             one_body_ops = (
-                cr[orb_dumms[0], spin_dumms[0]] *
-                an[orb_dumms[1], spin_dumms[0]]
+                    cr[orb_dumms[0], spin_dumms[0]] *
+                    an[orb_dumms[1], spin_dumms[0]]
             )
         else:
             one_body_ops = cr[orb_dumms[0]] * an[orb_dumms[1]]
@@ -721,15 +734,15 @@ class GenMBDrudge(FockDrudge):
 
         if has_spin:
             two_body_ops = (
-                cr[orb_dumms[0], spin_dumms[0]] *
-                cr[orb_dumms[1], spin_dumms[1]] *
-                an[orb_dumms[3], spin_dumms[1]] *
-                an[orb_dumms[2], spin_dumms[0]]
+                    cr[orb_dumms[0], spin_dumms[0]] *
+                    cr[orb_dumms[1], spin_dumms[1]] *
+                    an[orb_dumms[3], spin_dumms[1]] *
+                    an[orb_dumms[2], spin_dumms[0]]
             )
         else:
             two_body_ops = (
-                cr[orb_dumms[0]] * cr[orb_dumms[1]] *
-                an[orb_dumms[3]] * an[orb_dumms[2]]
+                    cr[orb_dumms[0]] * cr[orb_dumms[1]] *
+                    an[orb_dumms[3]] * an[orb_dumms[2]]
             )
 
         two_body_ham = self.sum(
