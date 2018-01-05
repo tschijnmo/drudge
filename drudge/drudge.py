@@ -2970,10 +2970,10 @@ def _inters(orig, new):
     """Make the interaction of two sets.
 
     If the original is a None value, a new set will be created with elements
-    from the new set.
+    from the new set.  When both operands are None, the result is None.
     """
     if orig is None:
-        return set(new)
+        return set(new) if new is not None else None
     else:
         orig &= new
         return orig
