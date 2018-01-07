@@ -2635,10 +2635,11 @@ class Drudge:
             ]))
         else:
             factors, coeff = term.amp_factors
+            if_pure_coeff = len(factors) == 0 and len(term.vecs) == 0
 
-            if coeff == 1:
+            if coeff == 1 and not if_pure_coeff:
                 pass
-            elif coeff == -1:
+            elif coeff == -1 and not if_pure_coeff:
                 parts.append('-')
             else:
                 coeff_latex = self._latex_sympy(coeff)

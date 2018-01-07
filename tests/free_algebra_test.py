@@ -800,6 +800,13 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
         if shutil.which('pdflatex') is not None:
             assert os.path.isfile(filename)
 
+    # Test printing of very special tensors with terms being pure plus/minus
+    # unity.
+    special = dr.sum(1) + dr.sum(-1)
+    assert special.n_terms == 2
+    res = special.latex()
+    assert res.replace(' ', '') == '1-1'
+
 
 def test_drudge_has_default_properties(free_alg):
     """Test some basic default properties for drudge objects."""
