@@ -2691,8 +2691,11 @@ class Drudge:
         """
 
         head = r'\mathbf{{{}}}'.format(vec.label)
-        indices = ', '.join(self._latex_sympy(i) for i in vec.indices)
-        return r'{}_{{{}}}'.format(head, indices)
+        if len(vec.indices) > 0:
+            indices = ', '.join(self._latex_sympy(i) for i in vec.indices)
+            return r'{}_{{{}}}'.format(head, indices)
+        else:
+            return head
 
     _latex_vec_mul = r' \otimes '
 

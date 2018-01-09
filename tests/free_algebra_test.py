@@ -771,9 +771,6 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
 
     assert tensor.latex(proc=proc).replace(' ', '') == 'N + N'.replace(' ', '')
 
-    assert zero.latex() == '0'
-    assert zero.latex(sep_lines=True) == '0'
-
     # Test the reporting facility.
     with tmpdir.as_cwd():
         title = 'Simple report test'
@@ -800,12 +797,21 @@ def test_tensors_has_string_and_latex_form(free_alg, tmpdir):
         if shutil.which('pdflatex') is not None:
             assert os.path.isfile(filename)
 
+    # Test the printing of pure zero.
+    assert zero.latex() == '0'
+    assert zero.latex(sep_lines=True) == '0'
+
     # Test printing of very special tensors with terms being pure plus/minus
     # unity.
     special = dr.sum(1) + dr.sum(-1)
     assert special.n_terms == 2
     res = special.latex()
     assert res.replace(' ', '') == '1-1'
+
+    # Testing printing of vectors without subscripts.
+    special = dr.sum(2 * v)
+    res = special.latex()
+    assert res.replace(' ', '') == r'2  \mathbf{v}'.replace(' ', '')
 
 
 def test_drudge_has_default_properties(free_alg):
