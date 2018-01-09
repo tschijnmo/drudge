@@ -2939,16 +2939,22 @@ class Drudge:
         self._inside_drs = False
         return env
 
-    @staticmethod
-    def simplify(arg, **kwargs):
+    def simplify(self, arg, **kwargs):
         """Make simplification for both SymPy expressions and tensors.
 
-        This method is mostly designed to be used in drudge scripts.  The actual
-        simplification is dispatched based on the type of the given argument.
-        Simple SymPy simplification for SymPy expressions, drudge simplification
-        for drudge tensors or tensor definitions.
+        This method is mostly designed to be used in drudge scripts.  But it
+        can also be used inside Python scripts for convenience.
+
+        The actual simplification is dispatched based on the type of the given
+        argument. Simple SymPy simplification for SymPy expressions, drudge
+        simplification for drudge tensors or tensor definitions, or the argument
+        will be attempted to be converted into a tensor.
+
         """
-        return arg.simplify(**kwargs)
+        if isinstance(arg, (Tensor, Expr)):
+            return arg.simplify(**kwargs)
+        else:
+            return self.sum(arg).simplify(**kwargs)
 
 
 #
