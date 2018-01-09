@@ -303,6 +303,19 @@ class ATerms(abc.ABC):
         """Being divided over by other object."""
         raise NotImplementedError('General tensors cannot inversed')
 
+    def __or__(self, other):
+        """Compute the commutator with another object.
+        """
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return self * other - other * self
+
+    def __ror__(self, other):
+        """Compute the commutator with another object on the right."""
+        if is_higher(other, self._op_priority):
+            return NotImplemented
+        return other * self - self * other
+
 
 class Terms(ATerms):
     """A local collection of terms.
