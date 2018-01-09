@@ -724,13 +724,7 @@ class Tensor:
         elif other == 0:
             return n_terms == 0
         else:
-            if n_terms != 1:
-                return False
-            else:
-                term = self.local_terms[0]
-                return term == parse_term(other)
-
-        assert False
+            return self._drudge.sum(other)
 
     #
     # Mathematical operations
