@@ -23,6 +23,14 @@ def test_rbcs_has_basic_commutations(rbcs: ReducedBCSDrudge):
     assert pdag_ is p.Pdag
     assert p_ is p.P
 
+    # Test commutation without subscripts.
+    comm = dr.simplify(n_ | pdag_)
+    assert comm == 2 * pdag_
+    comm = dr.simplify(n_ | p_)
+    assert comm == -2 * p_
+    comm = dr.simplify(p_ | pdag_)
+    assert comm == 1 - n_
+
     # Test commutation on the same site.
     i_ = p.i
     n_i = dr.sum(n_[i_])
