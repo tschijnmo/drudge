@@ -14,7 +14,7 @@ from .fock import (
     UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge,
     RestrictedPartHoleDrudge
 )
-from .genquad import GenQuadDrudge
+from .genquad import GenQuadDrudge, GenQuadLatticeDrudge
 from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
 from .bcs import ReducedBCSDrudge
@@ -60,6 +60,7 @@ __all__ = [
 
     # Other algebraic systems.
     'GenQuadDrudge',
+    'GenQuadLatticeDrudge',
     'SU2LatticeDrudge',
     'CliffordDrudge',
     'ReducedBCSDrudge',

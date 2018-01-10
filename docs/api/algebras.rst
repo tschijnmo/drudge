@@ -61,6 +61,10 @@ Abstract quadratic algebra
     :members:
     :special-members:
 
+.. autoclass:: GenQuadLatticeDrudge
+    :members:
+    :special-members:
+
 
 Concrete quadratic algebras
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
