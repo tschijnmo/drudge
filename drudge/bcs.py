@@ -54,10 +54,14 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
     ):
         """Initialize the drudge object."""
 
+        specials = {
+            (raise_, lower): norm * cartan + trail
+        }
+
         # Initialize the base su2 problem.
         super().__init__(
             ctx, cartan=cartan, raise_=raise_, lower=lower, root=root,
-            norm=norm, trail=trail, **kwargs
+            norm=norm, specials=specials, **kwargs
         )
 
         # Set the range and dummies.
