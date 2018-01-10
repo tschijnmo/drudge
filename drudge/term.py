@@ -1449,7 +1449,7 @@ def _cat_sums(sums1, sums2):
 
 
 def einst_term(term: Term, resolvers) -> typing.Tuple[
-    Term, typing.AbstractSet[Symbol]
+    typing.List[Term], typing.AbstractSet[Symbol]
 ]:
     """Add summations according to the Einstein convention to a term.
 
@@ -1512,9 +1512,14 @@ def einst_term(term: Term, resolvers) -> typing.Tuple[
         continue
 
     # Make summation from Einstein convention deterministic.
-    new_sums.sort(key=lambda x: (x[1].sort_key, x[0].name))
+    new_sums.sort(key=lambda x: (
+        tuple(i.sort_key for i in (
+            [x[1]] if isinstance(x[1], Range) else x[1]
+        )),
+        x[0].name
+    ))
 
-    return Term(_cat_sums(term.sums, new_sums), term.amp, term.vecs), exts
+    return sum_term(new_sums, term), exts
 
 
 def parse_term(term):

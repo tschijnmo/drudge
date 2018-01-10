@@ -31,6 +31,13 @@ def free_alg(spark_ctx):
 
     dr.add_resolver_for_dumms()
 
+    # For testing the Einstein over multiple ranges.
+    a1, a2 = symbols('a1 a2')
+    dr.add_resolver({
+        a1: (r, s), a2: (r, s)
+    })
+    dr.set_name(a1, a2)
+
     v = Vec('v')
     dr.set_name(v)
 
@@ -196,6 +203,14 @@ def test_tensor_has_basic_operations(free_alg):
     assert tensor.has_base(v)
     assert not tensor.has_base(IndexedBase('y'))
     assert not tensor.has_base(Vec('w'))
+
+    # Test Einstein summation over multiple ranges.
+    a1, a2 = p.a1, p.a2
+    summand = x[a1, a2] * v[a1, a2]
+    res = dr.einst(summand).simplify()
+    assert res.n_terms == 4
+    ranges = (p.R, p.S)
+    assert res == dr.sum((a1, ranges), (a2, ranges), summand).simplify()
 
 
 def test_adv_merging(free_alg):

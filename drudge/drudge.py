@@ -21,7 +21,7 @@ from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
 from .report import Report, ScalarLatexPrinter
 from .term import (
-    Range, sum_term, Term, parse_term, Vec, subst_factor_in_term,
+    Range, sum_term, Term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
     rewrite_term
 )
@@ -2301,6 +2301,9 @@ class Drudge:
         also be called on an existing tensor to add new summations.  In that
         case, no existing summations will be touched.
 
+        For indices whose range is resolved to a tuple of multiple ranges, the
+        term will be expanded to sum over all the given ranges.
+
         Parameters
         ----------
 
@@ -2328,7 +2331,7 @@ class Drudge:
                 lambda x: einst_term(x, resolvers.value)
             ).cache()
             tensor = Tensor(
-                self, einst_res.map(operator.itemgetter(0)), expanded=True
+                self, einst_res.flatMap(operator.itemgetter(0)), expanded=True
             )
 
             if not auto_exts:
@@ -2360,8 +2363,8 @@ class Drudge:
             for i in parse_terms(summand):
                 # We need to expand the possibly parenthesized user input.
                 for j in i.expand():
-                    term, exts = einst_term(j, resolvers.value)
-                    res_terms.append(term)
+                    terms, exts = einst_term(j, resolvers.value)
+                    res_terms.extend(terms)
                     exts_union |= exts
                     exts_inters = _inters(exts_inters, exts)
                     continue
