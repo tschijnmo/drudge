@@ -797,11 +797,14 @@ class PartHoleDrudge(GenMBDrudge):
     DEFAULT_HOLE_DUMMS = tuple(Symbol(i) for i in 'ijkl') + tuple(
         Symbol('i{}'.format(i)) for i in range(50)
     )
+    DEFAULT_ORB_DUMMS = tuple(Symbol(i) for i in 'pqrs') + tuple(
+        Symbol('p{}'.format(i)) for i in range(50)
+    )
 
     def __init__(self, *args, op_label='c',
                  part_orb=(Range('V', 0, Symbol('nv')), DEFAULT_PART_DUMMS),
                  hole_orb=(Range('O', 0, Symbol('no')), DEFAULT_HOLE_DUMMS),
-                 spin=(),
+                 all_orb_dumms=DEFAULT_ORB_DUMMS, spin=(),
                  one_body=IndexedBase('t'), two_body=IndexedBase('u'),
                  fock=IndexedBase('f'),
                  dbbar=True, **kwargs):
@@ -814,6 +817,12 @@ class PartHoleDrudge(GenMBDrudge):
                          orb=(part_orb, hole_orb), spin=spin,
                          one_body=one_body, two_body=two_body, dbbar=dbbar,
                          **kwargs)
+
+        self.all_orb_dumms = tuple(all_orb_dumms)
+        self.set_name(*self.all_orb_dumms)
+        self.add_resolver({
+            i: (self.part_range, self.hole_range) for i in all_orb_dumms
+        })
 
         full_ham = self.ham
         full_ham.cache()

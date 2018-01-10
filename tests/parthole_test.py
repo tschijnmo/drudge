@@ -221,3 +221,18 @@ def test_drs_for_parthole_drudge(parthole):
     # Different repr form in different environments.
     assert repr(s).find('TensorDef object at 0x') > 0
     assert env['s_str'] == 'x = 0'
+
+
+def test_einstein_sum_for_both_particles_and_holes(parthole):
+    """Test Einstein convention over both ranges."""
+    dr = parthole
+    p = dr.names
+    x = IndexedBase('x')
+
+    summand = x[p.p, p.q] * p.c_[p.p, p.q]
+    res = dr.einst(summand).simplify()
+    assert res.n_terms == 4
+    ranges = (dr.part_range, dr.hole_range)
+    assert res == dr.sum(
+        (p.p, ranges), (p.q, ranges), summand
+    ).simplify()
