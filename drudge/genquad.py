@@ -2,15 +2,17 @@
 
 import abc
 import collections
+import functools
 import itertools
+import operator
 import typing
 
 from pyspark import RDD
-from sympy import sympify, Expr
+from sympy import sympify, Expr, Integer, KroneckerDelta, SympifyError
 
 from .drudge import Drudge
-from .term import Term, Vec, parse_terms, ATerms
-from .utils import nest_bind
+from .term import Term, Vec, parse_terms, ATerms, Terms
+from .utils import nest_bind, sympy_key
 
 
 class GenQuadDrudge(Drudge, abc.ABC):
@@ -184,3 +186,215 @@ def _sort_vec(no_state: _NOState, swapper: GenQuadDrudge.Swapper, resolvers):
         continue
 
     return res_states
+
+
+#
+# Utility class for common problems.
+#
+
+class GenQuadLatticeDrudge(GenQuadDrudge):
+    r"""Drudge for general quadratic algebra with concentration on the bases.
+
+    The name of this drudge class can be slightly misleading.  This class is
+    designed for algebraic systems where the generators can optionally be
+    indexed by indices called the lattice indices.  Generators at different
+    lattice sites are commutative, and the normal-ordering and commutation for
+    generators with the same lattice index are solely determined by the base.
+
+    Parameters
+    ----------
+
+    ctx
+        The spark context.
+
+    order
+        An iterable giving the order of the vector bases in the normal order.
+        Earlier vectors will be attempted to be put into earlier positions.
+
+    comms
+        The commutators, given as a mapping with keys being pairs of vector
+        bases.  The values should give information about the commutation, which
+        can be anything interpretable as a sum of terms giving the value of the
+        commutator, or it can also be a pair with the second entry giving the
+        phase of the commutation, which by default is unity.  For an entry::
+
+            (a, b): (kappa, phi)
+
+        we got the commutation rule
+
+        .. math::
+
+            [a, b] = \phi b a + \kappa
+
+        The phase has to be a scalar quantity.  The vectors inside the
+        commutator should have no index.  They are going to be indexed by the
+        indices from the vectors being commuted during the normal-ordering
+        operation.
+
+    assume_comm
+
+        If vectors with their commutator unspecified be assumed to be
+        commutative. It is false by default.
+
+    kwargs
+        All the rest of the parameters are given to be base class.
+
+    """
+
+    def __init__(
+            self, ctx, order: typing.Iterable[Vec],
+            comms: typing.Mapping[typing.Tuple[Vec, Vec], typing.Union[
+                ATerms, typing.Tuple[ATerms, Expr]
+            ]], assume_comm=False, **kwargs):
+        """Initialize the drudge object."""
+        super().__init__(ctx, **kwargs)
+        self._swapper = self._form_swapper(order, comms, assume_comm)
+
+    @property
+    def swapper(self):
+        """The swapper based on the given order and commutators."""
+        return self._swapper
+
+    def _form_swapper(self, order, comms_inp, assume_comm):
+        """Form the swapper based on the input."""
+
+        #
+        # Normalization of the order and commutators.
+        #
+
+        base_ranks = {}
+        for i, v in enumerate(order):
+            if v in base_ranks:
+                raise ValueError(
+                    'Duplicated generator in the normal order', v
+                )
+            base_ranks[v] = i
+            continue
+
+        comms = {}
+        for k, v in comms_inp.items():
+            invalid_key = (
+                    not isinstance(k, typing.Sequence) or len(k) != 2
+                    or any(not isinstance(i, Vec) for i in k)
+            )
+            if invalid_key:
+                raise ValueError(
+                    'Invalid bases to commute, expecting two vectors', k
+                )
+
+            if isinstance(v, typing.Sequence):
+                if len(v) != 2:
+                    raise ValueError(
+                        'Invalid commutator, commutator and phase expected', v
+                    )
+                comm, phase = v
+            else:
+                comm = v
+                phase = _UNITY
+
+            try:
+                phase = sympify(phase)
+            except SympifyError as exc:
+                raise ValueError(
+                    'Nonsympifiable phase of commutation', phase, exc
+                )
+
+            try:
+                comm = parse_terms(comm)
+            except Exception as exc:
+                raise ValueError(
+                    'Invalid commutator result', comm, exc
+                )
+
+            comms[(k[0], k[1])] = (comm, phase)
+            continue
+
+        swap_info = _SwapInfo(
+            base_ranks=base_ranks, comms=comms, assume_comm=assume_comm
+        )
+
+        bcast_swap_info = self.ctx.broadcast(swap_info)
+
+        return functools.partial(
+            _swap_lattice_gens, bcast_swap_info=bcast_swap_info
+        )
+
+
+_SwapInfo = collections.namedtuple('_SwapInfo', [
+    'base_ranks',
+    'comms',
+    'assume_comm'
+])
+
+
+def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
+    """Swap the generators with lattice indices."""
+    swap_info: _SwapInfo = bcast_swap_info.value
+    base_ranks = swap_info.base_ranks
+    comms = swap_info.comms
+    assume_comm = swap_info.assume_comm
+    vecs = (vec1, vec2)
+
+    indices1, indices2 = [i.indices for i in vecs]
+    if len(indices1) != len(indices2):
+        raise ValueError('Unmatching lattice indices for', vec1, vec2)
+
+    base1, base2 = [vec.base for vec in vecs]
+    try:
+        rank1 = base_ranks[base1]
+        rank2 = base_ranks[base2]
+    except KeyError as exc:
+        raise ValueError(
+            'Vector with unspecified normal order', exc.args
+        )
+
+    if rank1 < rank2:
+        return None
+    elif rank1 == rank2:
+        # Same generator at possibly different sites always commute.
+        key1, key2 = [
+            tuple(sympy_key(j) for j in i) for i in (indices1, indices2)
+        ]
+        if key1 <= key2:
+            return None
+        else:
+            return _UNITY, _NOUGHT
+    else:
+        given = (base1, base2)
+        rev = (base2, base1)
+
+        if given in comms:
+            comm, phase = comms[given]
+            comm_factor = _UNITY
+        elif rev in comms:
+            # a b = phi b a + kappa => phi b a = a b - kappa
+            # => b a = (a b - kappa) / phi
+            comm, phase = comms[rev]
+            comm_factor = -1 / phase
+            phase = 1 / phase
+        elif assume_comm:
+            comm = _NOUGHT
+            phase = _UNITY
+            comm_factor = _UNITY
+        else:
+            raise ValueError(
+                'Commutation rules unspecified', vec1, vec2
+            )
+
+        delta = functools.reduce(operator.mul, (
+            KroneckerDelta(i, j) for i, j in zip(indices1, indices2)
+        ), _UNITY)
+
+        terms = Terms(
+            Term(term.sums, delta * comm_factor * term.amp, tuple(
+                i[indices1] for i in term.vecs
+            ))
+            for term in comm
+        )
+        return phase, terms
+
+
+# Small utility constants.
+
+_UNITY = Integer(1)
+_NOUGHT = Integer(0)
