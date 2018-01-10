@@ -4,9 +4,11 @@ import time
 import types
 from unittest.mock import MagicMock
 
-from sympy import IndexedBase, symbols
+from sympy import IndexedBase, symbols, Symbol
 
-from drudge import Vec, sum_, prod_, Stopwatch, ScalarLatexPrinter
+from drudge import (
+    Vec, sum_, prod_, Stopwatch, ScalarLatexPrinter, InvariantIndexable
+)
 from drudge.term import parse_terms
 
 
@@ -51,6 +53,15 @@ def test_stopwatch():
     stamper.tock_total()
     res = res_holder[0]
     assert float(res.split()[-2]) - 1.0 < 0.1
+
+
+def test_invariant_indexable():
+    """Test the utility for invariant indexables."""
+
+    val = Symbol('G')
+    tensor = InvariantIndexable(val)
+    assert tensor[1] == val
+    assert tensor[1, Symbol('i')] == val
 
 
 def test_scalar_latex_printing():

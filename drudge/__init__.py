@@ -19,7 +19,7 @@ from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
 from .bcs import ReducedBCSDrudge
 from .report import Report, ScalarLatexPrinter
-from .utils import sum_, prod_, Stopwatch
+from .utils import sum_, prod_, Stopwatch, CallByIndex, InvariantIndexable
 
 __version__ = '0.10.0dev0'
 
@@ -70,6 +70,8 @@ __all__ = [
     'sum_',
     'prod_',
     'Stopwatch',
+    'CallByIndex',
+    'InvariantIndexable',
     'Report',
     'ScalarLatexPrinter'
 ]

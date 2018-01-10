@@ -103,6 +103,14 @@ Mathematical manipulations
 
 .. autofunction:: prod_
 
+.. autoclass:: CallByIndex
+    :members:
+    :special-members:
+
+.. autoclass:: InvariantIndexable
+    :members:
+    :special-members:
+
 
 Timing utilities
 ++++++++++++++++

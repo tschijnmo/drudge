@@ -486,3 +486,40 @@ class Stopwatch:
         self._print(
             'Total wall time: {:.2f} s'.format(now - self._begin)
         )
+
+
+class CallByIndex:
+    """Wrapper over callables such that they can be called by indexing.
+
+    This wrapper can be helpful for cases where an indexable object is expected
+    but flexibility of a callable is needed.  The given object will be wrapped
+    inside and called when the wrapper is indexed.
+
+    """
+
+    __slots__ = ['_callable']
+
+    def __init__(self, callable):
+        """Initialize the object."""
+        self._callable = callable
+
+    def __getitem__(self, item):
+        """Get the item by calling the given callable."""
+        return self._callable(item)
+
+
+class InvariantIndexable(CallByIndex):
+    """Objects whose indexing always gives the same constant.
+
+    This small utility is for cases where we need an indexable object whose
+    indexing result is actually invariant with respect to the given indices.
+    For an instance constructed with value ``v``, all indexing of it gives ``v``
+    back.
+
+    """
+
+    __slots__ = []
+
+    def __init__(self, v):
+        """Initialize the invariant tensor."""
+        super().__init__(lambda _: v)
