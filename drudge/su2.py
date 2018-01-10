@@ -15,16 +15,16 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
     lattice sites always commute.  In detail, with a generator of the Cartan
     subalgebra denoted :math:`h`, and its raising and lowering operators by
     :math:`e` and :math:`f`, the commutation rules among the generators with the
-    same index can be summarized as,
+    same lattice index can be summarized as,
 
     .. math::
 
         [h, e] &= root \cdot e \\
-        [f, e] &= -norm \cdot h - trail \\
+        [f, e] &= -norm \cdot h \\
         [f, h] &= root \cdot f \\
 
-    where :math:`root`, :math:`norm`, and :math:`trail` are all tunable.  This
-    is a slight generalization of the common Serre relations.
+    where :math:`root` and :math:`norm` are both tunable.  This is basically the
+    common Serre relations.
 
     Parameters
     ----------
@@ -53,10 +53,6 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
         The coefficient for the commutator between the raising and lowering
         operators.
 
-    trail
-        A trailing scalar to be added to the Cartan generator in the
-        commutator between the raising and lowering operators.
-
     order
         The normal order for the generators.  By default, the the
         normal-ordering operation would try to put raising operators before the
@@ -78,7 +74,7 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
     def __init__(
             self, ctx, cartan=DEFAULT_CARTAN, raise_=DEFAULT_RAISE,
             lower=DEFAULT_LOWER, root=Integer(1), norm=Integer(2),
-            trail=Integer(0), order=None, specials=None, **kwargs
+            order=None, specials=None, **kwargs
     ):
         r"""Initialize the drudge.
         """
@@ -89,8 +85,7 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
         comms = {
             (cartan, raise_): root * raise_,
             (cartan, lower): -root * lower,
-            (raise_, lower): norm * cartan if trail == 0
-            else norm * cartan + trail
+            (raise_, lower): norm * cartan
         }
         if specials is not None:
             comms.update(specials)
