@@ -62,6 +62,9 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
         normal-ordering operation would try to put raising operators before the
         Cartan operators, which come before the lowering operators.
 
+    special
+        Special commutators customized.
+
     kwargs
         All other keyword arguments are given to the base class
         :py:class:`GenQuadDrudge`.
@@ -75,7 +78,7 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
     def __init__(
             self, ctx, cartan=DEFAULT_CARTAN, raise_=DEFAULT_RAISE,
             lower=DEFAULT_LOWER, root=Integer(1), norm=Integer(2),
-            trail=Integer(0), order=None, **kwargs
+            trail=Integer(0), order=None, specials=None, **kwargs
     ):
         r"""Initialize the drudge.
         """
@@ -89,6 +92,8 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
             (raise_, lower): norm * cartan if trail == 0
             else norm * cartan + trail
         }
+        if specials is not None:
+            comms.update(specials)
 
         super().__init__(ctx, order, comms, **kwargs)
 
