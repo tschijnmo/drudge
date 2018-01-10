@@ -176,7 +176,9 @@ def test_tensor_has_basic_operations(free_alg):
     expected = dr.sum(
         (i, r), (j, [c, d]), x[i] * j * v[i]
     )
-    assert set(expected.local_terms) == set(expected.local_terms)
+    assert expected == dr.sum(
+        (i, r), x[i] * c * v[i] + x[i] * d * v[i]
+    ).expand()
 
     # Test mapping to scalars.
     tensor = dr.sum((i, r), x[i] * v[i, j])
