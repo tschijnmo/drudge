@@ -44,9 +44,10 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
     def __init__(
             self, ctx,
             part_range=Range('V', 0, Symbol('nv')),
-            part_dumm=PartHoleDrudge.DEFAULT_PART_DUMMS,
+            part_dumms=PartHoleDrudge.DEFAULT_PART_DUMMS,
             hole_range=Range('O', 0, Symbol('no')),
-            hole_dumm=PartHoleDrudge.DEFAULT_HOLE_DUMMS,
+            hole_dumms=PartHoleDrudge.DEFAULT_HOLE_DUMMS,
+            all_orb_dumms=PartHoleDrudge.DEFAULT_ORB_DUMMS,
             energies=IndexedBase('epsilon'), interact=IndexedBase('G'),
             cartan=Vec('N'), raise_=Vec(r'P^\dagger'), lower=Vec('P'),
             root=Integer(2), norm=Integer(1), trail=Integer(-1),
@@ -67,9 +68,15 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         # Set the range and dummies.
         self.part_range = part_range
         self.hole_range = hole_range
-        self.set_dumms(part_range, part_dumm)
-        self.set_dumms(hole_range, hole_dumm)
+        self.set_dumms(part_range, part_dumms)
+        self.set_dumms(hole_range, hole_dumms)
         self.add_resolver_for_dumms()
+
+        self.all_orb_dumms = tuple(all_orb_dumms)
+        self.set_name(*self.all_orb_dumms)
+        self.add_resolver({
+            i: (self.part_range, self.hole_range) for i in all_orb_dumms
+        })
 
         # Make additional name definition for the operators.
         self.set_name(cartan, lower, Pdag=raise_)
@@ -77,8 +84,8 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         # Create the underlying particle-hole drudge with spin.  Note that this
         # drudge is only use internally for VEV evaluation.
         ph_dr = SpinOneHalfPartHoleDrudge(
-            ctx, part_orb=(part_range, part_dumm),
-            hole_orb=(hole_range, hole_dumm)
+            ctx, part_orb=(part_range, part_dumms),
+            hole_orb=(hole_range, hole_dumms)
         )
         self._ph_dr = ph_dr
 
@@ -87,7 +94,7 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         an = ph_dr.an
         up, down = ph_dr.spin_vals
 
-        gen_idx = Symbol('p')
+        gen_idx, gen_idx2 = self.all_orb_dumms[:2]
         cartan_def = self.define(
             cartan, gen_idx,
             cr[gen_idx, up] * an[gen_idx, up] +
@@ -104,13 +111,8 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         ]
 
         # Define the Hamiltonian.
-        all_ranges = (part_range, hole_range)
-        gen_idx2 = Symbol('q')
-        ham = self.sum(
-            (gen_idx, all_ranges),
-            energies[gen_idx] * cartan[gen_idx]
-        ) + self.sum(
-            (gen_idx, all_ranges), (gen_idx2, all_ranges),
+        ham = self.einst(
+            energies[gen_idx] * cartan[gen_idx] +
             interact[gen_idx, gen_idx2] * raise_[gen_idx] * lower[gen_idx2]
         )
         self.ham = ham.simplify()
