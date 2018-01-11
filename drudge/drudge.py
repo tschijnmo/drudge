@@ -2764,7 +2764,7 @@ class Drudge:
 
         """
 
-        report = Report(filename, title)
+        report = Report(filename, title, self)
         yield report
         report.write()
 

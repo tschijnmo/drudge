@@ -8,6 +8,8 @@ import warnings
 from jinja2 import Environment, PackageLoader
 from sympy.printing.latex import LatexPrinter
 
+from .term import ATerms
+
 
 class Report:
     """Simple report for output drudge results.
@@ -17,10 +19,11 @@ class Report:
     method provided by drudge class instead in ``with`` statements.
     """
 
-    def __init__(self, filename: str, title):
+    def __init__(self, filename: str, title: str, drudge: str):
         """Initialize the report object."""
 
         self._filename = filename
+        self._drudge = drudge
 
         filename_parts = filename.split('.')
         if len(filename_parts) < 2:
@@ -99,6 +102,8 @@ class Report:
             expr = None
         elif hasattr(content, 'latex'):
             expr = content.latex(**kwargs)
+        elif isinstance(content, ATerms):
+            expr = self._drudge.sum(content).latex(**kwargs)
         else:
             # Try to use raw SymPy LaTeX printing.
             expr = ScalarLatexPrinter().doprint(content)
