@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 from sympy import Symbol, IndexedBase, Rational, Integer
 
-from drudge import Drudge, Range
+from drudge import Drudge, Range, Vec, Term
 from drudge.drs import (
     DrsSymbol, compile_drs, _DEF_METH_NAME, DrsEnv, _DRUDGE_MAGIC, main
 )
@@ -75,7 +75,7 @@ def test_basic_drs_indexed():
                 assert sympy_key(ref) == sympy_key(i)
 
 
-def test_drs_symb_call():
+def test_drs_symb_call(spark_ctx):
     """Test calling methods by drs symbols."""
 
     class TestCls:
@@ -97,6 +97,14 @@ def test_drs_symb_call():
     with pytest.raises(AttributeError) as exc:
         prop.lhs
     assert exc.value.args[0].find('prop') > 0
+
+    # Test automatic raising to tensors.
+    v = Vec('v')
+    tensor_meth = 'local_terms'
+    assert not hasattr(v, tensor_meth)  # Or the test just will not work.
+    assert DrsSymbol(Drudge(spark_ctx), tensor_meth)(v) == [
+        Term(sums=(), amp=Integer(1), vecs=(v,))
+    ]
 
 
 def test_drs_tensor_def_dispatch(spark_ctx):

@@ -7,6 +7,8 @@ import inspect
 
 from sympy import Symbol, Indexed, IndexedBase
 
+from .term import ATerms
+
 
 #
 # Special classes for SymPy objects
@@ -103,9 +105,20 @@ class DrsSymbol(_Definable, Symbol):
         else:
             target = args[0]
             rest = args[1:]
+
             err = NameError('Invalid method', name, 'for', str(type(target)))
             if not hasattr(target, name):
-                raise err
+                # It is possible that a tensor method is tried to be called on
+                # an input.
+                if isinstance(target, ATerms):
+                    tensor = self._drudge.sum(target)
+                    if hasattr(tensor, name):
+                        target = tensor
+                    else:
+                        raise err
+                else:
+                    raise err
+
             meth = getattr(target, name)
             if inspect.ismethod(meth):
                 # It has a caveat that static methods might not be able to be
