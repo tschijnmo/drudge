@@ -1073,22 +1073,34 @@ _NON_COMMUTATIVE = 0
 # ---------------------------------
 #
 
-def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
-                      dumms, dummbegs, excl):
+def subst_vec_in_term(
+        term: Term, lhs: typing.Tuple[Vec], rhs_terms: typing.List[Term],
+        dumms, dummbegs, excl
+):
     """Substitute a matching vector in the given term.
     """
 
     sums = term.sums
     vecs = term.vecs
     amp = term.amp
+    n_new_vecs = len(lhs)
 
-    for i, v in enumerate(vecs):
-        substs = _match_indices(v, lhs)
-        if substs is None:
-            continue
+    for i in range(len(vecs) - n_new_vecs + 1):
+        substs = {}
+
+        # Here we do simple hay-needle, KMP can be very hard here because of the
+        # complexity of the predicate.
+        for target, pattern in zip(vecs[i:], lhs):
+            new = _match_indices(target, pattern)
+            if new is None or not _update_substs(substs, new):
+                break
+            else:
+                continue
         else:
-            substed_vec_idx = i
+            start_idx = i
             break
+
+        continue
     else:
         return None  # Based on nest bind protocol.
 
@@ -1099,7 +1111,7 @@ def subst_vec_in_term(term: Term, lhs: Vec, rhs_terms: typing.List[Term],
     res = []
     for i, j in subst_states:
         new_vecs = list(vecs)
-        new_vecs[substed_vec_idx:substed_vec_idx + 1] = i.vecs
+        new_vecs[start_idx:start_idx + n_new_vecs] = i.vecs
         res.append((
             Term(sums + i.sums, amp * i.amp, tuple(new_vecs)), j
         ))
@@ -1238,10 +1250,28 @@ def _match_indices(target, expr):
         if res is None:
             return None
         else:
-            substs.update(res)
+            if not _update_substs(substs, res):
+                return None
             continue
 
     return substs
+
+
+def _update_substs(substs, new):
+    """Update the substitutions dictionary.
+
+    If any of the new entry is in conflict with the old entry, a false will be
+    returned, or we got true.
+    """
+
+    for k, v in new.items():
+        if k not in substs:
+            substs[k] = v
+        elif v != substs[k]:
+            return False
+        continue
+
+    return True
 
 
 def _prepare_subst_states(rhs_terms, substs, dumms, dummbegs, excl):

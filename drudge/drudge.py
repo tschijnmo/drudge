@@ -23,7 +23,7 @@ from .report import Report, ScalarLatexPrinter
 from .term import (
     Range, sum_term, Term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
-    rewrite_term
+    rewrite_term, ATerms
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
 
@@ -905,7 +905,9 @@ class Tensor:
         matched against the indices on the LHS.  When a matching succeeds for
         all the indices, the RHS, with the substitution found in the matching
         performed, will be replace the indexed base in the amplitude, or the
-        vector.  Note that for scalar LHS, the RHS must contain no vector.
+        vector.  Note that for scalar LHS, the RHS must contain no vector.  For
+        vector LHS, also supported is a product of vectors.  This will lead to
+        pattern matching inside the vector part.
 
         Since we do not commonly define tensors with wild symbols, an option
         ``wilds`` can be used to give a mapping translating plain symbols on the
@@ -965,17 +967,39 @@ class Tensor:
 
         """
 
-        if isinstance(lhs, (Vec, Indexed)):
-            base = lhs.base
+        # Input checking and normalization, along with a small possible
+        # acceleration.
+
+        if isinstance(lhs, Indexed):
+            if_scalar = True
+            if_indexed = True
+            bases = (lhs.base,)
         elif isinstance(lhs, Symbol):
-            base = lhs
+            if_scalar = True
+            if_indexed = False
+            bases = (lhs,)
+        elif isinstance(lhs, ATerms):
+            if_scalar = False
+            if_indexed = True
+
+            if len(lhs.terms) != 1:
+                raise ValueError('Invalid LHS to substitute', lhs.terms)
+            term = lhs.terms[0]
+            if len(term.sums) != 0 or term.amp != 1:
+                raise ValueError('Invalid LHS to substitute', term)
+            vecs = term.vecs
+            bases = {i.base for i in vecs}
+
+            # In this way, lhs is either an SymPy expression (Indexed or Symbol)
+            # or a tuple.
+            lhs = vecs
         else:
             raise TypeError(
                 'Invalid LHS for substitution', lhs,
                 'expecting vector, indexed, or symbol'
             )
 
-        if not self.has_base(base):
+        if not all(self.has_base(i) for i in bases):
             return self
 
         # We need to gather, and later broadcast all the terms.  The rational is
@@ -991,18 +1015,24 @@ class Tensor:
             raise ValueError('Invalid RHS for substituting a scalar', rhs)
 
         if wilds is None:
-            if isinstance(lhs, (Indexed, Vec)):
-                wilds = {
-                    i: Wild(i.name) for i in lhs.indices if
-                    isinstance(i, Symbol)
-                }
-            else:
-                wilds = {}
+            wilds = {}
+            if if_indexed:
+                if if_scalar:
+                    index_bunches = [lhs.indices]
+                else:
+                    index_bunches = [i.indices for i in lhs]
+                for indices in index_bunches:
+                    wilds.update(
+                        (i, Wild(i.name))
+                        for i in indices if isinstance(i, Symbol)
+                    )
 
-        if isinstance(lhs, Indexed):
+        if if_scalar:
             lhs = lhs.xreplace(wilds)
-        elif isinstance(lhs, Vec):
-            lhs = lhs.map(lambda x: x.xreplace(wilds))
+        else:
+            lhs = tuple(
+                i.map(lambda x: x.xreplace(wilds)) for i in lhs
+            )
 
         rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
 
@@ -1012,8 +1042,8 @@ class Tensor:
         )
 
     def _subst(
-            self, lhs: typing.Union[Vec, Indexed, Symbol], rhs_terms,
-            full_balance, excl=None
+            self, lhs: typing.Union[typing.Tuple[Vec], Indexed, Symbol],
+            rhs_terms, full_balance, excl=None
     ):
         """Core substitution function.
 
