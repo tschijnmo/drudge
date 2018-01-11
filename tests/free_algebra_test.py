@@ -520,6 +520,44 @@ def test_tensors_can_be_substituted_vectors(
     assert res == expected
 
 
+@pytest.mark.parametrize('full_balance', [True, False])
+@pytest.mark.parametrize('full_simplify', [True, False])
+def test_tensors_can_be_substituted_strings_of_vectors(
+        free_alg, full_balance, full_simplify
+):
+    """Test vector substitution facility for strings of tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    t = IndexedBase('t')
+    u = IndexedBase('u')
+    i, j = p.i, p.j
+    v = p.v
+    w = Vec('w')
+
+    orig = dr.sum((i, p.R), x[i] * v[i] * v[i])
+    vivi_def = dr.einst(t[i, j] * w[j] + u[i, j] * w[j])
+
+    dr.full_simplify = full_simplify
+    res = orig.subst(
+        v[i] * v[i], vivi_def, full_balance=full_balance
+    ).simplify()
+    dr.full_simplify = True
+
+    expected = dr.einst(
+        x[i] * t[i, j] * w[j] + x[i] * u[i, j] * w[j]
+    ).simplify()
+    assert res == expected
+
+    # Check that it does not wrongly substitute vectors that cannot match the
+    # pattern.
+    orig = dr.einst(x[i, j] * v[i] * v[j])
+    res = orig.subst(v[i] * v[i], vivi_def)
+    assert res == orig
+
+
 def test_tensors_can_be_rewritten(free_alg):
     """Test the amplitude rewriting facility for given vector patterns."""
 
