@@ -2,12 +2,14 @@
 Drudge for reduced BCS Hamiltonian.
 """
 
+import functools
+
 from sympy import Integer, Symbol, IndexedBase
 
 from .drudge import Tensor
 from .fock import PartHoleDrudge, SpinOneHalfPartHoleDrudge
 from .su2 import SU2LatticeDrudge
-from .term import Vec, Range
+from .term import Vec, Range, Term
 
 
 class ReducedBCSDrudge(SU2LatticeDrudge):
@@ -120,6 +122,30 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         # Set additional tensor methods.
         self.set_tensor_method('eval_vev', self.eval_vev)
 
+    #
+    # Additional customization of the simplification
+    #
+
+    def normal_order(self, terms, **kwargs):
+        """Take the operators into normal order.
+
+        Here, in addition to the common normal-ordering operation, we remove any
+        term with a cartan operator followed by an lowering operator with the
+        same index, and any term with a raising operator followed by a cartan
+        operator with the same index.
+
+        """
+
+        noed = super().normal_order(terms, **kwargs)
+        return noed.filter(functools.partial(
+            _nonzero_by_cartan,
+            raise_=self.raise_, cartan=self.cartan, lower=self.lower
+        ))
+
+    #
+    # Vacuum expectation value
+    #
+
     def _transl2fermi(self, tensor: Tensor):
         """Translate a tensor object in terms of the fermion operators.
 
@@ -150,3 +176,28 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
         transled = self._transl2fermi(tensor)
         res = self._ph_dr.eval_fermi_vev(transled)
         return Tensor(self, res.terms)
+
+
+def _nonzero_by_cartan(term: Term, raise_, cartan, lower):
+    """If the term is zero because of the cartan in it."""
+
+    raise_indices = set()
+    cartan_indices = set()
+
+    for vec in term.vecs:
+        base = vec.base
+        indices = vec.indices
+
+        if base == raise_:
+            raise_indices.add(indices)
+        elif base == cartan:
+            if indices in raise_indices:
+                return False
+            cartan_indices.add(indices)
+        elif base == lower:
+            if indices in cartan_indices:
+                return False
+
+        continue
+
+    return True

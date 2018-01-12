@@ -115,6 +115,27 @@ def test_rbcs_gives_vev(rbcs: ReducedBCSDrudge):
     assert res == dr.sum(KroneckerDelta(j_, i_).simplify())
 
 
+def test_rbcs_special_simplification(rbcs: ReducedBCSDrudge):
+    """Test the special simplification facilities for pairing algebra."""
+
+    dr = rbcs
+    p = dr.names
+
+    n_, pdag_, p_ = rbcs.cartan, rbcs.raise_, rbcs.lower
+    a = p.a
+    b = p.b
+
+    # Test the simplification based on Cartan with or without index.
+    assert dr.simplify(pdag_ * n_) == 0
+    assert dr.simplify(pdag_[a] * n_[a]) == 0
+    assert dr.simplify(n_ * p_) == 0
+    assert dr.simplify(n_[a] * p_[a]) == 0
+
+    # Test the term not conforming with the pattern is not touched.
+    assert dr.simplify(pdag_[a] * n_[b]).n_terms == 1
+    assert dr.simplify(n_[a] * p_[b]).n_terms == 1
+
+
 def test_rbcs_has_ham(rbcs: ReducedBCSDrudge):
     """Test the Hamiltonian for the reduced BCS problem."""
 
