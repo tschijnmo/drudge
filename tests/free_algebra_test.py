@@ -47,6 +47,9 @@ def free_alg(spark_ctx):
     h = IndexedBase('h')
     dr.set_symm(h, Perm([1, 0], NEG | CONJ))
 
+    rho = IndexedBase('rho')
+    dr.set_symm(rho, Perm([1, 0, 3, 2]), valence=4)
+
     dr.set_tensor_method('get_one', lambda x: 1)
 
     return dr
@@ -333,6 +336,29 @@ def test_tensor_can_be_canonicalized(free_alg):
         h[i, j] * v[i] * v[j] + conjugate(h[j, i]) * v[i] * v[j]
     )
     assert tensor.n_terms == 2
+    res = tensor.simplify()
+    assert res == 0
+
+
+def test_tensor_can_be_canonicalized_with_ops(free_alg):
+    """Test tensor canonicalization in simplification under operations.
+
+    Here some factors are going to be put inside non-linear mathematical
+    operations, power specifically.
+    """
+
+    dr = free_alg
+    p = dr.names
+    i, j, k, l = p.R_dumms[:4]
+    m = p.m
+    rho = p.rho
+
+    tensor = (
+            dr.einst(m[i, j] ** 2 * rho[i, k, j, l] ** 3) +
+            dr.einst(m[j, i] ** 2 * rho[k, i, l, j] ** 3)
+    )
+    assert tensor.n_terms == 2
+
     res = tensor.simplify()
     assert res == 0
 
