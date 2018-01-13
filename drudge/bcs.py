@@ -43,6 +43,10 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
 
     """
 
+    DEFAULT_CARTAN = Vec('N')
+    DEFAULT_RAISE = Vec(r'P^\dagger')
+    DEFAULT_LOWER = Vec('P')
+
     def __init__(
             self, ctx,
             part_range=Range('V', 0, Symbol('nv')),
@@ -51,7 +55,7 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
             hole_dumms=PartHoleDrudge.DEFAULT_HOLE_DUMMS,
             all_orb_dumms=PartHoleDrudge.DEFAULT_ORB_DUMMS,
             energies=IndexedBase('epsilon'), interact=IndexedBase('G'),
-            cartan=Vec('N'), raise_=Vec(r'P^\dagger'), lower=Vec('P'),
+            cartan=DEFAULT_CARTAN, raise_=DEFAULT_RAISE, lower=DEFAULT_LOWER,
             root=Integer(2), norm=Integer(1), trail=Integer(-1),
             **kwargs
     ):
