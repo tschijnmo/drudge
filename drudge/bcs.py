@@ -56,19 +56,15 @@ class ReducedBCSDrudge(SU2LatticeDrudge):
             all_orb_dumms=PartHoleDrudge.DEFAULT_ORB_DUMMS,
             energies=IndexedBase('epsilon'), interact=IndexedBase('G'),
             cartan=DEFAULT_CARTAN, raise_=DEFAULT_RAISE, lower=DEFAULT_LOWER,
-            root=Integer(2), norm=Integer(1), trail=Integer(-1),
+            root=Integer(2), norm=Integer(1), shift=Integer(-1),
             **kwargs
     ):
         """Initialize the drudge object."""
 
-        specials = {
-            (raise_, lower): norm * cartan + trail
-        }
-
         # Initialize the base su2 problem.
         super().__init__(
             ctx, cartan=cartan, raise_=raise_, lower=lower, root=root,
-            norm=norm, specials=specials, **kwargs
+            norm=norm, shift=shift, **kwargs
         )
 
         # Set the range and dummies.

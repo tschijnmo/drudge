@@ -20,11 +20,11 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
     .. math::
 
         [h, e] &= root \cdot e \\
-        [f, e] &= -norm \cdot h \\
-        [f, h] &= root \cdot f \\
+        [h, f] &= -root \cdot f \\
+        [e, f] &= norm \cdot h + shift \\
 
-    where :math:`root` and :math:`norm` are both tunable.  This is basically the
-    common Serre relations.
+    where :math:`root`, :math:`norm`, and :math:`shift` are all tunable.  This
+    is basically the common Serre relations.
 
     Parameters
     ----------
@@ -53,6 +53,10 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
         The coefficient for the commutator between the raising and lowering
         operators.
 
+    shift
+        The scalar shift in the commutator between the raising and the lowering
+        operators.
+
     order
         The normal order for the generators.  By default, the the
         normal-ordering operation would try to put raising operators before the
@@ -73,7 +77,7 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
 
     def __init__(
             self, ctx, cartan=DEFAULT_CARTAN, raise_=DEFAULT_RAISE,
-            lower=DEFAULT_LOWER, root=Integer(1), norm=Integer(2),
+            lower=DEFAULT_LOWER, root=Integer(1), norm=Integer(2), shift=0,
             order=None, specials=None, **kwargs
     ):
         r"""Initialize the drudge.
@@ -82,11 +86,17 @@ class SU2LatticeDrudge(GenQuadLatticeDrudge):
         order = order if order is not None else (
             raise_, cartan, lower
         )
+
+        raise_lower_comm = norm * cartan
+        if shift != 0:
+            raise_lower_comm += shift
+
         comms = {
             (cartan, raise_): root * raise_,
             (cartan, lower): -root * lower,
-            (raise_, lower): norm * cartan
+            (raise_, lower): raise_lower_comm
         }
+
         if specials is not None:
             comms.update(specials)
 
