@@ -1,0 +1,42 @@
+"""Automatic derivation of resitrict CCDF theory.
+
+The derivation here is going to be based on the approach in GE
+Scuseria et al, J Chem Phys 89 (1988) 7382 (10.1063/1.455269).
+
+"""
+
+# Cluster excitation operator
+cluster = einst(
+    t[a, i] * e_[a, i] +
+    (1/2) * t[a, b, i, j] * e_[a, i] * e_[b, j]
+)
+
+set_n_body_base(t, 2)
+cluster = simplify(cluster)
+
+# Similarity transform of the Hamiltonian
+
+curr = ham
+h_bar = ham
+for order in range(4):
+    curr = simplify(curr | cluster) / (order + 1)
+    h_bar += curr
+    continue
+
+h_bar = h_bar.simplify()
+
+# The working equations.
+
+en_eqn = simplify(eval_fermi_vev(h_bar))
+t1_eqn = simplify(eval_fermi_vev(
+    e_[a, i] * h_bar
+))
+t2_eqn = simplify(eval_fermi_vev(
+    e_[a, i] * e_[b, j] * h_bar
+))
+
+with report('rCCSD.html', 'restricted CCSD theory') as rep:
+    rep.add('Energy equation', en_eqn)
+    rep.add(r'\(T^1\) amplitude equation', t1_eqn)
+    rep.add(r'\(T^2\) amplitude equation', t2_eqn)
+
