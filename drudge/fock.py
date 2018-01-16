@@ -11,7 +11,8 @@ import warnings
 
 from pyspark import RDD
 from sympy import (
-    KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols, conjugate
+    KroneckerDelta, IndexedBase, Expr, Symbol, Rational, symbols, conjugate,
+    factorial
 )
 
 from ._tceparser import parse_tce_out
@@ -1068,10 +1069,15 @@ class BogoliubovDrudge(GenMBDrudge):
         \beta^\dagger_k = \sum_l u_{lk} c^\dagger_l v_{lk} c_l
 
     Then the Hamiltonian is going to be rewritten with matrix elements formatted
-    according to the given format.
+    according to the given format.  During the rewritten, the new matrix
+    elements follows the normalization convention as in [SDHJ2015]_.
 
     .. [RS1980] P Ring and P Schuck, The Nuclear Many-Body Problem,
        Springer-Verlag 1980
+
+    .. [SDHJ2015] A Signoracci, T Duguet, G Hagen, and G R Jansen, Ab initio
+       Bogoliubov coupled cluster theory for open-shell nuclei, Phys Rev C 91
+       (2015), 064320
 
     Parameters
     ----------
@@ -1167,6 +1173,10 @@ class BogoliubovDrudge(GenMBDrudge):
         operators.  Then the possibly complex matrix elements are all going to
         be replaced by simple tensors, whose names can be tuned.
 
+        Note that for a term with creation order :math:`m` and annihilation
+        order :math:`n`, the term carries a normalization of division over
+        :math:`m! n!`.
+
         Parameters
         ----------
 
@@ -1220,6 +1230,7 @@ class BogoliubovDrudge(GenMBDrudge):
                 indices.append(index)
                 continue
 
+            norm = factorial(cr_order) * factorial(an_order)
             order = (cr_order, an_order)
             tot_order = cr_order + an_order
 
@@ -1241,7 +1252,7 @@ class BogoliubovDrudge(GenMBDrudge):
                 continue
 
             def_term = Term(
-                sums=tuple(wrapped_sums), amp=orig_amp, vecs=()
+                sums=tuple(wrapped_sums), amp=orig_amp * norm, vecs=()
             )
 
             if order in transf:
@@ -1251,7 +1262,7 @@ class BogoliubovDrudge(GenMBDrudge):
             else:
                 transf[order] = (new_amp, [def_term])
                 rewritten_terms.append(Term(
-                    sums=tuple(new_sums), amp=new_amp, vecs=term.vecs
+                    sums=tuple(new_sums), amp=new_amp / norm, vecs=term.vecs
                 ))
                 if set_symms and cr_order > 1 and an_order > 1:
                     self.set_dbbar_base(base, cr_order, an_order)

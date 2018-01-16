@@ -1,6 +1,7 @@
 """Test of the Bogoliubov facility."""
 
 import itertools
+import math
 
 import pytest
 from sympy import Indexed, Symbol, IndexedBase, symbols, conjugate
@@ -48,13 +49,18 @@ def test_bogoliubov_has_hamiltonian(bogoliubov: BogoliubovDrudge):
             i: orb_range for i in indices
         }
 
+        # Here we use Python facility to test against the SymPy factorial in the
+        # code.
+        norm = math.factorial(order[0]) * math.factorial(order[1])
+
         assert order not in orders
         if order == (0, 0):
             assert isinstance(term.amp, Symbol)
         else:
-            assert isinstance(term.amp, Indexed)
-            assert term.amp.indices == indices
-            orders[order] = term.amp.base
+            amp = (term.amp * norm).simplify()
+            assert isinstance(amp, Indexed)
+            assert amp.indices == indices
+            orders[order] = amp.base
 
         continue
 
@@ -102,8 +108,8 @@ def test_bogoliubov_has_correct_matrix_elements(bogoliubov: BogoliubovDrudge):
     l1, l2, l3, l4 = symbols('l1 l2 l3 l4')
     assert dr.simplify(def_40.rhs - dr.sum(
         (l1, orb_range), (l2, orb_range), (l3, orb_range), (l4, orb_range),
-        -dr.two_body[l1, l2, l3, l4] * conjugate(dr.u_base[l1, k1])
+        -6 * dr.two_body[l1, l2, l3, l4] * conjugate(dr.u_base[l1, k1])
         * conjugate(dr.u_base[l2, k2])
         * conjugate(dr.v_base[l4, k4])
-        * conjugate(dr.v_base[l3, k3]) / 4
+        * conjugate(dr.v_base[l3, k3])
     )) == 0
