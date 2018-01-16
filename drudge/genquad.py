@@ -226,10 +226,16 @@ class GenQuadLatticeDrudge(GenQuadDrudge):
 
             [a, b] = \phi b a + \kappa
 
-        The phase has to be a scalar quantity.  The vectors inside the
-        commutator should have no index.  They are going to be indexed by the
-        indices from the vectors being commuted during the normal-ordering
-        operation.
+        The phase has to be a scalar quantity.  When the vectors inside the
+        commutator have no index, they are going to be indexed by the indices
+        from the vectors being commuted during the normal-ordering operation.
+
+        The values can also be callable objects, which is going to be called
+        with the two vectors to commute.  The return value have the same
+        semantics as above, just they can be computed on the fly, rather than
+        begin static for all lattice indices.  Note that this does not change
+        the semantics of lattice algebra, different generators with different
+        lattice indices always commute.
 
     assume_comm
 
@@ -299,12 +305,13 @@ class GenQuadLatticeDrudge(GenQuadDrudge):
                     'Nonsympifiable phase of commutation', phase, exc
                 )
 
-            try:
-                comm = parse_terms(comm)
-            except Exception as exc:
-                raise ValueError(
-                    'Invalid commutator result', comm, exc
-                )
+            if not callable(comm):
+                try:
+                    comm = parse_terms(comm)
+                except Exception as exc:
+                    raise ValueError(
+                        'Invalid commutator result', comm, exc
+                    )
 
             comms[(k[0], k[1])] = (comm, phase)
             continue
@@ -362,6 +369,7 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
     else:
         given = (base1, base2)
         rev = (base2, base1)
+        if_rev = False
 
         if given in comms:
             comm, phase = comms[given]
@@ -372,6 +380,7 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
             comm, phase = comms[rev]
             comm_factor = -1 / phase
             phase = 1 / phase
+            if_rev = True
         elif assume_comm:
             comm = _NOUGHT
             phase = _UNITY
@@ -381,13 +390,24 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
                 'Commutation rules unspecified', vec1, vec2
             )
 
+        if callable(comm):
+            try:
+                comm = parse_terms(
+                    comm(vec2, vec1) if if_rev else comm(vec1, vec2)
+                )
+            except Exception as exc:
+                raise ValueError(
+                    'Invalid commutator', comm, exc
+                )
+
         delta = functools.reduce(operator.mul, (
             KroneckerDelta(i, j) for i, j in zip(indices1, indices2)
         ), _UNITY)
 
         terms = Terms(
             Term(term.sums, delta * comm_factor * term.amp, tuple(
-                i[indices1] for i in term.vecs
+                i[indices1] if len(i.indices) == 0 else i
+                for i in term.vecs
             ))
             for term in comm
         )

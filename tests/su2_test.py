@@ -1,6 +1,6 @@
 """Test for the SU2 drudge."""
 
-from sympy import Rational, I, Symbol, symbols
+from sympy import Rational, I, Symbol, symbols, IndexedBase
 
 from drudge import SU2LatticeDrudge, Range
 
@@ -70,3 +70,33 @@ def test_su2_on_1d_heisenberg_model(spark_ctx):
 
     comm = (ham | s_sq).simplify()
     assert comm == 0
+
+
+def test_su2_with_deformed_commutation(spark_ctx):
+    """Test SU2 lattice drudge with site-dependent commutation rules."""
+
+    raise_ = SU2LatticeDrudge.DEFAULT_RAISE
+    lower = SU2LatticeDrudge.DEFAULT_LOWER
+    cartan = SU2LatticeDrudge.DEFAULT_CARTAN
+    alpha = IndexedBase('alpha')
+
+    def comm_rl(vec1, vec2):
+        """Compute the commutator of a raising and lowering operator."""
+        index = vec1.indices[0]
+        return alpha[index] * cartan - 1
+
+    dr = SU2LatticeDrudge(spark_ctx, specials={
+        (raise_, lower): comm_rl
+    })
+
+    a = Symbol('a')
+    assert dr.simplify(cartan[a] | raise_[a]) == dr.sum(raise_[a])
+    assert dr.simplify(cartan[a] | lower[a]) == dr.sum(-lower[a])
+
+    assert dr.simplify(raise_[a] | lower[a]) == dr.sum(
+        alpha[a] * cartan[a] - 1
+    ).simplify()
+    assert dr.simplify(lower[a] | raise_[a]) == dr.sum(
+        1 - alpha[a] * cartan[a]
+    ).simplify()
+    assert dr.simplify(raise_[1] | lower[2]) == 0
