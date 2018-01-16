@@ -622,7 +622,8 @@ class GenMBDrudge(FockDrudge):
 
         self.set_name(**{
             str(op) + '_': an,
-            str(op) + '_dag': cr
+            str(op) + '_dag': cr,
+            str(op) + 'dag_': cr
         })
 
         #
@@ -1126,7 +1127,8 @@ class BogoliubovDrudge(GenMBDrudge):
 
         self.set_name(**{
             str(qp_op) + '_': qp_an,
-            str(qp_op) + '_dag': qp_cr
+            str(qp_op) + '_dag': qp_cr,
+            str(qp_op) + 'dag_': qp_cr
         })
 
         if len(self.orb_ranges) != 1:
