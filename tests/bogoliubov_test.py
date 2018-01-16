@@ -113,3 +113,10 @@ def test_bogoliubov_has_correct_matrix_elements(bogoliubov: BogoliubovDrudge):
         * conjugate(dr.v_base[l4, k4])
         * conjugate(dr.v_base[l3, k3])
     )) == 0
+
+
+def test_bogoliubov_vev(bogoliubov: BogoliubovDrudge):
+    """Test the correctness of Bogoliubov VEV evaluation."""
+    dr = bogoliubov
+    res = dr.ham.eval_bogoliubov_vev()
+    assert res == dr.sum(Symbol(r'H^{00}'))

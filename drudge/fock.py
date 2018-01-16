@@ -1167,6 +1167,10 @@ class BogoliubovDrudge(GenMBDrudge):
         self.ham = rewritten
         self.ham_mes = ham_mes
 
+        self.set_tensor_method(
+            'eval_bogoliubov_vev', self.eval_bogoliubov_vev
+        )
+
     def write_in_qp(self, tensor: Tensor, format_: str, set_symms=True):
         """Write the given expression in terms of quasi-particle operators.
 
@@ -1276,3 +1280,12 @@ class BogoliubovDrudge(GenMBDrudge):
         ]
 
         return self.create_tensor(rewritten_terms), defs
+
+    def eval_bogoliubov_vev(self, tensor: Tensor):
+        """Evaluate expectation value with respect to Bogoliubov vacuum.
+
+        This is just an alias to the actual :py:meth:`FockDrudge.eval_phys_vev`
+        method to avoid confusion.  And it is set as a tensor method by the same
+        name.
+        """
+        return self.eval_phys_vev(tensor)
