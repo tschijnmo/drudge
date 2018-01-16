@@ -1131,10 +1131,11 @@ class BogoliubovDrudge(GenMBDrudge):
         self.qp_cr = qp_cr
         self.qp_an = qp_an
 
+        qp_op_str = str(qp_op).replace('\\', "")
         self.set_name(**{
-            str(qp_op) + '_': qp_an,
-            str(qp_op) + '_dag': qp_cr,
-            str(qp_op) + 'dag_': qp_cr
+            qp_op_str + '_': qp_an,
+            qp_op_str + '_dag': qp_cr,
+            qp_op_str + 'dag_': qp_cr
         })
 
         if len(self.orb_ranges) != 1:
