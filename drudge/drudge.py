@@ -1488,7 +1488,7 @@ class TensorDef(Tensor):
             )
             if explicit_ext:
                 self._exts.append(tuple(i))
-            elif isinstance(i, Symbol):
+            elif isinstance(i, Expr):
                 self._exts.append((
                     i, None
                 ))
@@ -2439,7 +2439,7 @@ class Drudge:
         initial arguments
             The left-hand side of the definition.  It can be given as an indexed
             quantity, either SymPy Indexed instances or an indexed vector, with
-            all the indices being plain symbols whose range is able to be
+            all the plain symbol indices having their range is able to be
             resolved.  Or a base can be given, followed by the symbol/range
             pairs for the external indices.
 
@@ -2511,17 +2511,20 @@ class Drudge:
     def _form_exts(self, indices):
         """Form dummy/range pairs from symbols.
 
-        The range is resolved based on the resolver, or ValueError will be
-        raised.
+        For plain symbols, the range is resolved based on the resolver, or
+        ValueError will be raised.
         """
         exts = []
         for i in indices:
-            range_ = try_resolve_range(i, {}, self.resolvers.value)
-            if range_ is None:
-                raise ValueError(
-                    'Invalid index', i, 'range cannot be resolved'
-                )
-            exts.append((i, range_))
+            if isinstance(i, Symbol):
+                range_ = try_resolve_range(i, {}, self.resolvers.value)
+                if range_ is None:
+                    raise ValueError(
+                        'Invalid index', i, 'range cannot be resolved'
+                    )
+                exts.append((i, range_))
+            else:
+                exts.append(i)
             continue
         return exts
 
