@@ -2069,7 +2069,7 @@ class Drudge:
         ] = group
 
         if set_base_name:
-            self.set_name(**{str(base.label): base})
+            self.set_name(**{str(base): base})
 
         return group
 
