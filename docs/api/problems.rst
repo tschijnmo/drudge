@@ -50,3 +50,11 @@ Many-body theories with explicit spin
 .. autoclass:: RestrictedPartHoleDrudge
     :members:
     :special-members:
+
+
+Other many-body theories
+++++++++++++++++++++++++
+
+.. autoclass:: BogoliubovDrudge
+    :members:
+    :special-members:

@@ -12,7 +12,7 @@ from .wick import WickDrudge
 from .fock import (
     CR, AN, FERMI, BOSE, FockDrudge, GenMBDrudge, PartHoleDrudge,
     UP, DOWN, SpinOneHalfGenDrudge, SpinOneHalfPartHoleDrudge,
-    RestrictedPartHoleDrudge
+    RestrictedPartHoleDrudge, BogoliubovDrudge
 )
 from .genquad import GenQuadDrudge, GenQuadLatticeDrudge
 from .su2 import SU2LatticeDrudge
@@ -57,6 +57,7 @@ __all__ = [
     'UP', 'DOWN',
     'SpinOneHalfGenDrudge', 'SpinOneHalfPartHoleDrudge',
     'RestrictedPartHoleDrudge',
+    'BogoliubovDrudge',
 
     # Other algebraic systems.
     'GenQuadDrudge',
