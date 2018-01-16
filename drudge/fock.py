@@ -1112,8 +1112,17 @@ class BogoliubovDrudge(GenMBDrudge):
 
     """
 
+    DEFAULT_P_DUMMS = tuple(
+        Symbol('l{}'.format(i)) for i in range(1, 100)
+    )
+    DEFAULT_QP_DUMMS = tuple(
+        Symbol('k{}'.format(i)) for i in range(1, 100)
+    )
+
     def __init__(
-            self, ctx, u_base=IndexedBase('u'), v_base=IndexedBase('v'),
+            self, ctx, p_range=Range('L'), p_dumms=DEFAULT_P_DUMMS,
+            qp_range=Range('Q'), qp_dumms=DEFAULT_QP_DUMMS,
+            u_base=IndexedBase('u'), v_base=IndexedBase('v'),
             one_body=IndexedBase('epsilon'), two_body=IndexedBase('vbar'),
             dbbar=True, qp_op_label=r'\beta', ham_me_format='H^{{{}{}}}',
             **kwargs
@@ -1121,8 +1130,15 @@ class BogoliubovDrudge(GenMBDrudge):
         """Initialize the drudge object."""
 
         super().__init__(
-            ctx, one_body=one_body, two_body=two_body, dbbar=dbbar, **kwargs
+            ctx, orb=((p_range, p_dumms),),
+            one_body=one_body, two_body=two_body, dbbar=dbbar, **kwargs
         )
+        self.set_dumms(qp_range, qp_dumms)
+        self.add_resolver_for_dumms()
+        self.p_range = p_range
+        self.p_dumms = p_dumms
+        self.qp_range = qp_range
+        self.qp_dumms = qp_dumms
 
         qp_op = Vec(qp_op_label)
         qp_cr = qp_op[CR]
@@ -1138,20 +1154,13 @@ class BogoliubovDrudge(GenMBDrudge):
             qp_op_str + 'dag_': qp_cr
         })
 
-        if len(self.orb_ranges) != 1:
-            raise ValueError(
-                'Invalid number of orbital ranges, only one is expected',
-                self.orb_ranges
-            )
-        orb_range = self.orb_ranges[0]
-        dumms = self.dumms.value[orb_range]
-        l, k = dumms[:2]  # They do not have to be l and k.
-
         self.u_base = u_base
         self.v_base = v_base
 
         cr = self.cr
         an = self.an
+        l = p_dumms[0]
+        k = qp_dumms[0]
         self.f_in_qp = [
             self.define(cr[l], self.einst(
                 conjugate(u_base[l, k]) * qp_cr[k] + v_base[l, k] * qp_an[k]

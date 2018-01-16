@@ -20,8 +20,7 @@ def bogoliubov(spark_ctx):
 def test_bogoliubov_has_hamiltonian(bogoliubov: BogoliubovDrudge):
     """Test the Hamiltonian in the Bogoliubov problem."""
     dr = bogoliubov
-    assert len(dr.orb_ranges) == 1
-    orb_range = dr.orb_ranges[0]
+    qp_range = dr.qp_range
 
     orders = {}
     for term in dr.ham.local_terms:
@@ -46,7 +45,7 @@ def test_bogoliubov_has_hamiltonian(bogoliubov: BogoliubovDrudge):
         order = (len(cr_indices), len(an_indices))
 
         assert dict(term.sums) == {
-            i: orb_range for i in indices
+            i: qp_range for i in indices
         }
 
         # Here we use Python facility to test against the SymPy factorial in the
@@ -80,8 +79,7 @@ def test_bogoliubov_has_hamiltonian(bogoliubov: BogoliubovDrudge):
 def test_bogoliubov_has_correct_matrix_elements(bogoliubov: BogoliubovDrudge):
     """Test the correctness of Bogoliubov Matrix elements."""
     dr = bogoliubov
-    assert len(dr.orb_ranges) == 1
-    orb_range = dr.orb_ranges[0]
+    p_range = dr.p_range
     mes = dr.ham_mes
 
     # Here we first check simple ones.
@@ -107,7 +105,7 @@ def test_bogoliubov_has_correct_matrix_elements(bogoliubov: BogoliubovDrudge):
     k1, k2, k3, k4 = ext_symbs
     l1, l2, l3, l4 = symbols('l1 l2 l3 l4')
     assert dr.simplify(def_40.rhs - dr.sum(
-        (l1, orb_range), (l2, orb_range), (l3, orb_range), (l4, orb_range),
+        (l1, p_range), (l2, p_range), (l3, p_range), (l4, p_range),
         -6 * dr.two_body[l1, l2, l3, l4] * conjugate(dr.u_base[l1, k1])
         * conjugate(dr.u_base[l2, k2])
         * conjugate(dr.v_base[l4, k4])
