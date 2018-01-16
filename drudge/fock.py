@@ -1045,3 +1045,220 @@ class RestrictedPartHoleDrudge(SpinOneHalfPartHoleDrudge):
             (sigma, spin_range), self.cr[p, sigma] * self.an[q, sigma]
         ))
         self.set_name(e_=self.e_)
+
+
+class BogoliubovDrudge(GenMBDrudge):
+    r"""Drudge for general Bogoliubov problems.
+
+    Based on :py:class:`GenMBDrudge`, this class performs the Bogoliubov
+    transformation to the Hamiltonian as defined in [RS1980]_.  Here the
+    creation and annihilation operators of bare fermions :math:`c` and
+    :math:`c^\dagger` are going to be substituted as
+
+    .. math::
+
+        c^\dagger_l &= \sum_k u^*_{lk} \beta^\dagger_k + v_{lk} \beta_k \\
+        c_l &= \sum_k u_{lk} \beta_k + v^*_{lk} \beta^\dagger_k \\
+
+    which comes from the inversion of
+
+    .. math::
+
+        \beta^\dagger_k = \sum_l u_{lk} c^\dagger_l v_{lk} c_l
+
+    Then the Hamiltonian is going to be rewritten with matrix elements formatted
+    according to the given format.
+
+    .. [RS1980] P Ring and P Schuck, The Nuclear Many-Body Problem,
+       Springer-Verlag 1980
+
+    Parameters
+    ----------
+
+    ctx
+        The Spark context.
+
+    u_base
+        The indexed base for the :math:`U` part of the Bogoliubov
+        transformation.
+
+    v_base
+        The indexed base for the :math:`V` part.
+
+    one_body
+        The indexed base for the one-body part of the original Hamiltonian.
+
+    two_body
+        The indexed base for the two-body part of the original Hamiltonian.
+
+    qp_op_label
+        The label for the quasi-particle operators.
+
+    ham_me_format
+        The format for the matrix elements of the rewritten Hamiltonian.  It is
+        going to be formatted with the creation and annihilation order of the
+        quasi-particles to get the name for the indexed base of the Hamiltonian
+        matrix elements.
+
+    kwargs
+        All the rest of the keyword arguments are given to the base class.
+
+    """
+
+    def __init__(
+            self, ctx, u_base=IndexedBase('u'), v_base=IndexedBase('v'),
+            one_body=IndexedBase('epsilon'), two_body=IndexedBase('vbar'),
+            dbbar=True, qp_op_label=r'\beta', ham_me_format='H^{{{}{}}}',
+            **kwargs
+    ):
+        """Initialize the drudge object."""
+
+        super().__init__(
+            ctx, one_body=one_body, two_body=two_body, dbbar=dbbar, **kwargs
+        )
+
+        qp_op = Vec(qp_op_label)
+        qp_cr = qp_op[CR]
+        qp_an = qp_op[AN]
+        self.qp_op = qp_op
+        self.qp_cr = qp_cr
+        self.qp_an = qp_an
+
+        self.set_name(**{
+            str(qp_op) + '_': qp_an,
+            str(qp_op) + '_dag': qp_cr
+        })
+
+        if len(self.orb_ranges) != 1:
+            raise ValueError(
+                'Invalid number of orbital ranges, only one is expected',
+                self.orb_ranges
+            )
+        orb_range = self.orb_ranges[0]
+        dumms = self.dumms.value[orb_range]
+        l, k = dumms[:2]  # They do not have to be l and k.
+
+        self.u_base = u_base
+        self.v_base = v_base
+
+        cr = self.cr
+        an = self.an
+        self.f_in_qp = [
+            self.define(cr[l], self.einst(
+                conjugate(u_base[l, k]) * qp_cr[k] + v_base[l, k] * qp_an[k]
+            )),
+            self.define(an[l], self.einst(
+                u_base[l, k] * qp_an[k] + conjugate(v_base[l, k]) * qp_cr[k]
+            ))
+        ]
+
+        orig_ham = self.ham
+        rewritten, ham_mes = self.write_in_qp(orig_ham, ham_me_format)
+        self.orig_ham = orig_ham
+        self.ham = rewritten
+        self.ham_mes = ham_mes
+
+    def write_in_qp(self, tensor: Tensor, format_: str, set_symms=True):
+        """Write the given expression in terms of quasi-particle operators.
+
+        The given expression will be rewritten in terms of the quasi-particle
+        operators.  Then the possibly complex matrix elements are all going to
+        be replaced by simple tensors, whose names can be tuned.
+
+        Parameters
+        ----------
+
+        tensor
+            The expression to be rewritten.  It should be an expression in terms
+            of the physical fermion operators.
+
+        format_
+            The format string to be used for the new matrix elements, which is
+            going to be formatted with the quasi-particle creation and
+            annihilation orders.
+
+        set_symms
+            If automatic symmetries are going to be set for the new matrix
+            elements.
+
+        Return
+        ------
+
+        The rewritten form of the expression, as well as a list of tensor
+        definitions for the new matrix elements.
+
+        """
+
+        terms = tensor.subst_all(self.f_in_qp).simplify().local_terms
+
+        # Internal book keeping, maps the cr/an order to lhs and the rhs terms
+        # of the definition of the new matrix element.
+        transf = {}
+
+        rewritten_terms = []
+
+        for term in terms:
+            cr_order = 0
+            an_order = 0
+            indices = []
+            for i in term.vecs:
+                if len(i.indices) != 2:
+                    raise ValueError(
+                        'Invalid operator to rewrite, one index expected', i
+                    )
+                char, index = i.indices
+                if char == CR:
+                    assert an_order == 0
+                    cr_order += 1
+                elif char == AN:
+                    an_order += 1
+                else:
+                    assert False
+
+                indices.append(index)
+                continue
+
+            order = (cr_order, an_order)
+            tot_order = cr_order + an_order
+
+            base = IndexedBase(format_.format(*order))
+            indices[cr_order:tot_order] = reversed(indices[cr_order:tot_order])
+            if tot_order > 0:
+                new_amp = base[tuple(indices)]
+            else:
+                new_amp = base.label
+            orig_amp = term.amp
+
+            new_sums = []
+            wrapped_sums = []
+            for i in term.sums:
+                if new_amp.has(i[0]):
+                    new_sums.append(i)
+                else:
+                    wrapped_sums.append(i)
+                continue
+
+            def_term = Term(
+                sums=tuple(wrapped_sums), amp=orig_amp, vecs=()
+            )
+
+            if order in transf:
+                entry = transf[order]
+                assert entry[0] == new_amp
+                entry[1].append(def_term)
+            else:
+                transf[order] = (new_amp, [def_term])
+                rewritten_terms.append(Term(
+                    sums=tuple(new_sums), amp=new_amp, vecs=term.vecs
+                ))
+                if set_symms and cr_order > 1 and an_order > 1:
+                    self.set_dbbar_base(base, cr_order, an_order)
+
+            continue
+
+        defs = [
+            self.define(lhs, self.create_tensor(rhs_terms))
+            for lhs, rhs_terms in transf.values()
+        ]
+
+        return self.create_tensor(rewritten_terms), defs
