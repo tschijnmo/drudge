@@ -79,17 +79,12 @@ def test_su2_with_deformed_commutation(spark_ctx):
     lower = SU2LatticeDrudge.DEFAULT_LOWER
     cartan = SU2LatticeDrudge.DEFAULT_CARTAN
     alpha = IndexedBase('alpha')
-
-    def comm_rl(vec1, vec2):
-        """Compute the commutator of a raising and lowering operator."""
-        index = vec1.indices[0]
-        return alpha[index] * cartan - 1
+    a = Symbol('a')
 
     dr = SU2LatticeDrudge(spark_ctx, specials={
-        (raise_, lower): comm_rl
+        (raise_[a], lower[a]): alpha[a] * cartan[a] - 1
     })
 
-    a = Symbol('a')
     assert dr.simplify(cartan[a] | raise_[a]) == dr.sum(raise_[a])
     assert dr.simplify(cartan[a] | lower[a]) == dr.sum(-lower[a])
 

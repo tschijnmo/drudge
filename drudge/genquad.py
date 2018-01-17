@@ -230,12 +230,13 @@ class GenQuadLatticeDrudge(GenQuadDrudge):
         commutator have no index, they are going to be indexed by the indices
         from the vectors being commuted during the normal-ordering operation.
 
-        The values can also be callable objects, which is going to be called
-        with the two vectors to commute.  The return value have the same
-        semantics as above, just they can be computed on the fly, rather than
-        begin static for all lattice indices.  Note that this does not change
-        the semantics of lattice algebra, different generators with different
-        lattice indices always commute.
+        When the commutation rules depends on the indices of the operators, the
+        key can be vectors with plain Symbol indices, with the commutator given
+        in terms of them.  Note that this does not change the semantics of
+        lattice algebra, different generators with different lattice indices
+        always commute.  So the indices of the pair of vectors must match
+        exactly.  When general commutation and specialized commutation are both
+        present, the specialized takes precedence.
 
     assume_comm
 
@@ -305,15 +306,25 @@ class GenQuadLatticeDrudge(GenQuadDrudge):
                     'Nonsympifiable phase of commutation', phase, exc
                 )
 
-            if not callable(comm):
-                try:
-                    comm = parse_terms(comm)
-                except Exception as exc:
-                    raise ValueError(
-                        'Invalid commutator result', comm, exc
-                    )
+            try:
+                comm = parse_terms(comm)
+            except Exception as exc:
+                raise ValueError(
+                    'Invalid commutator result', comm, exc
+                )
 
-            comms[(k[0], k[1])] = (comm, phase)
+            if len(k[0].indices) == 0 and len(k[1].indices) == 0:
+                key = (k[0], k[1])
+                if key not in comms:
+                    # Specialized rule takes precedence.
+                    comms[key] = (comm, phase)
+            else:
+                if k[0].indices != k[1].indices:
+                    raise ValueError(
+                        'Unmatching indices for lattice operators.'
+                    )
+                comms[k[0].base, k[1].base] = (k[0].indices, comm, phase)
+
             continue
 
         swap_info = _SwapInfo(
@@ -369,18 +380,16 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
     else:
         given = (base1, base2)
         rev = (base2, base1)
-        if_rev = False
 
         if given in comms:
-            comm, phase = comms[given]
+            comm, phase = _get_comm_phase(comms, given, indices1)
             comm_factor = _UNITY
         elif rev in comms:
             # a b = phi b a + kappa => phi b a = a b - kappa
             # => b a = (a b - kappa) / phi
-            comm, phase = comms[rev]
+            comm, phase = _get_comm_phase(comms, rev, indices1)
             comm_factor = -1 / phase
             phase = 1 / phase
-            if_rev = True
         elif assume_comm:
             comm = _NOUGHT
             phase = _UNITY
@@ -389,16 +398,6 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
             raise ValueError(
                 'Commutation rules unspecified', vec1, vec2
             )
-
-        if callable(comm):
-            try:
-                comm = parse_terms(
-                    comm(vec2, vec1) if if_rev else comm(vec1, vec2)
-                )
-            except Exception as exc:
-                raise ValueError(
-                    'Invalid commutator', comm, exc
-                )
 
         delta = functools.reduce(operator.mul, (
             KroneckerDelta(i, j) for i, j in zip(indices1, indices2)
@@ -412,6 +411,32 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
             for term in comm
         )
         return phase, terms
+
+
+def _get_comm_phase(comms, vecs, indices):
+    """Get the commutator and phase from a commutator entry.
+
+    This function assumes that the given vectors has an entry.
+    """
+    entry = comms[vecs]
+    if len(entry) == 2:
+        return entry
+    elif len(entry) == 3:
+        dumms, comm, phase = entry
+        if len(indices) != len(dumms):
+            raise ValueError(
+                'Indices in vectors', indices,
+                'cannot be matched for the rules of commuting', vecs
+            )
+        substs = {
+            i: j for i, j in zip(dumms, indices)
+        }
+        return (
+            tuple(i.map(lambda x: x.xreplace(substs)) for i in comm),
+            phase.xreplace(substs)
+        )
+    else:
+        assert False
 
 
 # Small utility constants.
