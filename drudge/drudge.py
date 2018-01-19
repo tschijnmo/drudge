@@ -1085,9 +1085,10 @@ class Tensor:
         elif if_scalar and not if_indexed:
 
             assert isinstance(lhs, Symbol)
+            orig_lhs = lhs
             decored_lhs = Symbol(lhs.name + decr_suffix)
             target = self.map2amps(lambda x: x.xreplace({
-                lhs: decored_lhs
+                orig_lhs: decored_lhs
             }))
             lhs = decored_lhs
 
