@@ -9,7 +9,7 @@ import shutil
 import pytest
 from sympy import (
     sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild,
-    Rational
+    Rational, Symbol
 )
 
 from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef
@@ -542,6 +542,92 @@ def test_tensors_can_be_substituted_vectors(
 
     expected = dr.einst(
         x[i] * t[i, j] * w[j] + x[i] * u[i, j] * w[j]
+    ).simplify()
+    assert res == expected
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_tensors_can_be_substituted_scalars_simultaneously(
+        free_alg, full_balance
+):
+    """Test scalar substitution facility for tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    r = p.R
+    i, j = p.R_dumms[:2]
+
+    x_def = dr.define(x[i], dr.sum(2 * x[i]))
+    summand = x[i] ** 2 * x[j]
+    orig = dr.sum((i, r), summand)
+
+    # k is free.
+    expected = dr.sum((i, r), summand * 2 ** 3)
+
+    # Test different ways to perform the substitution.
+    for res in [
+        orig.subst(x[i], x_def.rhs, full_balance=full_balance),
+        orig.subst_all([x_def], full_balance=full_balance),
+        orig.subst_all([(x[i], x_def.rhs)], full_balance=full_balance),
+        x_def.act(orig, full_balance=full_balance)
+    ]:
+        assert res.simplify() == expected.simplify()
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+@pytest.mark.parametrize('full_simplify', [True, False])
+def test_tensors_can_be_substituted_vectors_simultaneously(
+        free_alg, full_balance, full_simplify
+):
+    """Test vector substitution facility for tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    i, j = p.i, p.j
+    v = p.v
+
+    orig = dr.einst(x[i, j] * v[i] * v[j])
+    v_def = dr.sum(2 * v[i])
+
+    dr.full_simplify = full_simplify
+    res = orig.subst(v[i], v_def, full_balance=full_balance).simplify()
+    dr.full_simplify = True
+
+    expected = dr.einst(4 * x[i, j] * v[i] * v[j]).simplify()
+    assert res == expected
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+@pytest.mark.parametrize('full_simplify', [True, False])
+def test_tensors_can_be_substituted_symbols_simultaneously(
+        free_alg, full_balance, full_simplify
+):
+    """Test vector substitution facility for tensors."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    alpha = Symbol('alpha')
+    beta = IndexedBase('beta')
+    i, j, k = p.i, p.j, p.k
+    v = p.v
+
+    orig = dr.einst(alpha ** 2 * x[i] * v[i])
+    alpha_def = dr.einst(alpha * beta[i, i])
+    assert alpha_def.n_terms == 1
+    assert len(alpha_def.local_terms[0].sums) == 1
+
+    dr.full_simplify = full_simplify
+    res = orig.subst(alpha, alpha_def, full_balance=full_balance).simplify()
+    dr.full_simplify = True
+
+    expected = dr.einst(
+        alpha ** 2 * beta[i, i] * beta[j, j] * x[k] * v[k]
     ).simplify()
     assert res == expected
 
