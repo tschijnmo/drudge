@@ -2629,7 +2629,9 @@ class Drudge:
         """Form dummy/range pairs from symbols.
 
         For plain symbols, the range is resolved based on the resolver, or
-        ValueError will be raised.
+        ValueError will be raised.  Currently, when it is resolved to have
+        multiple ranges, it will be treated as a generic one without explicit
+        range.
         """
         exts = []
         for i in indices:
@@ -2639,7 +2641,10 @@ class Drudge:
                     raise ValueError(
                         'Invalid index', i, 'range cannot be resolved'
                     )
-                exts.append((i, range_))
+                if isinstance(range_, Sequence):
+                    exts.append(i)
+                else:
+                    exts.append((i, range_))
             else:
                 exts.append(i)
             continue
