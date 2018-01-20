@@ -1273,7 +1273,7 @@ class BogoliubovDrudge(GenMBDrudge):
                 rewritten_terms.append(Term(
                     sums=tuple(new_sums), amp=new_amp / norm, vecs=term.vecs
                 ))
-                if set_symms and cr_order > 1 and an_order > 1:
+                if set_symms and (cr_order > 1 or an_order > 1):
                     self.set_dbbar_base(base, cr_order, an_order)
 
             continue
