@@ -860,8 +860,12 @@ class Term(ATerms):
         # Note that here the substitutions needs to be performed in order.
         return self.subst(substs, purge_sums=True, amp=new_amp)
 
-    def simplify_sums(self):
-        """Simplify the summations in the term."""
+    def simplify_trivial_sums(self):
+        """Simplify the trivial summations in the term.
+
+        Trivial summations are the concrete summations that do not have any
+        involvement at all.
+        """
 
         involved = {
             i for expr in self.exprs for i in expr.atoms(Symbol)

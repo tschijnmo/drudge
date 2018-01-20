@@ -485,13 +485,15 @@ class Tensor:
         will be replaced by a multiplication with its size.
         """
 
-        return self.apply(self._simplify_sums)
+        return Tensor(self._drudge, self._simplify_sums(self._terms))
 
     @staticmethod
     def _simplify_sums(terms: RDD):
         """Simplify the summations in the given terms."""
 
-        return terms.map(lambda x: x.simplify_sums())
+        terms = terms.map(lambda x: x.simplify_trivial_sums())
+
+        return terms
 
     def expand(self):
         """Expand the terms in the tensor.
