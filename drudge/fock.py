@@ -268,12 +268,6 @@ class FockDrudge(WickDrudge):
 
         n_body = int(n_body)
 
-        if n_body < 2:
-            raise ValueError(
-                'Invalid body count', n_body,
-                'expecting a number greater than one'
-            )
-
         n_body2 = n_body if n_body2 is None else int(n_body2)
         n_slots = n_body + n_body2
 
@@ -281,17 +275,18 @@ class FockDrudge(WickDrudge):
         cycl_accs = [
             NEG if self._exch == FERMI and i % 2 == 0 else IDENT
             for i in [n_body, n_body2]
-        ]  # When n_body2 is zero, this value is kinda wrong but not used.
+        ]  # When either body is zero, this value is kinda wrong but not used.
 
         gens = []
 
-        second_half = list(range(n_body, n_slots))
-        gens.append(Perm(
-            self._form_cycl(0, n_body) + second_half, cycl_accs[0]
-        ))
-        gens.append(Perm(
-            self._form_transp(0, n_body) + second_half, transp_acc
-        ))
+        if n_body > 1:
+            second_half = list(range(n_body, n_slots))
+            gens.append(Perm(
+                self._form_cycl(0, n_body) + second_half, cycl_accs[0]
+            ))
+            gens.append(Perm(
+                self._form_transp(0, n_body) + second_half, transp_acc
+            ))
 
         if n_body2 > 1:
             first_half = list(range(0, n_body))
