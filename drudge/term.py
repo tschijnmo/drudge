@@ -10,8 +10,8 @@ import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
-    sympify, Symbol, KroneckerDelta, Eq, solve, S, Integer, Add, Mul, Indexed,
-    IndexedBase, Expr, Basic, Pow, Wild, conjugate
+    sympify, Symbol, KroneckerDelta, Eq, solveset, S, Integer, Add, Mul,
+    Indexed, IndexedBase, Expr, Basic, Pow, Wild, conjugate, Intersection
 )
 from sympy.core.sympify import CantSympify
 
@@ -1673,16 +1673,28 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
         else:
             return _NAUGHT, None
 
-    eqn = Eq(arg1, arg2)
+    eqn = Eq(arg1, arg2).simplify()
 
     # We try to solve for each of the dummies.  Most likely this will only be
     # executed for one loop.
 
     for dumm in dumms:
         range_ = sums_dict[dumm]
-        sol = solve(eqn, dumm)
+        # Here we assume the same integral domain, since dummies are summed over
+        # and we can mostly assume that they are integral.
+        #
+        # TODO: infer actual domain from the range.
+        domain = S.Integers
+        sol = solveset(eqn, dumm, domain)
 
-        if sol is S.true:
+        # Strip off trivial intersecting with the domain.
+        if isinstance(sol, Intersection) and len(sol.args) == 2:
+            if sol.args[0] == domain:
+                sol = sol.args[1]
+            elif sol.args[1] == domain:
+                sol = sol.args[0]
+
+        if sol == domain:
             # Now we can be sure that we got an identity.
             return _UNITY, None
         elif len(sol) > 0:
