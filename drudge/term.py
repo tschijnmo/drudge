@@ -11,7 +11,8 @@ from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
     sympify, Symbol, KroneckerDelta, Eq, solveset, S, Integer, Add, Mul,
-    Indexed, IndexedBase, Expr, Basic, Pow, Wild, conjugate, Intersection
+    Indexed, IndexedBase, Expr, Basic, Pow, Wild, conjugate, Sum, Piecewise,
+    Intersection
 )
 from sympy.core.sympify import CantSympify
 
@@ -1591,6 +1592,15 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
 
     if amp == 0:
         return amp, substs
+
+    # Preprocess some expressions equivalent to deltas into explicit delta form.
+    arg0 = Wild('arg0')
+    arg1 = Wild('arg1')
+    value = Wild('value')
+    amp = amp.replace(
+        Piecewise((value, Eq(arg0, arg1)), (0, True)),
+        KroneckerDelta(arg0, arg1) * value
+    )
 
     new_amp = amp.replace(KroneckerDelta, NonsympifiableFunc(functools.partial(
         _proc_delta_in_amp, sums_dict, resolvers, substs
