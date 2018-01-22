@@ -702,7 +702,7 @@ class Term(ATerms):
         case of no special additional symbols.
         """
 
-        return self.get_amp_factors(set())
+        return self.get_amp_factors()
 
     def get_amp_factors(self, *special_symbs, monom_only=True):
         """Get the factors in the amplitude and the coefficient.
