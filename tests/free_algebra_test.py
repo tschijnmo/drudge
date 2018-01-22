@@ -426,8 +426,8 @@ def test_tensor_math_ops(free_alg):
     assert alpha in tensor.free_vars
 
 
-def test_tensors_can_be_simplified_sums(free_alg):
-    """Test the summation simplification facility of tensors."""
+def test_trivial_sums_can_be_simplified(free_alg):
+    """Test the simplification facility for trivial sums."""
     dr = free_alg
     r = Range('D', 0, 2)
 
@@ -435,6 +435,21 @@ def test_tensors_can_be_simplified_sums(free_alg):
     tensor = dr.sum(1) + dr.sum((a, r), 1) + dr.sum((a, r), (b, r), 1)
     res = tensor.simplify()
     assert res == dr.sum(7)
+
+
+def test_amp_sums_can_be_simplified(free_alg):
+    """Test the simplification facility for more complex amplitude sums."""
+    dr = free_alg
+    v = dr.names.v
+    n, i, j = symbols('n i j')
+    x = IndexedBase('x')
+    r = Range('D', 0, n)
+
+    tensor = dr.sum((i, r), (j, r), i ** 2 * x[j] * v[j])
+    res = tensor.simplify_sums()
+    assert res == dr.sum((j, r), (
+            n ** 3 / 3 - n ** 2 / 2 + n / 6
+    ) * x[j] * v[j])
 
 
 def test_tensors_can_be_differentiated(free_alg):
