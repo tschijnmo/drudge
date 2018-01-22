@@ -734,11 +734,11 @@ class Tensor:
         if num_partitions is not None:
             terms = terms.repartition(num_partitions)
 
-        # Simplify things like zero or deltas.
-        if self._drudge.full_simplify:
-            terms = self._simplify_amps(terms)
-        terms = self._simplify_deltas(terms, False)
+        # Simplify the amplitude part.
+        terms = self._simplify_amps(terms)
         terms = self._simplify_sums(terms)
+        terms = self._simplify_amps(terms)
+        terms = self._simplify_deltas(terms, False)
 
         # Canonicalize the terms and see if they can be merged.
         terms = self._canon(terms, True)
