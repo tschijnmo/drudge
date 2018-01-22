@@ -704,20 +704,22 @@ class Term(ATerms):
 
         return self.get_amp_factors(set())
 
-    def get_amp_factors(self, *special_symbs):
+    def get_amp_factors(self, *special_symbs, monom_only=True):
         """Get the factors in the amplitude and the coefficient.
 
         The indexed factors and factors involving dummies or the symbols in the
         given special symbols set will be returned as a list, with the rest
         returned as a single SymPy expression.
 
-        Error will be raised if the amplitude is not a monomial.
+        When ``monom_only`` is set, Error will be raised if the amplitude is not
+        a monomial.
         """
 
         amp = self._amp
 
-        if isinstance(amp, Add):
+        if monom_only and isinstance(amp, Add):
             raise ValueError('Invalid amplitude: ', amp, 'expecting monomial')
+
         if isinstance(amp, Mul):
             all_factors = amp.args
         else:
