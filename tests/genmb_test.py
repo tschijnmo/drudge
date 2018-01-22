@@ -5,9 +5,9 @@ also tested here.
 """
 
 import pytest
-from sympy import IndexedBase, conjugate
+from sympy import IndexedBase, conjugate, Symbol, symbols, I, exp, pi, sqrt
 
-from drudge import GenMBDrudge, CR, AN
+from drudge import GenMBDrudge, CR, AN, Range
 
 
 @pytest.fixture(scope='module')
@@ -206,3 +206,55 @@ def test_dagger_of_field_operators(genmb):
 
     compl_dag = tensor.dagger()
     assert compl_dag == dr.einst(conjugate(x[a, b]) * c_dag[b] * c_[a])
+
+
+@pytest.mark.skip(reason="Wait until SymPy issue #13979 is resolved")
+def test_diag_tight_binding_hamiltonian(spark_ctx):
+    """Test automatic diagonalization of the tight-binding Hamiltonian.
+
+    The primary target of this test is the simplification of amplitude
+    summations.
+    """
+
+    n = Symbol('N', integer=True)
+    dr = GenMBDrudge(spark_ctx, orb=(
+        (Range('L', 0, n), symbols('x y z x1 x2', integer=True)),
+    ))
+
+    # The reciprocal space range and dummies.
+    k, q = symbols('k q', integer=True)
+    dr.set_dumms(Range('R', 0, n), [k, q])
+
+    p = dr.names
+    h = Symbol('h')  # Hopping neighbours.
+    delta = Symbol('Delta')
+    c_dag = p.c_dag
+    c_ = p.c_
+    a = p.L_dumms[0]
+
+    # Hamiltonian in the real-space
+    real_ham = dr.sum(
+        (a, p.L), (h, 1, -1), delta * c_dag[a + h] * c_[a]
+    ).simplify()
+    assert real_ham.n_terms == 2
+
+    # Unitary fourier transform.
+    cr_def = (c_dag[a], dr.sum(
+        (k, p.R), (1 / sqrt(n)) * exp(-I * 2 * pi * k * a / n) * c_dag[k]
+    ))
+    an_def = (c_[a], dr.sum(
+        (k, p.R), (1 / sqrt(n)) * exp(I * 2 * pi * k * a / n) * c_[k]
+    ))
+    rec_ham = real_ham.subst_all([cr_def, an_def])
+    res = rec_ham.simplify()
+
+    assert res.n_terms == 1
+    res_term = res.local_terms[0]
+    assert len(res_term.sums) == 1
+    dumm = res_term.sums[0][0]
+    assert res_term.sums[0][1] == p.R
+    # Here we mostly check the Hamiltonian has been diagonalized.
+    assert len(res_term.vecs) == 2
+    for i in res_term.vecs:
+        assert len(i.indices) == 2
+        assert i.indices[1] == dumm
