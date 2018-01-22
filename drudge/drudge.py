@@ -14,8 +14,9 @@ from collections.abc import Iterable, Sequence
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
 from sympy import (
-    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add
+    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Sum
 )
+from sympy.concrete.summations import eval_sum_symbolic
 
 from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
@@ -23,7 +24,7 @@ from .report import Report, ScalarLatexPrinter
 from .term import (
     Range, sum_term, Term, Vec, subst_factor_in_term,
     subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
-    rewrite_term, ATerms
+    rewrite_term, ATerms, simplify_amp_sums_in_terms
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
 
@@ -478,22 +479,79 @@ class Tensor:
             lambda x: x.simplify_deltas(resolvers.value)
         ).filter(_is_nonzero)
 
-    def simplify_sums(self):
-        """Simplify the summations in the tensor.
+    def simplify_sums(self, excl_bases=True, aggr=True, simplify=None):
+        """Simplify the summations within the amplitude in the tensor.
 
-        Currently, only bounded summations with dummies not involved in the term
-        will be replaced by a multiplication with its size.
+        This method attempts to perform simplification for concrete summations
+        over dummies that does not appear on the vector part at all.
+
+        First, bounded summations with dummies not actually involved in the term
+        will be replaced by a multiplication with its size.  Then simplification
+        is going to be performed on other summations within the amplitude part.
+
+        Parameters
+        ----------
+
+        excl_bases
+            If summations involved by indexed bases are also going to be
+            excluded from attempts of simplifications.  This can be safely set
+            to true unless customized rules exists.
+
+        aggr
+            If summations involved by the same set of factors are going to be
+            attempted together.  Or all subset of the summations are going to be
+            tested in turn.
+
+        simplify
+            The call-back to simplify the internally summed factors of the
+            amplitude.  It will normally be called with SymPy ``Sum`` objects.
+            If the same expression or ``None`` is returned, it will be
+            considered to be not simplifiable any more.  By default, the
+            :py:meth:`simplify_amp_sum` attribute of the current drudge object
+            will be used.  Note that this attribute needs to be serializable in
+            Spark environment.  Notably they cannot be a non-static method of
+            the drudge object.
         """
 
-        return Tensor(self._drudge, self._simplify_sums(self._terms))
+        return Tensor(self._drudge, self._simplify_sums(
+            self._terms, excl_bases=excl_bases, aggr=aggr, simplify=simplify
+        ))
 
-    @staticmethod
-    def _simplify_sums(terms: RDD):
+    def _simplify_sums(
+            self, terms: RDD, excl_bases=True, aggr=True, simplify=None
+    ):
         """Simplify the summations in the given terms."""
 
-        terms = terms.map(lambda x: x.simplify_trivial_sums())
+        if simplify is None:
+            simplify = self.simplify_amp_sum
 
+        # Make it a two-step process for future extensibility.
+        terms = terms.map(lambda x: x.simplify_trivial_sums())
+        terms = terms.map(functools.partial(
+            simplify_amp_sums_in_terms, excl_bases=excl_bases, aggr=aggr,
+            simplify=simplify
+        ))
         return terms
+
+    @staticmethod
+    def simplify_amp_sum(expr: Sum):
+        """The default callable to simplify summations within amplitudes.
+
+        This is going to be retrieved as an attribute of the drudge object, and
+        the result should be a callable (serializable for parallel execution)
+        object capable of attempting to simplify summations within amplitudes,
+        which will be used as the default callable in :py:meth:`simplify_sums`.
+
+        By default, only the SymPy ``eval_sum_symbolic`` function will be called
+        with simplified summand when there is a single summation.  It might
+        later be updated to higher-level functions when SymPy bug #13979 is
+        resolved.
+        """
+        assert isinstance(expr, Sum)
+        if len(expr.args) == 2:
+            return eval_sum_symbolic(expr.args[0].simplify(), expr.args[1])
+        else:
+            return expr
 
     def expand(self):
         """Expand the terms in the tensor.
