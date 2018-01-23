@@ -112,6 +112,10 @@ def test_bogoliubov_has_correct_matrix_elements(bogoliubov: BogoliubovDrudge):
         * conjugate(dr.v_base[l3, k3])
     )) == 0
 
+    # Test the registration of the matrix element names.
+    assert hasattr(dr.names, 'H00')
+    assert isinstance(dr.names.H00, IndexedBase)
+
 
 def test_bogoliubov_vev(bogoliubov: BogoliubovDrudge):
     """Test the correctness of Bogoliubov VEV evaluation."""

@@ -1120,6 +1120,7 @@ class BogoliubovDrudge(GenMBDrudge):
             u_base=IndexedBase('u'), v_base=IndexedBase('v'),
             one_body=IndexedBase('epsilon'), two_body=IndexedBase('vbar'),
             dbbar=True, qp_op_label=r'\beta', ham_me_format='H^{{{}{}}}',
+            ham_me_name_format='H{}{}',
             **kwargs
     ):
         """Initialize the drudge object."""
@@ -1166,7 +1167,9 @@ class BogoliubovDrudge(GenMBDrudge):
         ]
 
         orig_ham = self.ham
-        rewritten, ham_mes = self.write_in_qp(orig_ham, ham_me_format)
+        rewritten, ham_mes = self.write_in_qp(
+            orig_ham, ham_me_format, name_format=ham_me_name_format
+        )
         self.orig_ham = orig_ham
         self.ham = rewritten
         self.ham_mes = ham_mes
@@ -1175,7 +1178,9 @@ class BogoliubovDrudge(GenMBDrudge):
             'eval_bogoliubov_vev', self.eval_bogoliubov_vev
         )
 
-    def write_in_qp(self, tensor: Tensor, format_: str, set_symms=True):
+    def write_in_qp(
+            self, tensor: Tensor, format_: str, name_format=None, set_symms=True
+    ):
         """Write the given expression in terms of quasi-particle operators.
 
         The given expression will be rewritten in terms of the quasi-particle
@@ -1197,6 +1202,10 @@ class BogoliubovDrudge(GenMBDrudge):
             The format string to be used for the new matrix elements, which is
             going to be formatted with the quasi-particle creation and
             annihilation orders.
+
+        name_format
+            With the same usage as ``format_`, when it is given as a string, it
+            will be used to add the new indexed bases into the name archive.
 
         set_symms
             If automatic symmetries are going to be set for the new matrix
@@ -1244,6 +1253,10 @@ class BogoliubovDrudge(GenMBDrudge):
             tot_order = cr_order + an_order
 
             base = IndexedBase(format_.format(*order))
+            if name_format is not None:
+                base_name = name_format.format(*order)
+                self.set_name(**{base_name: base})
+
             indices[cr_order:tot_order] = reversed(indices[cr_order:tot_order])
             if tot_order > 0:
                 new_amp = base[tuple(indices)]
