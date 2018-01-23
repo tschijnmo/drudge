@@ -1080,7 +1080,7 @@ _NON_COMMUTATIVE = 0
 # ---------------------------------
 #
 
-def subst_vec_in_term(
+def subst_vec_term(
         term: Term, lhs: typing.Tuple[Vec], rhs_terms: typing.List[Term],
         dumms, dummbegs, excl
 ):
@@ -1127,8 +1127,10 @@ def subst_vec_in_term(
     return res
 
 
-def subst_factor_in_term(term: Term, lhs, rhs_terms: typing.List[Term],
-                         dumms, dummbegs, excl, full_simplify=True):
+def subst_factor_term(
+        term: Term, lhs, rhs_terms: typing.List[Term], dumms, dummbegs, excl,
+        full_simplify=True
+):
     """Substitute a scalar factor in the term.
 
     While vectors are always flattened lists of vectors.  The amplitude part can
@@ -1816,7 +1818,7 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
 #
 
 
-def simplify_amp_sums_in_terms(term: Term, excl_bases, aggr, simplify):
+def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
     """Attempt to make simplifications to summations internal in amplitudes.
     """
     all_factors, coeff = term.get_amp_factors()

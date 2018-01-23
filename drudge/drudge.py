@@ -22,9 +22,9 @@ from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
 from .report import Report, ScalarLatexPrinter
 from .term import (
-    Range, sum_term, Term, Vec, subst_factor_in_term, subst_vec_in_term,
-    parse_terms, einst_term, diff_term, try_resolve_range, rewrite_term,
-    Sum_expander, expand_sums_term, ATerms, simplify_amp_sums_in_terms
+    Range, sum_term, Term, Vec, subst_factor_term, subst_vec_term, parse_terms,
+    einst_term, diff_term, try_resolve_range, rewrite_term, Sum_expander,
+    expand_sums_term, ATerms, simplify_amp_sums_term
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
 
@@ -528,7 +528,7 @@ class Tensor:
         # Make it a two-step process for future extensibility.
         terms = terms.map(lambda x: x.simplify_trivial_sums())
         terms = terms.map(functools.partial(
-            simplify_amp_sums_in_terms, excl_bases=excl_bases, aggr=aggr,
+            simplify_amp_sums_term, excl_bases=excl_bases, aggr=aggr,
             simplify=simplify
         ))
         return terms
@@ -1244,13 +1244,13 @@ class Tensor:
         rhs_terms = self._drudge.ctx.broadcast(rhs_terms)
 
         if isinstance(lhs, (Indexed, Symbol)):
-            res = nest_bind(subs_states, lambda x: subst_factor_in_term(
+            res = nest_bind(subs_states, lambda x: subst_factor_term(
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value,
                 full_simplify=full_simplify
             ), full_balance=full_balance)
         else:
-            res = nest_bind(subs_states, lambda x: subst_vec_in_term(
+            res = nest_bind(subs_states, lambda x: subst_vec_term(
                 x[0], lhs, rhs_terms.value,
                 dumms=dumms.value, dummbegs=x[1], excl=free_vars.value
             ), full_balance=full_balance)
