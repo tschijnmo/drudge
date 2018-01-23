@@ -22,9 +22,9 @@ from .canonpy import Perm, Group
 from .drs import compile_drs, DrsEnv, DrsSymbol
 from .report import Report, ScalarLatexPrinter
 from .term import (
-    Range, sum_term, Term, Vec, subst_factor_in_term,
-    subst_vec_in_term, parse_terms, einst_term, diff_term, try_resolve_range,
-    rewrite_term, ATerms, simplify_amp_sums_in_terms
+    Range, sum_term, Term, Vec, subst_factor_in_term, subst_vec_in_term,
+    parse_terms, einst_term, diff_term, try_resolve_range, rewrite_term,
+    Sum_expander, expand_sums_term, ATerms, simplify_amp_sums_in_terms
 )
 from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
 
@@ -1366,6 +1366,41 @@ class Tensor:
         return Tensor(self._drudge, untouched_terms.union(
             self._drudge.ctx.parallelize(new_terms)
         )), new_defs
+
+    def expand_sums(self, range_: Range, expander: Sum_expander):
+        """Expand some symbolic summations.
+
+        The basic structure of drudge always treat summation dummies as
+        primitive scalar quantities.  However, sometimes, we would want to use a
+        single summation over an abstract domain to symbolically denote multiple
+        simple summations.
+
+        Rather than adding this to the base system with possibly significant
+        complication of the code base, here we seek a pragmatic solution, where
+        we can just use plain symbols to denote complex summations, and this
+        function can be used to expand the summation into its primitive
+        components when we need to.
+
+        Parameters
+        ----------
+
+        range_
+            The range all summations over which are to be expanded.
+
+        expander
+            A callable to give information how the summation over a dummy should
+            be expanded.  It will be called with a dummy that is summed over the
+            given range, and it is expected to return an iterable of triples,
+            formed by the new dummy and new range, followed by previous form the
+            the dummy in the expression, which will be replaced by the new
+            dummy.  Note that after the substitution, all the original dummies
+            over the expanded range should no longer be present in the
+            expression, or an error will be raised.
+
+        """
+        return self.map(functools.partial(
+            expand_sums_term, range_=range_, expander=expander
+        ))
 
     #
     # Analytic gradient

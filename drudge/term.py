@@ -1347,6 +1347,62 @@ def rewrite_term(
     return None, term
 
 
+Sum_expander = typing.Callable[[Symbol], typing.Iterable[typing.Tuple[
+    Symbol, Range, Expr
+]]]
+
+
+def expand_sums_term(term: Term, range_: Range, expander: Sum_expander):
+    """Expand the given summations in the term.
+    """
+
+    res_sums = []
+    dumms_to_expand = []
+    for i in term.sums:
+        if i[1] == range_:
+            dumms_to_expand.append(i[0])
+        else:
+            res_sums.append(i)
+        continue
+
+    repl = {}
+    for dumm in dumms_to_expand:
+        for new_dumm, new_range, prev_form in expander(dumm):
+            # Cleanse results from user callback.
+            if not isinstance(new_dumm, Symbol):
+                raise TypeError(
+                    'Invalid dummy for the new summation', new_dumm
+                )
+            if not isinstance(new_range, Range):
+                raise TypeError(
+                    'Invalid range for the new summation', new_range
+                )
+            if not isinstance(prev_form, Expr):
+                raise TypeError(
+                    'Invalid previous form of the new summation dummy',
+                    prev_form
+                )
+            res_sums.append((new_dumm, new_range))
+            repl[prev_form] = new_dumm
+            continue
+        continue
+
+    res_term = term.map(lambda x: x.xreplace(repl), sums=tuple(res_sums))
+
+    def check_expr(expr: Expr):
+        """Check if the given expression still has the expanded dummies."""
+        for i in dumms_to_expand:
+            if expr.has(i):
+                raise ValueError(
+                    'Scalar', expr, 'with original dummy', i
+                )
+            continue
+        return expr
+
+    res_term.map(check_expr)  # Discard result.
+    return res_term
+
+
 #
 # User interface support
 # ----------------------
