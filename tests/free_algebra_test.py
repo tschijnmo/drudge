@@ -9,7 +9,7 @@ import shutil
 import pytest
 from sympy import (
     sympify, IndexedBase, sin, cos, KroneckerDelta, symbols, conjugate, Wild,
-    Rational, Symbol
+    Rational, Symbol, Function
 )
 
 from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef
@@ -715,6 +715,62 @@ def test_tensors_can_be_rewritten(free_alg):
     assert defs[r[a]] == dr.einst(x[a] + o[a, b] * y[b])
     assert r[b] in defs
     assert defs[r[b]] == dr.sum(z[b])
+
+
+class x(Function):
+    """Get the x-component symbolically."""
+    pass
+
+
+class y(Function):
+    """Get the y-component symbolically."""
+    pass
+
+
+def test_sums_can_be_expanded(spark_ctx):
+    """Test the summation expansion facility.
+
+    Here we have essentially a direct product of two ranges and expand it.  The
+    usage here also includes some preliminary steps typical in the usage
+    paradigm.
+    """
+
+    dr = Drudge(spark_ctx)
+
+    comp = Range('P')
+    r1, r2 = symbols('r1, r2')
+    dr.set_dumms(comp, [r1, r2])
+
+    a = IndexedBase('a')
+    v = Vec('v')
+
+    # A simple thing written in terms of composite indices.
+    orig = dr.sum((r1, comp), (r2, comp), a[r1] * a[r2] * v[r1] * v[r2])
+
+    # Rewrite the expression in terms of components.  Here, r1 should be
+    # construed as a simple Wild.
+    rewritten = orig.subst_all([
+        (a[r1], a[x(r1), y(r1)]),
+        (v[r1], v[x(r1), y(r1)])
+    ])
+
+    # Expand the summation over r.
+    x_dim = Range('X')
+    y_dim = Range('Y')
+    x1, x2 = symbols('x1 x2')
+    dr.set_dumms(x_dim, [x1, x2])
+    y1, y2 = symbols('y1 y2')
+    dr.set_dumms(y_dim, [y1, y2])
+
+    res = rewritten.expand_sums(comp, lambda r: [
+        (Symbol(str(r).replace('r', 'x')), x_dim, x(r)),
+        (Symbol(str(r).replace('r', 'y')), y_dim, y(r))
+    ])
+
+    assert (res - dr.sum(
+        (x1, x_dim), (y1, y_dim), (x2, x_dim), (y2, y_dim),
+        a[x1, y1] * a[x2, y2] * v[x1, y1] * v[x2, y2]
+    )).simplify() == 0
 
 
 def test_advanced_manipulations(free_alg):
