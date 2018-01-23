@@ -2,6 +2,7 @@
 
 import functools
 import operator
+import string
 import time
 from collections.abc import Sequence
 
@@ -362,6 +363,22 @@ def ensure_pair(obj, role):
     if not (isinstance(obj, Sequence) and len(obj) == 2):
         raise TypeError('Invalid {}: '.format(role), obj, 'expecting pair')
     return obj
+
+
+_ALNUM = frozenset(
+    j
+    for i in [string.ascii_letters, string.digits]
+    for j in i
+)
+
+
+def extract_alnum(inp: str):
+    """Extract the alpha numeric part of the string.
+
+    This function is mostly for generating valid identifiers for objects with a
+    mathematically formatted name.
+    """
+    return ''.join(i for i in inp if i in _ALNUM)
 
 
 #

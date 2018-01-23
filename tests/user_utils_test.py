@@ -10,6 +10,7 @@ from drudge import (
     Vec, sum_, prod_, Stopwatch, ScalarLatexPrinter, InvariantIndexable
 )
 from drudge.term import parse_terms
+from drudge.utils import extract_alnum
 
 
 def test_sum_prod_utility():
@@ -71,3 +72,8 @@ def test_scalar_latex_printing():
     i, j = symbols('i j')
     expr = x1[i, j]
     assert ScalarLatexPrinter().doprint(expr) == 'x^{(1)}_{i,j}'
+
+
+def test_extracting_alnum_substring():
+    """Test the utility to extract alphanumeric part of a string."""
+    assert extract_alnum('x_{1, 2}') == 'x12'
