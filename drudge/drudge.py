@@ -523,7 +523,7 @@ class Tensor:
         """Simplify the summations in the given terms."""
 
         if simplify is None:
-            simplify = self.simplify_amp_sum
+            simplify = self._drudge.simplify_amp_sum
 
         # Make it a two-step process for future extensibility.
         terms = terms.map(lambda x: x.simplify_trivial_sums())
@@ -532,26 +532,6 @@ class Tensor:
             simplify=simplify
         ))
         return terms
-
-    @staticmethod
-    def simplify_amp_sum(expr: Sum):
-        """The default callable to simplify summations within amplitudes.
-
-        This is going to be retrieved as an attribute of the drudge object, and
-        the result should be a callable (serializable for parallel execution)
-        object capable of attempting to simplify summations within amplitudes,
-        which will be used as the default callable in :py:meth:`simplify_sums`.
-
-        By default, only the SymPy ``eval_sum_symbolic`` function will be called
-        with simplified summand when there is a single summation.  It might
-        later be updated to higher-level functions when SymPy bug #13979 is
-        resolved.
-        """
-        assert isinstance(expr, Sum)
-        if len(expr.args) == 2:
-            return eval_sum_symbolic(expr.args[0].simplify(), expr.args[1])
-        else:
-            return expr
 
     def expand(self):
         """Expand the terms in the tensor.
@@ -2395,6 +2375,31 @@ class Drudge:
             )
 
         return terms
+
+    #
+    # Other tunable behaviour
+    #
+
+    @staticmethod
+    def simplify_amp_sum(expr: Sum):
+        """The default callable to simplify summations within amplitudes.
+
+        This is going to be retrieved as an attribute of the drudge object, and
+        the result should be a callable (serializable for parallel execution)
+        object capable of attempting to simplify summations within amplitudes,
+        which will be used as the default callable in
+        :py:meth:`Tensor.simplify_sums`.
+
+        By default, only the SymPy ``eval_sum_symbolic`` function will be called
+        with simplified summand when there is a single summation.  It might
+        later be updated to higher-level functions when SymPy bug #13979 is
+        resolved.
+        """
+        assert isinstance(expr, Sum)
+        if len(expr.args) == 2:
+            return eval_sum_symbolic(expr.args[0].simplify(), expr.args[1])
+        else:
+            return expr
 
     #
     # Tensor creation
