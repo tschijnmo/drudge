@@ -99,17 +99,19 @@ def canon_factors(sums, factors, symms):
     """Canonicalize the factors.
 
     The factors should be a iterable of factor/colour pairs, where the factor
-    can be anything with the ``base`` and ``indices`` methods implemented.  It
-    is designed to work with SymPy Indexed quantities and vectors.  The colour
-    should be totally ordered, and they only need to order within factors
-    correctly.
+    can be anything with the ``base`` and ``indices`` methods implemented, or
+    ``func`` and ``args`` implemented.  It is designed primarily to work with
+    SymPy Indexed quantities and vectors, or general SymPy function expressions.
+    The colour should be totally ordered, and they only need to order within
+    factors correctly.
 
     The new canonicalized list of summations and canonicalized factors are
     going to be returned.  Also returned is a coefficient that need to be
     multiplied to the amplitude, which is from anti-commutative quantities.
 
     The symmetries should be given as a mapping from the *base* of the factors
-    to the actual symmetries.
+    to the actual symmetries.  A given valence can also be given by a tuple with
+    the actual base.
 
     """
 
@@ -135,16 +137,24 @@ def canon_factors(sums, factors, symms):
     for i, v in enumerate(factors):
 
         factor = v[0]
-        indices = factor.indices
+        if hasattr(factor, 'indices'):
+            indices = factor.indices
+            is_indexed = True
+        else:
+            indices = factor.args
+            is_indexed = False
         valency = len(indices)
         perm = perms[factor_idxes[i]]
 
         if valency < 2 or perm is None:
             factor_res = factor
         else:
-            factor_res = factor.base[tuple(
-                indices[perm[i]] for i in range(valency)
-            )]
+            new_indices = tuple(indices[perm[i]] for i in range(valency))
+            if is_indexed:
+                factor_res = factor.base[new_indices]
+            else:
+                factor_res = factor.func(new_indices)
+
             acc = perm.acc
             if acc & NEG:
                 coeff *= -1
@@ -187,8 +197,12 @@ def _build_eldag(sums, factors, symms):
     dumms = {v[0]: i for i, v in enumerate(sums)}
 
     for factor, colour in factors:
-        base = factor.base
-        indices = factor.indices
+        if hasattr(factor, 'base'):
+            base = factor.base
+            indices = factor.indices
+        else:
+            base = factor.func
+            indices = factor.args
         n_indices = len(indices)
 
         if n_indices < 2:

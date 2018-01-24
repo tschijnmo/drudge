@@ -920,6 +920,9 @@ class Term(ATerms):
         are never permuted in the result.
         """
 
+        if symms is None:
+            symms = {}
+
         # Factors to canonicalize.
         factors = []
 
@@ -938,43 +941,65 @@ class Term(ATerms):
 
         # Cache globals for performance.
         wrapper_base = _WRAPPER_BASE
-        indexed_placeholder = _INDEXED_PLACEHOLDER
+        treated_placeholder = _TREATED_PLACEHOLDER
 
-        # Extractors for the indexed, defined here to avoid repeated list and
-        # function creation for each factor.
-        indexed = []
+        # Extractors for subexpressions requiring explicit treatment, defined
+        # here to avoid repeated list and function creation for each factor.
+        to_treats = []
 
-        def replace_indexed(base, *indices):
-            """Replace the indexed quantity inside the factor."""
-            indexed.append(base[indices])
-            return indexed_placeholder
+        def replace_to_treats(expr: Expr):
+            """Replace the quantities need treatment inside the factor.
+
+            These quantities are explicitly indexed quantities and multi-valence
+            functions either with explicit symmetry given or with multiple
+            arguments involving dummies.
+            """
+
+            if_treat = False
+            if expr.func == Indexed:
+                if_treat = True
+            elif len(expr.args) > 1:
+                if expr.func in symms or (expr.func, len(expr.args)) in symms:
+                    if_treat = True
+                else:
+                    if_treat = sum(1 for arg in expr.args if any(
+                        arg.has(dumm) for dumm, _ in self.sums
+                    )) > 1
+
+            if if_treat:
+                to_treats.append(expr)
+                return treated_placeholder
+            else:
+                return expr
 
         amp_factors, coeff = self.amp_factors
         for i in amp_factors:
 
-            amp_no_indexed = i.replace(
-                Indexed, NonsympifiableFunc(replace_indexed)
+            amp_no_treated = i.replace(
+                lambda _: True, NonsympifiableFunc(replace_to_treats)
             )
 
-            n_indexed = len(indexed)
-            if n_indexed > 1:
+            n_to_treats = len(to_treats)
+            if n_to_treats > 1:
                 raise ValueError(
-                    'Invalid amplitude factor containing multiple indexed', i
+                    'Overly complex factor', i
                 )
-            elif n_indexed == 1:
+            elif n_to_treats == 1:
+                to_treat = to_treats[0]
+                to_treats.clear()  # Clean the container for the next factor.
 
                 factors.append((
-                    indexed[0], (
+                    to_treat, (
                         _COMMUTATIVE,
-                        indexed[0].base.label.name,
-                        sympy_key(amp_no_indexed)
+                        sympy_key(to_treat.base.label)
+                        if isinstance(to_treat, Indexed)
+                        else sympy_key(to_treat.func),
+                        sympy_key(amp_no_treated)
                     )
                 ))
-                factors_info.append(amp_no_indexed)
+                factors_info.append(amp_no_treated)
 
-                indexed.clear()  # Clean the container for the next factor.
-
-            else:  # No indexed.
+            else:  # No part needing explicit treatment.
 
                 # When the factor never has an indexed base, we treat it as
                 # indexing a uni-valence internal indexed base.
@@ -1004,7 +1029,7 @@ class Term(ATerms):
         #
 
         res_sums, canoned_factors, canon_coeff = canon_factors(
-            self._sums, factors, symms if symms is not None else {}
+            self._sums, factors, symms
         )
 
         #
@@ -1021,7 +1046,7 @@ class Term(ATerms):
             elif j == unindexed_factor:
                 res_amp *= i.indices[0]
             else:
-                res_amp *= j.xreplace({indexed_placeholder: i})
+                res_amp *= j.xreplace({treated_placeholder: i})
             continue
 
         return Term(tuple(res_sums), res_amp, tuple(res_vecs))
@@ -1067,7 +1092,7 @@ class Term(ATerms):
 _WRAPPER_BASE = IndexedBase(
     'internalWrapper', shape=('internalShape',)
 )
-_INDEXED_PLACEHOLDER = Symbol('internalIndexedPlaceholder')
+_TREATED_PLACEHOLDER = Symbol('internalTreatedPlaceholder')
 
 # For colour of factors in a term.
 
