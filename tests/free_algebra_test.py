@@ -216,6 +216,61 @@ def test_tensor_has_basic_operations(free_alg):
     assert res == dr.sum((a1, ranges), (a2, ranges), summand).simplify()
 
 
+def test_basic_handling_range_with_variable_bounds(spark_ctx):
+    """Test the treatment of ranges with variable bounds.
+
+    Here we use a simple example that slightly resembles the angular momentum
+    handling in quantum physics.  Here we concentrate on basic operations of
+    dummy resetting and mapping of scalar functions.
+    """
+
+    dr = Drudge(spark_ctx)
+
+    j1, j2 = symbols('j1 j2')
+    m1, m2 = symbols('m1, m2')
+    j_max = symbols('j_max')
+    j = Range('j', 0, j_max)
+    m = Range('m')
+    dr.set_dumms(j, [j1, j2])
+    dr.set_dumms(m, [m1, m2])
+
+    v = Vec('v')
+    x = IndexedBase('x')
+    tensor = dr.sum((j2, j), (m2, m[0, j2]), x[j2, m2] * v[j2, m2])
+
+    reset = tensor.reset_dumms()
+    assert reset.n_terms == 1
+    term = reset.local_terms[0]
+    assert len(term.sums) == 2
+    if term.sums[0][1].label == 'j':
+        j_sum, m_sum = term.sums
+    else:
+        m_sum, j_sum = term.sums
+    assert j_sum[0] == j1
+    assert j_sum[1].args == j.args
+    assert m_sum[0] == m1
+    assert m_sum[1].label == 'm'
+    assert m_sum[1].lower == 0
+    assert m_sum[1].upper == j1  # Important!
+    assert term.amp == x[j1, m1]
+    assert term.vecs == (v[j1, m1],)
+
+    # Test that functions can be mapped to the bounds.
+    repled = reset.map2scalars(
+        lambda x: x.xreplace({j_max: 10}), skip_ranges=False
+    )
+    assert repled.n_terms == 1
+    term = repled.local_terms[0]
+    checked = False
+    for _, i in term.sums:
+        if i.label == 'j':
+            assert i.lower == 0
+            assert i.upper == 10
+            checked = True
+        continue
+    assert checked
+
+
 def test_adv_merging(free_alg):
     """Test advanced merging options."""
 
