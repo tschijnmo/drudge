@@ -51,9 +51,11 @@ class Range:
 
     .. warning::
 
-        Bounds with the same label but different bounds will be considered
-        unequal.  Although no error be given, using different bounds with
-        identical label is strongly advised against.
+        Equality comparison and hashing of ranges are *completely* based on the
+        label, without consideration of the bounds.  So ranges with the same
+        label but different bounds will be considered equal.  This is to
+        facilitate the usage of a same dummy set for ranges with slight
+        variation in the bounds.
 
     .. warning::
 
@@ -135,13 +137,13 @@ class Range:
     def __hash__(self):
         """Hash the symbolic range.
         """
-        return hash(self.args)
+        return hash(self._label)
 
     def __eq__(self, other):
         """Compare equality of two ranges.
         """
         return isinstance(other, type(self)) and (
-                self.args == other.args
+                self._label == other.label
         )
 
     def __repr__(self):
