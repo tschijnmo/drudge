@@ -694,10 +694,17 @@ class Term(ATerms):
 
         Note that the summation dummies are not looped over.
         """
+        for _, range_ in self._sums:
+            if range_.bounded:
+                yield range_.lower
+                yield range_.upper
+            continue
 
         yield self._amp
+
         for vec in self._vecs:
             yield from vec.indices
+            continue
 
     @property
     def free_vars(self):
