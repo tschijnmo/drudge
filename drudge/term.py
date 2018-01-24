@@ -778,7 +778,7 @@ class Term(ATerms):
 
     def map(
             self, func=lambda x: x, sums=None, amp=None, vecs=None,
-            skip_vecs=False
+            skip_vecs=False, skip_ranges=True
     ):
         """Map the given function to the SymPy expressions in the term.
 
@@ -791,14 +791,19 @@ class Term(ATerms):
         vector part.
         """
 
-        return Term(
-            self._sums if sums is None else sums,
-            func(self._amp if amp is None else amp),
-            tuple(
-                i.map(func) if not skip_vecs else i
-                for i in (self._vecs if vecs is None else vecs)
+        res_sums = self._sums if sums is None else sums
+        if not skip_ranges:
+            res_sums = tuple(
+                (dumm, range_.map(func)) for dumm, range_ in res_sums
             )
-        )
+
+        res_amp = func(self._amp if amp is None else amp)
+
+        res_vecs = self._vecs if vecs is None else vecs
+        if not skip_vecs:
+            res_vecs = tuple(i.map(func) for i in res_vecs)
+
+        return Term(res_sums, res_amp, res_vecs)
 
     def subst(self, substs, sums=None, amp=None, vecs=None, purge_sums=False):
         """Perform symbol substitution on the SymPy expressions.

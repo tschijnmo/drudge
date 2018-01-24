@@ -1522,13 +1522,13 @@ class Tensor:
         """
         return Tensor(self._drudge, self._terms.flatMap(func))
 
-    def map2scalars(self, action, skip_vecs=False):
+    def map2scalars(self, action, skip_vecs=False, skip_ranges=True):
         """Map the given action to the scalars in the tensor.
 
         The given action should return SymPy expressions for SymPy expressions,
         the amplitude for each terms and the indices to the vectors, in the
         tensor.  Note that this function is more supposed for free variables and
-        does not change the summations in the terms and the dummies.
+        does not change the summation dummies in the terms.
 
         Parameters
         ----------
@@ -1541,11 +1541,15 @@ class Tensor:
             to the vectors.  It could be used to boost the performance when we
             know that the action need no application on the indices.
 
+        skip_ranges
+            When it is set, the callable will no longer be mapped to the bounds
+            of the ranges.
+
         """
 
-        return Tensor(self._drudge, self._terms.map(
-            lambda x: x.map(action, skip_vecs=skip_vecs)
-        ))
+        return Tensor(self._drudge, self._terms.map(lambda x: x.map(
+            action, skip_vecs=skip_vecs, skip_ranges=skip_ranges
+        )))
 
     def map2amps(self, action):
         """Map the given action to the amplitudes in the tensor.
