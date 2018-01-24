@@ -340,6 +340,31 @@ def test_tensor_can_be_canonicalized(free_alg):
     assert res == 0
 
 
+class SymmFunc(Function):
+    """A symmetric function."""
+    pass
+
+
+def test_tensors_w_functions_can_be_canonicalized(free_alg):
+    """Test canonicalization facility on general functions."""
+    dr = free_alg
+    dr.set_symm(SymmFunc, Perm([1, 0], NEG), valence=2, set_base_name=False)
+
+    p = dr.names
+    i, j, k = p.R_dumms[:3]
+    r = p.R
+    v = p.v
+
+    # General anti-symmetric real matrix.
+    tensor = dr.sum(
+        (i, r), (j, r), SymmFunc(k, i, j) * SymmFunc(i, j) * v[i] * v[j]
+    ) + dr.sum(
+        (i, r), (j, r), SymmFunc(k, i, j) * SymmFunc(j, i) * v[i] * v[j]
+    )
+    assert tensor.n_terms == 2
+    assert tensor.simplify() == 0
+
+
 def test_tensor_can_be_canonicalized_with_ops(free_alg):
     """Test tensor canonicalization in simplification under operations.
 
