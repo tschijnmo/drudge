@@ -18,6 +18,7 @@ from .genquad import GenQuadDrudge, GenQuadLatticeDrudge
 from .su2 import SU2LatticeDrudge
 from .clifford import CliffordDrudge, inner_by_delta
 from .bcs import ReducedBCSDrudge
+from .nuclear import NuclearBogoliubovDrudge
 from .report import Report, ScalarLatexPrinter
 from .utils import sum_, prod_, Stopwatch, CallByIndex, InvariantIndexable
 
@@ -65,6 +66,7 @@ __all__ = [
     'SU2LatticeDrudge',
     'CliffordDrudge',
     'ReducedBCSDrudge',
+    'NuclearBogoliubovDrudge',
     'inner_by_delta',
 
     # Small user utilities.
