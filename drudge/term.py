@@ -186,6 +186,31 @@ class Range:
 
         return self.sort_key < other.sort_key
 
+    def __getitem__(self, item):
+        """Get a new range with explicit bounds set.
+
+        This can be used on both symbolic range to give them explicit bounds,
+        and on bounded range to set new bounds for them.
+        """
+        if not isinstance(item, tuple) or len(item) != 2:
+            raise TypeError(
+                'Invalid bounds for range, expecting upper and lower range',
+                item
+            )
+
+        lower, upper = [sympify(i) for i in item]
+        return Range(self._label, lower=lower, upper=upper)
+
+    def map(self, func):
+        """Map the given function to the bounds of the range.
+
+        For ranges without bounds, the same range is simply returned.
+        """
+        if self.bounded:
+            return self[func(self.lower), func(self.upper)]
+        else:
+            return self
+
 
 class ATerms(abc.ABC):
     """Abstract base class for terms.
