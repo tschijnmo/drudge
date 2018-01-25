@@ -271,6 +271,31 @@ def test_basic_handling_range_with_variable_bounds(spark_ctx):
     assert checked
 
 
+def test_handling_of_variable_bound_sums_in_merge(free_alg):
+    """A regression test for handling bounds with different variable bounds.
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    v = p.v
+    i = p.i
+    r = p.R
+
+    first = dr.sum((i, r), x[i] * v[i])
+
+    # First trial, when the ranges are really the same.
+    assert dr.simplify(
+        first - dr.sum((i, r), x[i] * v[i])
+    ) == 0
+
+    # This time, they should not be merged.
+    assert dr.simplify(
+        first - dr.sum((i, r[0, Symbol('n')]), x[i] * v[i])
+    ).n_terms == 2
+
+
 def test_adv_merging(free_alg):
     """Test advanced merging options."""
 

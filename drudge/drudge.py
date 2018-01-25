@@ -613,18 +613,13 @@ class Tensor:
     def _merge(self, terms, consts, gens):
         """Get the term when they are attempted to be merged."""
         if not self._drudge.simple_merge and consts is None and gens is None:
-            return terms.map(
-                lambda term: ((term.sums, term.vecs), term.amp)
-            ).reduceByKey(operator.add).map(
-                lambda x: Term(x[0][0], x[1], x[0][1])
-            )
+            specials = None
         else:
             specials = _DecomposeSpecials(consts, gens)
-            return terms.map(
-                functools.partial(_decompose_term, specials=specials)
-            ).reduceByKey(operator.add).map(
-                lambda x: Term(x[0][0], x[1] * x[0][2], x[0][1])
-            )
+
+        return terms.map(
+            functools.partial(_decompose_term, specials=specials)
+        ).reduceByKey(operator.add).map(_recover_term)
 
     #
     # Canonicalization
@@ -3289,15 +3284,39 @@ def _decompose_term(term, specials):
     """Decompose a term for simple merging.
 
     The given term will be decomposed into a pair, where the first field has the
-    summations, vectors, and product of factors containing at least one dummy.
-    And the second field contains factors involving no dummies.
+    the key for the merging, and the second field contains other factors.
+
+    The key has three parts, the summations, the vectors, and the special part
+    of the commutative part.  When specials are given, all indexed bases,
+    factors with dummies, and factors with special symbols will be put into the
+    third part.  When a None is given, nothing will be put there.
     """
 
-    factors, coeff = term.get_amp_factors(specials)
+    # To distinguish ranges with the same label but different bounds.
+    sums = tuple(
+        (dumm, range_.args) for dumm, range_ in term.sums
+    )
+
+    if specials is None:
+        coeff = term.amp
+        factor = 1
+    else:
+        factors, coeff = term.get_amp_factors(specials)
+        factor = prod_(factors)
     return (
-        (term.sums, term.vecs, prod_(factors)),
+        (sums, term.vecs, factor),
         coeff
     )
+
+
+def _recover_term(state):
+    """Recover a term from a merging state."""
+
+    key, coeff = state
+    sums = tuple(
+        (dumm, Range(*range_args)) for dumm, range_args in key[0]
+    )
+    return Term(sums, coeff * key[2], key[1])
 
 
 def _is_nonzero(term):
