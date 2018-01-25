@@ -239,4 +239,14 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         """
 
         # TODO: Add more simplifications here.
-        return cg_simp(expr)
+        attempts = [
+            cg_simp,
+        ]
+        for attempt in attempts:
+            res = attempt(expr)
+            if res is not None and res != expr:
+                return res
+            continue
+
+        return None
+
