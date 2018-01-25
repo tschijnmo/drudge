@@ -4,7 +4,7 @@ import functools
 import re
 
 from sympy import (
-    Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase
+    Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j, cg_simp
 
@@ -125,11 +125,11 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             qp_dumms[2], qp_dumms[4]
         ]]
         order_4_cases = {
-            (0, 4): (-1 ** (jkt1 + jkt2 + cj + cm), {0, 1}),
-            (1, 3): (-1 ** (jkt2 - mk2 + cj), {1}),
-            (2, 2): (1, {}),
-            (3, 1): (-1 ** (jkt3 - mk3 + cj), {2}),
-            (4, 0): (-1 ** (jkt3 + jkt4 + cj + cm), {2, 3}),
+            (0, 4): (_NEG_UNITY ** (jkt1 + jkt2 + cj + cm), {0, 1}),
+            (1, 3): (_NEG_UNITY ** (jkt2 - mk2 + cj), {1}),
+            (2, 2): (_UNITY, {}),
+            (3, 1): (_NEG_UNITY ** (jkt3 - mk3 + cj), {2}),
+            (4, 0): (_NEG_UNITY ** (jkt3 + jkt4 + cj + cm), {2, 3}),
         }
         for k, v in order_4_cases.items():
             self._angdec_funcs[k] = functools.partial(
@@ -250,3 +250,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
         return None
 
+
+# Utility constants.
+
+_UNITY = Integer(1)
+_NEG_UNITY = Integer(-1)
