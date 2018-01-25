@@ -187,8 +187,11 @@ def _build_eldag(sums, factors, symms):
 
     # No need to touch edges for sums.
     for i in sums:
-        # Use args of ranges for lex comparison.
-        eldag.add_node([], None, (_SUM, i[1].sort_key))
+        # Use **label of ranges only** for lex comparison.  The bounds could
+        # contain other dummies and may not serve as canonical labels.
+        #
+        # TODO: Better treatment of dummies in summation bounds.
+        eldag.add_node([], None, (_SUM, i[1].label))
         continue
 
     # Real work, factors.
