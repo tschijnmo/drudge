@@ -296,6 +296,34 @@ def test_handling_of_variable_bound_sums_in_merge(free_alg):
     ).n_terms == 2
 
 
+def test_handling_of_variable_bound_sums_in_trivial_summation(free_alg):
+    """A regression test for handling bounds with different variable bounds.
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    v = p.v
+    r = p.R
+    i = p.i
+    alpha = p.alpha
+    s = p.S
+    n = Symbol('N')
+
+    first = dr.sum((i, r[0, n]), (alpha, s[0, n]), v[alpha])
+
+    # First trial, when the dummy is not actually used.
+    assert dr.simplify(
+        first
+    ) == dr.sum((alpha, s[0, n]), n * v[alpha])
+
+    # When i is used in the bounds of summation over alpha, it should be kept.
+    second = dr.sum((i, r[0, n]), (alpha, s[0, i]), v[alpha])
+    assert dr.simplify(
+        second
+    ) == second
+
+
 def test_adv_merging(free_alg):
     """Test advanced merging options."""
 

@@ -1940,10 +1940,15 @@ def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
             involving_factors.add(i)
             continue
 
-        # Trivial summations should be treated already.
-        assert len(involving_factors) > 0
+        # Trivial summations leaked here must have involvement in other sum
+        # bounds.
+        if len(involving_factors) == 0:
+            res_sums.append(sum_)
+        else:
+            to_proc[frozenset(involving_factors)].append(sum_)
 
-        to_proc[frozenset(involving_factors)].append(sum_)
+        # TODO: Make simplification considering dummies' involvement in the
+        # summation bounds as well.
         continue
 
     proced_factors = set()  # Indices of factors already processed.
