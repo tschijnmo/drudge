@@ -14,19 +14,55 @@ from .term import Range
 from .utils import sympy_key
 
 
-class j_(Function):
+class _QNOf(Function):
+    """Base class for quantum number access symbolic functions.
+    """
+
+    # To be override by subclasses.
+    _latex_header = None
+
+    def _latex(self, printer):
+        """Form the LaTeX printing.
+
+        The printing will be the header given in the subclasses followed by the
+        printing of the orbit wrapped in braces.
+        """
+        return ''.join([
+            self._latex_header, '{', printer.doprint(self.args[0]), '}'
+        ])
+
+    def _eval_is_integer(self):
+        return True
+
+
+class JOf(_QNOf):
     """Symbolic access of j quantum number of an orbit."""
-    pass
+    _latex_header = 'j_'
 
 
-class tilde_(Function):
+class TildeOf(_QNOf):
     """Symbolic access of the tilde part of an orbit."""
-    pass
+    _latex_header = r'\tilde'
 
 
-class m_(Function):
+class MOf(_QNOf):
     """Symbolic access of the m quantum number of an orbit."""
-    pass
+    _latex_header = 'm_'
+
+
+class NOf(_QNOf):
+    """Symbolic access of the n quantum number of an orbit."""
+    _latex_header = 'n_'
+
+
+class LOf(_QNOf):
+    """Symbolic access of the l quantum number in an orbit."""
+    _latex_header = 'l_'
+
+
+class PiOf(_QNOf):
+    """Symbolic access of the parity of an orbit."""
+    _latex_header = r'\pi_'
 
 
 _SUFFIXED = re.compile(r'^([a-zA-Z]+)([0-9]+)$')
@@ -70,8 +106,7 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
     """
 
     def __init__(
-            self, ctx, j_acc=j_, tilde_acc=tilde_, m_acc=m_,
-            coll_j_range=Range('J', 0, Symbol('Jmax') + 1),
+            self, ctx, coll_j_range=Range('J', 0, Symbol('Jmax') + 1),
             coll_m_range=Range('M'),
             coll_j_dumms=tuple(Symbol('J{}'.format(i)) for i in range(10)),
             coll_m_dumms=tuple(Symbol('M{}'.format(i)) for i in range(10)),
@@ -81,11 +116,10 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         """Initialize the drudge object."""
         super().__init__(ctx, **kwargs)
 
-        self.j_acc = j_acc
-        self.tilde_acc = tilde_acc
-        self.m_acc = m_acc
+        # Convenient names for quantum number access functions inside drudge
+        # scripts.
         self.set_name(
-            j_=j_acc, tilde_=tilde_acc, m_=m_acc
+            j_=JOf, tilde_=TildeOf, m_=MOf, n_=NOf, l_=LOf, pi_=PiOf
         )
 
         self.coll_j_range = coll_j_range
@@ -123,8 +157,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         qp_dumms = self.qp_dumms
         cj = coll_j_dumms[0]
         cm = coll_m_dumms[0]
-        jkt1, jkt2, jkt3, jkt4 = [j_acc(tilde_acc(i)) for i in qp_dumms[:4]]
-        mk2, mk3 = [m_acc(i) for i in [
+        jkt1, jkt2, jkt3, jkt4 = [JOf(TildeOf(i)) for i in qp_dumms[:4]]
+        mk2, mk3 = [MOf(i) for i in [
             qp_dumms[2], qp_dumms[4]
         ]]
         order_4_cases = {
@@ -151,12 +185,12 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
         ks = self.qp_dumms[:4]
         k1, k2, k3, k4 = ks
-        kts = [self.tilde_acc(i) for i in ks]
+        kts = [TildeOf(i) for i in ks]
         kt1, kt2, kt3, kt4 = kts
-        jkt1, jkt2, jkt3, jkt4 = [self.j_acc(i) for i in kts]
+        jkt1, jkt2, jkt3, jkt4 = [JOf(i) for i in kts]
         # Here the m's already includes the phase.
         mk1, mk2, mk3, mk4 = [
-            self.m_acc(ks[i]) * (-1 if i in neg_ms else 1)
+            MOf(ks[i]) * (-1 if i in neg_ms else 1)
             for i in range(4)
         ]
         cj = self.coll_j_dumms[0]
@@ -216,19 +250,16 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         # Cache as locals for Spark serialization.
         tilde_range = self.tilde_range
         form_tilde = self.form_tilde
-        tilde_acc = self.tilde_acc
-        j_acc = self.j_acc
         m_range = self.m_range
         form_m = self.form_m
-        m_acc = self.m_acc
 
         def expand(dumm: Symbol):
             """Expand a summation over quasi-particle orbitals."""
-            tilde = tilde_acc(dumm)
-            jtilde = j_acc(tilde)
+            tilde = TildeOf(dumm)
+            jtilde = JOf(tilde)
             return [
                 (form_tilde(dumm), tilde_range, tilde),
-                (form_m(dumm), m_range[-jtilde, jtilde + 1], m_acc(dumm))
+                (form_m(dumm), m_range[-jtilde, jtilde + 1], MOf(dumm))
             ]
 
         return substed.expand_sums(self.qp_range, expand)
