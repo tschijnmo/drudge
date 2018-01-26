@@ -822,7 +822,8 @@ class Term(ATerms):
             sums = tuple(i for i in sums if i[0] not in substs)
 
         return self.map(
-            lambda x: x.xreplace(substs), sums=sums, amp=amp, vecs=vecs
+            lambda x: x.xreplace(substs), sums=sums, amp=amp, vecs=vecs,
+            skip_ranges=False
         )
 
     def reset_dumms(self, dumms, dummbegs=None, excl=None, add_substs=None):
