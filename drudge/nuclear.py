@@ -110,6 +110,11 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
     more utility around the specifics about the nuclear Hamiltonian, especially
     the spherical symmetry.
 
+    .. warning::
+
+        This work is still in progress and highly experimental.  Please at least
+        check some of the result before actual usage.
+
     """
 
     def __init__(
