@@ -2891,6 +2891,11 @@ class Drudge:
         This method does not generally need to be overridden.
         """
 
+        # Small utility.
+        def parenth(content: str):
+            """Parenthesize the string."""
+            return ''.join([r'\left(', content, r'\right)'])
+
         parts = []
 
         # Here we treat the amplitude first so that a possible minus sign can be
@@ -2906,9 +2911,7 @@ class Drudge:
             else:
                 amp_latex = first_try
 
-            amp_parts.append(' '.join([
-                r'\left(', amp_latex, r'\right)'
-            ]))
+            amp_parts.append(parenth(amp_latex))
         else:
             factors, coeff = term.amp_factors
             if_pure_coeff = len(factors) == 0 and len(term.vecs) == 0
@@ -2921,15 +2924,19 @@ class Drudge:
                 coeff_latex = self._latex_sympy(coeff)
                 if coeff_latex[0] == '-':
                     parts.append('-')
-                    amp_parts.append(coeff_latex[1:])
-                else:
-                    amp_parts.append(coeff_latex)
+                    coeff_latex = coeff_latex[1:]
+
+                if isinstance(coeff, Add):
+                    coeff_latex = parenth(coeff_latex)
+                amp_parts.append(coeff_latex)
 
             if len(factors) > 0:
                 scalar_mul = ''.join([' ', scalar_mul, ' '])
 
                 amp_parts.append(scalar_mul.join(
-                    self._latex_sympy(i) for i in factors
+                    parenth(self._latex_sympy(i)) if isinstance(i, Add)
+                    else self._latex_sympy(i)
+                    for i in factors
                 ))
 
         if not term.is_scalar:
