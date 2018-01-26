@@ -1204,7 +1204,7 @@ class BogoliubovDrudge(GenMBDrudge):
             annihilation orders.
 
         name_format
-            With the same usage as ``format_`, when it is given as a string, it
+            With the same usage as ``format_``, when it is given as a string, it
             will be used to add the new indexed bases into the name archive.
 
         set_symms
