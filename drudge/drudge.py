@@ -26,7 +26,9 @@ from .term import (
     einst_term, diff_term, try_resolve_range, rewrite_term, Sum_expander,
     expand_sums_term, ATerms, simplify_amp_sums_term
 )
-from .utils import ensure_symb, BCastVar, nest_bind, prod_, sympy_key
+from .utils import (
+    ensure_symb, BCastVar, nest_bind, prod_, sympy_key, SymbResolver
+)
 
 
 class Tensor:
@@ -2282,8 +2284,8 @@ class Drudge:
         self._resolvers.var.append(resolver)
         return
 
-    def add_resolver_for_dumms(self):
-        """Add the resolver for the dummies for each range.
+    def add_resolver_for_dumms(self, ranges=None, strict=False):
+        """Add the resolver for the dummies.
 
         With this method, the default dummies for each range will be resolved to
         be within the range for all of them.  This method should normally be
@@ -2292,15 +2294,38 @@ class Drudge:
 
         Note that dummies added later will not be automatically added.  This
         method can be called again.
+
+        Parameters
+        ----------
+
+        ranges
+            By default, resolver for all ranges will be attempted to be added.
+            Or a specific iterable of ranges can also be given to add resolver
+            only for the given ranges.
+
+        strict
+            By default, any expression contains a dummy of the range will be
+            considered to be of the range.  If strict is set to true, only the
+            dummy appearing by themself will be resolved.
+
+
         """
 
-        dumm_resolver = {}
-        for k, v in self._dumms.ro.items():
-            for i in v:
-                dumm_resolver[i] = k
+        # Normalize the ranges to iterable of range/dummies pairs.
+        curr_dumms = self._dumms.ro.items()
+        if ranges is None:
+            to_proc = curr_dumms
+        else:
+            to_proc = []
+            for i in ranges:
+                if i not in curr_dumms:
+                    raise ValueError(
+                        'Unexpected range, dummies not yet set', i
+                    )
+                to_proc.append((i, curr_dumms[i]))
                 continue
-            continue
-        self.add_resolver(dumm_resolver)
+
+        self.add_resolver(SymbResolver(to_proc, strict))
 
     def add_default_resolver(self, range_):
         """Add a default resolver.
