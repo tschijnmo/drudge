@@ -189,9 +189,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             continue
 
         order_2_cases = {
-            (2, 0): _NEG_UNITY ** (jkt2 + mk2),
-            (1, 1): _UNITY,
-            (0, 2): _NEG_UNITY ** (jkt1 - mk1)
+            (0, 2): KroneckerDelta(mk1, -mk2) * _NEG_UNITY ** (jkt2 + mk2),
+            (1, 1): KroneckerDelta(mk1, mk2) * _UNITY,
+            (2, 0): KroneckerDelta(mk1, -mk2) * _NEG_UNITY ** (jkt1 - mk1)
         }
         for k, v in order_2_cases.items():
             self._angdec_funcs[k] = functools.partial(
@@ -230,6 +230,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
     def _form_angdec_def_2(self, phase, base, res_base):
         """Form the angular momentum decoupled form for total order of 2.
+
+        The phase should include any phase factor except the deltas of pi, J, t
+        and the dense tensor indexing.
         """
 
         ks = self.qp_dumms[:2]
@@ -237,11 +240,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         kts = [TildeOf(i) for i in ks]
         kt1, kt2 = kts
 
-        # TODO: Check its correctness.
         res = self.define(base[k1, k2], self.sum(
             phase * KroneckerDelta(PiOf(kt1), PiOf(kt2))
             * KroneckerDelta(JOf(kt1), JOf(kt2))
-            * KroneckerDelta(MOf(kt1), MOf(kt2))
             * KroneckerDelta(TOf(kt1), TOf(kt2))
             * res_base[LOf(kt1), JOf(kt1), TOf(kt1), NOf(kt1), NOf(kt2)]
         ))
