@@ -11,6 +11,7 @@ from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j, cg_simp
 from .drudge import Tensor
 from .fock import BogoliubovDrudge
 from .term import Range
+from .utils import sympy_key
 
 
 class j_(Function):
@@ -106,9 +107,11 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
         self.add_resolver_for_dumms()
 
+        # Add utility about CG coefficients and related things.
         self.set_name(
             CG=CG, Wigner3j=Wigner3j, Wigner6j=Wigner6j, Wigner9j=Wigner9j
         )
+        self.set_tensor_method('simplify_cg', self.simplify_cg)
 
         # For angular momentum decoupling.
         #
@@ -230,12 +233,34 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
         return substed.expand_sums(self.qp_range, expand)
 
+    def simplify_cg(self, tensor: Tensor):
+        """Simplify CG coefficients in the expression.
+
+        Here we just concentrate on CG rather than the general case.
+        """
+
+        tensor = tensor.map2amps(_canon_cg)
+
+        # Initial simplification of some summations.
+        tensor = tensor.simplify_sums(simplify=self._simplify_amp_sum)
+
+        # Deltas could come from some simplification rules.
+        tensor = tensor.simplify_deltas()
+
+        # Some summations could become simplifiable after the delta resolution.
+        tensor = tensor.simplify_sums()
+
+        return tensor
+
     @staticmethod
-    def simplify_amp_sum(expr: Sum):
+    def _simplify_amp_sum(expr: Sum):
         """Attempt to simplify amplitude sums for nuclear problems.
 
         Here we specially concentrate on the simplification involving
-        Clebosch-Gordan coefficients.
+        Clebosch-Gordan coefficients.  Since this functionality is put into a
+        separate tensor function, here we need to invoke it explicitly, since it
+        will not be called automatically during the default simplification for
+        performance reason.
         """
 
         # TODO: Add more simplifications here.
@@ -249,6 +274,40 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             continue
 
         return None
+
+
+#
+# Angular momentum quantities simplification.
+#
+
+def _canon_cg(expr):
+    """Pose CG coefficients in the expression into canonical form.
+    """
+    return expr.replace(CG, _canon_cg_core)
+
+
+def _canon_cg_core(j1, m1, j2, m2, cj, cm):
+    r"""Pose a CG into a canonical form.
+
+    When two of the little :math:`m`s has got negation, we flip the signs of all
+    of them.  Then the sort keys of :math:`m_1` and :math:`j_1` will be compared
+    with that of :math:`m_2` and :math:`j_2`, which may lead to flipping by
+    Varsh 8.4.3 Equation 10.
+
+    """
+
+    if m1.has(_NEG_UNITY) and m2.has(_NEG_UNITY):
+        m1 *= _NEG_UNITY
+        m2 *= _NEG_UNITY
+        cm *= _NEG_UNITY
+
+    phase = _UNITY
+    if (sympy_key(m1), sympy_key(j1)) > (sympy_key(m2), sympy_key(j2)):
+        m1, m2 = m2, m1
+        j1, j2 = j2, j1
+        phase = _NEG_UNITY ** (j1 + j2 - cj)
+
+    return CG(j1, m1, j2, m2, cj, cm) * phase
 
 
 # Utility constants.
