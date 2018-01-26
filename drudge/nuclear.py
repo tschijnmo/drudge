@@ -68,19 +68,21 @@ class PiOf(_QNOf):
 _SUFFIXED = re.compile(r'^([a-zA-Z]+)([0-9]+)$')
 
 
-def _decor_base(symb: Symbol, op):
+def _decor_base(symb: Symbol, op, **kwargs):
     """Decorate the base part of the given symbol.
 
     The given symbol must have a digits-suffixed name, then the given
     operation will be applied to the base part, and recombined with the
     suffix to form the resulted symbol.
+
+    Keyword arguments are all forward to the Symbol constructor.
     """
     m = _SUFFIXED.match(symb.name)
     if not m:
         raise ValueError('Invalid symbol name to parse', symb)
 
     name, suffix = m.groups()
-    return Symbol(op(name) + suffix)
+    return Symbol(op(name) + suffix, **kwargs)
 
 
 def form_tilde(orig: Symbol):
@@ -92,7 +94,7 @@ def form_tilde(orig: Symbol):
 def form_m(orig: Symbol):
     """Form the symbol for m quantum number for a given orbit symbol.
     """
-    return _decor_base(orig, lambda _: 'm')
+    return _decor_base(orig, lambda _: 'm', integer=True)
 
 
 class NuclearBogoliubovDrudge(BogoliubovDrudge):
@@ -108,8 +110,12 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
     def __init__(
             self, ctx, coll_j_range=Range('J', 0, Symbol('Jmax') + 1),
             coll_m_range=Range('M'),
-            coll_j_dumms=tuple(Symbol('J{}'.format(i)) for i in range(10)),
-            coll_m_dumms=tuple(Symbol('M{}'.format(i)) for i in range(10)),
+            coll_j_dumms=tuple(
+                Symbol('J{}'.format(i), integer=True) for i in range(1, 30)
+            ),
+            coll_m_dumms=tuple(
+                Symbol('M{}'.format(i), integer=True) for i in range(1, 30)
+            ),
             tilde_range=Range(r'\tilde(Q)'), form_tilde=form_tilde,
             m_range=Range('m'), form_m=form_m, **kwargs
     ):
