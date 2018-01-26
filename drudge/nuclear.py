@@ -65,6 +65,11 @@ class PiOf(_QNOf):
     _latex_header = r'\pi_'
 
 
+class TOf(_QNOf):
+    """Symbolic access to the t quantum number of an orbit."""
+    _latex_header = 't_'
+
+
 _SUFFIXED = re.compile(r'^([a-zA-Z]+)([0-9]+)$')
 
 

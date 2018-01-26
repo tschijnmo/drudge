@@ -4,7 +4,7 @@ import pytest
 from sympy import Symbol, simplify, latex
 
 from drudge import NuclearBogoliubovDrudge
-from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf
+from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf
 
 
 @pytest.fixture(scope='module')
@@ -17,7 +17,7 @@ def test_qn_accessors():
     """Test the symbolic functions for quantum number access."""
 
     k = Symbol('k')
-    for acc in [JOf, TildeOf, MOf, NOf, LOf, PiOf]:
+    for acc in [JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf]:
         # Test that they are considered integers.
         e = acc(k)
         assert simplify((-1) ** (e * 2)) == 1
