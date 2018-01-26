@@ -12,7 +12,7 @@ from collections.abc import Iterable, Mapping, Callable, Sequence
 from sympy import (
     sympify, Symbol, KroneckerDelta, Eq, solveset, S, Integer, Add, Mul,
     Indexed, IndexedBase, Expr, Basic, Pow, Wild, conjugate, Sum, Piecewise,
-    Intersection
+    Intersection, expand_power_base, expand_power_exp
 )
 from sympy.core.sympify import CantSympify
 
@@ -1890,6 +1890,9 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
 def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
     """Attempt to make simplifications to summations internal in amplitudes.
     """
+    # Do some pre-processing for better handling of the factors.
+    term = term.map(lambda x: expand_power_base(expand_power_exp(x)))
+
     all_factors, coeff = term.get_amp_factors()
     if isinstance(coeff, Mul):
         all_factors.extend(coeff.args)
