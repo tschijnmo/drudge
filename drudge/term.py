@@ -1459,7 +1459,9 @@ def expand_sums_term(term: Term, range_: Range, expander: Sum_expander):
             continue
         continue
 
-    res_term = term.map(lambda x: x.xreplace(repl), sums=tuple(res_sums))
+    res_term = term.map(
+        lambda x: x.xreplace(repl), sums=tuple(res_sums), skip_ranges=False
+    )
 
     def check_expr(expr: Expr):
         """Check if the given expression still has the expanded dummies."""
