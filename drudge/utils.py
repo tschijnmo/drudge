@@ -540,3 +540,52 @@ class InvariantIndexable(CallByIndex):
     def __init__(self, v):
         """Initialize the invariant tensor."""
         super().__init__(lambda _: v)
+
+
+class SymbResolver:
+    """Resolver based on symbols.
+
+    It can be given an iterable of range/symbols pairs telling that the symbols
+    are associated with the key ranges.  In strict mode, only the given symbols
+    can be resolved to be in the given range.  In non-strict mode, all
+    expressions having one of the symbols will be resolved to be in the range of
+    the symbol.
+
+    Behaviour is undefined if we have non-disjoint symbol sets for different
+    ranges or when we have expression containing symbols for multiple known
+    ranges.
+
+    """
+
+    __slots__ = [
+        '_known',
+        '_strict'
+    ]
+
+    def __init__(self, range_symbs, strict):
+        """Initialize the resolver."""
+
+        known = {}
+        self._known = known
+        for range_, dumms in range_symbs:
+            for i in dumms:
+                known[i] = range_
+                continue
+            continue
+
+        self._strict = strict
+
+    def __call__(self, expr: Expr):
+        """Try to resolve an expression."""
+
+        known = self._known
+        if self._strict:
+            if expr in known:
+                return known[expr]
+        else:
+            for i in expr.atoms(Symbol):
+                if i in known:
+                    return known[i]
+                continue
+
+        return None
