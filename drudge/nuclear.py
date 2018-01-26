@@ -266,6 +266,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         # TODO: Add more simplifications here.
         attempts = [
             cg_simp,
+            _simpl_varsh_872_4,
+
         ]
         for attempt in attempts:
             res = attempt(expr)
@@ -308,6 +310,25 @@ def _canon_cg_core(j1, m1, j2, m2, cj, cm):
         phase = _NEG_UNITY ** (j1 + j2 - cj)
 
     return CG(j1, m1, j2, m2, cj, cm) * phase
+
+
+def _simpl_varsh_872_4(expr: Sum):
+    """Make CG simplification based on Varsh 8.7.2 Equation 4.
+    """
+    if len(expr.args) != 3:
+        return None
+    m1 = expr.args[1][0]
+    m2 = expr.args[2][0]
+
+    j1, j2, cj1, cm1, cj2, cm2 = symbols('j1 j2 J1 M1 J2 M2', cls=Wild)
+    match = expr.args[0].match(
+        CG(j1, m1, j2, m2, cj1, cm1) * CG(j1, m1, j2, m2, cj2, cm2)
+    )
+    if not match:
+        return None
+    return KroneckerDelta(
+        match[cj1], match[cj2]
+    ) * KroneckerDelta(match[cm1], match[cm2])
 
 
 # Utility constants.
