@@ -195,7 +195,7 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         }
         for k, v in order_2_cases.items():
             self._angdec_funcs[k] = functools.partial(
-                self._form_angdec_def_4, v
+                self._form_angdec_def_2, v
             )
             continue
         self.set_tensor_method('do_angdec', self.do_angdec)
