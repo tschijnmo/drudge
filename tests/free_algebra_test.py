@@ -818,6 +818,30 @@ def test_tensors_can_be_substituted_strings_of_vectors(
     assert res == orig
 
 
+def test_special_substitution_of_identity(free_alg):
+    """Test the special substitution of integer one standing for identity.
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    t = IndexedBase('y')
+    a = IndexedBase('a')
+    i, j = p.i, p.j
+    v = p.v
+    w = Vec('w')
+
+    orig = dr.sum((i, p.R), x[i] * v[i] + a[i])
+    ident_def = dr.define(1, dr.einst(t[i] * w[i]))
+
+    res = orig.subst_all([ident_def])
+    assert dr.simplify(
+        res - dr.einst(x[i] * v[i])
+        - dr.sum((i, p.R), (j, p.R), a[i] * t[j] * w[j])
+    ) == 0
+
+
 def test_tensors_can_be_rewritten(free_alg):
     """Test the amplitude rewriting facility for given vector patterns."""
 

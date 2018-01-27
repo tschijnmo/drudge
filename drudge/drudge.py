@@ -949,6 +949,10 @@ class Tensor:
         vector LHS, also supported is a product of vectors.  This will lead to
         pattern matching inside the vector part.
 
+        A special case is when the LHS is a plain integral unity.  In this case,
+        the scalar terms will be replaced by product with the RHS, as if the
+        identity element has been replaced by the RHS.
+
         Parameters
         ----------
 
@@ -1035,6 +1039,13 @@ class Tensor:
             'sum_{a, b, c, d} x[c]*x[d]*o[c, a]*o[d, b] * w[a] * w[b]'
 
         """
+
+        # Special case of the unity LHS.
+        if lhs == 1:
+            scalar_part = self.filter(lambda x: len(x.vecs) == 0)
+            other_part = self.filter(lambda x: len(x.vecs) > 0)
+            res = other_part + scalar_part * rhs
+            return res
 
         # Shallow parsing of the left-hand side.
 
@@ -1695,7 +1706,10 @@ class TensorDef(Tensor):
         # Normalize the base.
         base_name = str(base)
         is_scalar = self.is_scalar
-        if is_scalar and len(self._exts) == 0:
+        if base == 1:
+            # Special case for identity definition.
+            self._base = base
+        elif is_scalar and len(self._exts) == 0:
             self._base = Symbol(base_name)
         elif is_scalar:
             self._base = IndexedBase(base_name)
