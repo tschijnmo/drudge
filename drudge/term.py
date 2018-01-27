@@ -1839,23 +1839,28 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
         if sol == domain:
             # Now we can be sure that we got an identity.
             return _UNITY, None
-        elif len(sol) > 0:
-            for i in sol:
-                # Try to get the range of the substituting expression.
-                range_of_i = try_resolve_range(i, sums_dict, resolvers)
-                if range_of_i is None:
-                    continue
-                if range_of_i == range_:
-                    return _UNITY, (dumm, i)
-                else:
-                    # We assume atomic and disjoint ranges!
-                    return _NAUGHT, None
-            # We cannot resolve the range of any of the solutions.  Try next
-            # dummy.
-            continue
+        elif hasattr(sol, '__len__'):
+            # Concrete solutions.
+            if len(sol) > 0:
+                for i in sol:
+                    # Try to get the range of the substituting expression.
+                    range_of_i = try_resolve_range(i, sums_dict, resolvers)
+                    if range_of_i is None:
+                        continue
+                    if range_of_i == range_:
+                        return _UNITY, (dumm, i)
+                    else:
+                        # We assume atomic and disjoint ranges!
+                        return _NAUGHT, None
+                # We cannot resolve the range of any of the solutions.  Try next
+                # dummy.
+                continue
+            else:
+                # No solution.
+                return _NAUGHT, None
         else:
-            # No solution.
-            return _NAUGHT, None
+            # Undecipherable solutions.
+            continue
 
     # When we got here, all the solutions we found have undetermined range, we
     # have to return the unprocessed form.

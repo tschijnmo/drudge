@@ -414,6 +414,20 @@ def test_simplify_delta_of_two_ranges(free_alg):
     assert tensor.simplify() == 0
 
 
+def test_simplify_delta_of_unsolvable_functions(free_alg):
+    """Test simplification of delta of with functions unable to solve."""
+
+    dr = free_alg
+    p = dr.names
+    f = Function('f')
+    tensor = dr.sum(
+        (p.i, p.R), KroneckerDelta(f(p.i), p.alpha) * p.v
+    )
+    assert tensor.n_terms == 1
+    assert tensor.simplify_deltas() == tensor
+    assert tensor.simplify() == tensor
+
+
 def test_tensor_can_be_canonicalized(free_alg):
     """Test tensor canonicalization in simplification.
 
