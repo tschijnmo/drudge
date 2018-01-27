@@ -2867,10 +2867,8 @@ class Drudge:
         """
 
         if isinstance(inp, TensorDef):
-            prefix = (
-                         self._latex_sympy(inp.lhs) if inp.is_scalar else
-                         self._latex_vec(inp.lhs)
-                     ) + ' = '
+            prefix = (self._latex_vec(inp.lhs) if isinstance(inp.lhs, Vec) else
+                      self._latex_sympy(inp.lhs)) + ' = '
         elif isinstance(inp, Tensor):
             prefix = ''
         else:
