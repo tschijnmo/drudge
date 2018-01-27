@@ -2262,7 +2262,10 @@ class Drudge:
                                     'expecting Perm or iterable of Perms')
                 continue
 
-            group = Group(gens)
+            if len(gens) > 0:
+                group = Group(gens)
+            else:
+                group = None
 
         valid_valence = (valence is None or (
                 isinstance(valence, int) and valence > 1
