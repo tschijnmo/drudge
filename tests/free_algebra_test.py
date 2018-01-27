@@ -1330,3 +1330,41 @@ def test_pickle_within_drs(free_alg):
     assert env['good_symb']
     assert env['good_indexed']
     assert env['def_'] == env['def_back']
+
+
+def test_inverse_of_linear_vector_transforms(free_alg: Drudge):
+    """Test automatic inversion of linear vector transformations.
+
+    Here, we also have good coverage on the conversion of linear transformations
+    in matrix and definitions forms.
+    """
+
+    dr = free_alg
+    p = dr.names
+    v = p.v
+
+    a = Vec('a')
+    b = Vec('b')
+
+    defs = [
+        dr.define(a, v + 1),
+        dr.define(b, v - 1)
+    ]
+    res = dr.lvt_inv(defs)
+
+    assert len(res) == 2
+    half = Rational(1, 2)
+    one_checked = False
+    v_checked = False
+    for i in res:
+        if i.lhs == 1:
+            assert (i - half * a + half * b).simplify() == 0
+            one_checked = True
+        elif i.lhs == v:
+            assert (i - half * a - half * b).simplify() == 0
+            v_checked = True
+        else:
+            assert False
+        continue
+
+    assert one_checked and v_checked

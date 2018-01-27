@@ -1,5 +1,6 @@
 """The main drudge and tensor class definition."""
 
+import collections
 import contextlib
 import functools
 import inspect
@@ -14,7 +15,7 @@ from collections.abc import Iterable, Sequence
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
 from sympy import (
-    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Sum
+    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Sum, Matrix
 )
 from sympy.concrete.summations import eval_sum_symbolic
 
@@ -3252,6 +3253,169 @@ class Drudge:
             return arg.simplify(**kwargs)
         else:
             return self.sum(arg).simplify(**kwargs)
+
+    #
+    # Mathematical utilities.
+    #
+
+    #
+    # Utilities for linear transformations of vectors.
+    #
+
+    @staticmethod
+    def lvt_defs2mat(
+            defs: typing.Iterable[TensorDef], rhs_vecs=None, ret_rhs=False
+    ):
+        r"""Turn a linear vector transformation into matrix form.
+
+        A linear vector transformation is a set of definitions of vectors as
+        simple linear combinations of another set of vectors, where the linear
+        combination only has plain symbolic scalar coefficients without any
+        symbolic summations.
+
+        With this method, given a linear vector transformation as a list of
+        tensor definitions, the matrix :math:`M` of the transformation will be
+        formed, which makes
+
+        .. math::
+
+            \mathbf{L} = M \mathbf{R}
+
+        where :math:`\mathbf{L}` is the column vector of the vectors on the
+        left-hand side and :math:`\mathbf{R}` is the column vector of the
+        vectors on the right-hand side.
+
+        Parameters
+        ----------
+
+        defs
+            An iterable giving all the definitions.
+
+        rhs_vecs
+            The vectors on the right-hand side.  When it is given as None, all
+            vectors appearing in the RHSes of the definitions will be ordered in
+            an non-deterministic way.
+
+        ret_rhs
+            If the actual list of RHS vectors is going to be returned.
+
+        """
+
+        # Parse the definitions to mapping from LHS to coefficients dictionary.
+        coeffs = collections.OrderedDict()
+        for def_ in defs:
+            lhs = def_.lhs
+            if lhs != 1 and not isinstance(lhs, Vec):
+                raise ValueError(
+                    'Invalid vector defined on LHS', lhs
+                )
+            if lhs in coeffs:
+                raise ValueError(
+                    'Duplicate definition', lhs
+                )
+            curr_coeffs = collections.defaultdict(lambda: 0)
+            coeffs[lhs] = curr_coeffs
+
+            for term in def_.local_terms:
+
+                if len(term.sums) > 0:
+                    raise NotImplementedError(
+                        'RHS for', lhs, 'too complicated', term
+                    )
+
+                vecs = term.vecs
+                if len(vecs) > 1:
+                    raise ValueError(
+                        'Nonlinear term for ', lhs, 'in', term
+                    )
+                elif len(vecs) == 1:
+                    curr_coeffs[vecs[0]] += term.amp
+                else:
+                    curr_coeffs[1] += term.amp
+
+                continue  # Go to next term.
+
+            continue  # Go to the next definition.
+
+        if rhs_vecs is None:
+            rhs_vecs = set()
+            for i in coeffs.values():
+                rhs_vecs.update(i.keys())
+                continue
+            rhs_vecs = list(rhs_vecs)
+
+        res_coeffs = []
+        for lhs, rhs in coeffs.items():
+            row = []
+            for i in rhs_vecs:
+                if i in rhs:
+                    row.append(rhs.pop(i))
+                else:
+                    row.append(0)
+                continue
+            if len(rhs) != 0:
+                raise ValueError(
+                    'Terms with vectors not given as RHS', list(rhs.keys())
+                )
+            res_coeffs.append(row)
+            continue
+
+        res = Matrix(res_coeffs)
+        if ret_rhs:
+            return res, rhs_vecs
+        else:
+            return res
+
+    def lvt_mat2defs(
+            self, mat: Matrix, lhs_vecs: typing.Iterable[Vec],
+            rhs_vecs: typing.Iterable[Vec]
+    ):
+        """Form definitions from a linear transformation matrix.
+
+        This is the exact inverse of the operation defined in
+        :py:meth:`lvt_defs2mat`.
+        """
+
+        lhs_vecs = list(lhs_vecs)
+        rhs_vecs = list(rhs_vecs)
+        n_rows, n_cols = mat.shape
+
+        if n_rows != len(lhs_vecs):
+            raise ValueError(
+                'Expecting', n_rows, 'LHS vectors', len(lhs_vecs), 'given'
+            )
+        if n_cols != len(rhs_vecs):
+            raise ValueError(
+                'Expecting', n_cols, 'RHS vectors', len(rhs_vecs), 'given'
+            )
+
+        defs = []
+        for idx in range(n_rows):
+            def_ = self.define(lhs_vecs[idx], sum(
+                i * j for i, j in zip(mat.row(idx), rhs_vecs)
+            ))
+            defs.append(def_)
+            continue
+
+        return defs
+
+    def lvt_inv(self, defs: typing.Iterable[TensorDef], rhs_vecs=None):
+        """Inverse a linear transformation of vectors.
+
+        This method internally utilizes :py:meth:`lvt_defs2mat` to get the
+        matrix for the transformation, then with the matrix inverted and
+        simplified symbolically, the inverse definition is cast back to the
+        definitions form.
+        """
+
+        mat, rhs_vecs = self.lvt_defs2mat(defs, rhs_vecs, ret_rhs=True)
+        # Here the input should have already been checked.
+        lhs_vecs = [i.lhs for i in defs]
+
+        inv_mat = mat.inv()
+        inv_mat.simplify()
+
+        return self.lvt_mat2defs(inv_mat, rhs_vecs, lhs_vecs)
 
 
 #
