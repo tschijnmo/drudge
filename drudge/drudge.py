@@ -3290,7 +3290,9 @@ class Drudge:
         ----------
 
         defs
-            An iterable giving all the definitions.
+            An iterable giving all the definitions.  No vector should be
+            redefined and non-vector definitions will be construed as definition
+            of unity.
 
         rhs_vecs
             The vectors on the right-hand side.  When it is given as None, all
@@ -3306,13 +3308,11 @@ class Drudge:
         coeffs = collections.OrderedDict()
         for def_ in defs:
             lhs = def_.lhs
-            if lhs != 1 and not isinstance(lhs, Vec):
-                raise ValueError(
-                    'Invalid vector defined on LHS', lhs
-                )
+            if not isinstance(lhs, Vec):
+                lhs = 1
             if lhs in coeffs:
                 raise ValueError(
-                    'Duplicate definition', lhs
+                    'Duplicate definition', def_.lhs
                 )
             curr_coeffs = collections.defaultdict(lambda: 0)
             coeffs[lhs] = curr_coeffs
