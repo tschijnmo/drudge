@@ -1722,7 +1722,9 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
 
     substs = {}
 
-    if amp == 0:
+    if amp == 0 or isinstance(amp, Add):
+        # For zero, no need for processing.  For polynomials, it cannot proceed,
+        # since the rest of simplification assumed monomial.
         return amp, substs
 
     # Preprocess some expressions equivalent to deltas into explicit delta form.
