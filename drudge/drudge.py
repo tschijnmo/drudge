@@ -2267,13 +2267,18 @@ class Drudge:
             else:
                 group = None
 
-        valid_valence = (valence is None or (
-                isinstance(valence, int) and valence > 1
-        ))
-        if not valid_valence:
-            raise ValueError(
-                'Invalid valence', valence, 'expecting positive integer'
-            )
+        if valence is not None:
+            # None is a valid valence.
+            try:
+                valence = int(valence)
+            except ValueError:
+                raise ValueError(
+                    'Invalid valence', valence, 'expecting integer'
+                )
+            if valence < 1:
+                raise ValueError(
+                    'Invalid valence', valence, 'expecting positive integer'
+                )
 
         self._symms.var[
             base if valence is None else (base, valence)
