@@ -154,13 +154,17 @@ static Simple_perm make_perm_from_args(PyObject* args, PyObject* kwargs)
     try {
         PyObject* pre_image_obj;
         while ((pre_image_obj = PyIter_Next(pre_images_iter))) {
-
-            if (!PyLong_Check(pre_image_obj)) {
-                Py_DECREF(pre_image_obj);
-                PyErr_SetString(PyExc_TypeError, "Non-integral point given");
+            Py_ssize_t raw_pre_image
+                = PyNumber_AsSsize_t(pre_image_obj, PyExc_OverflowError);
+            if (raw_pre_image == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_TypeError, "Invalid preimage index");
+                throw err;
+            } else if (raw_pre_image < 0) {
+                PyErr_SetString(PyExc_ValueError, "Negative preimage index");
                 throw err;
             }
-            Point pre_image = PyLong_AsSsize_t(pre_image_obj);
+
+            auto pre_image = static_cast<Point>(raw_pre_image);
 
             // Release reference right here since its content is already
             // extracted.  In this way, the error handling does not need to
