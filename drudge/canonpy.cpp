@@ -14,14 +14,14 @@
 #include <libcanon/perm.h>
 #include <libcanon/sims.h>
 
-using libcanon::Simple_perm;
+using libcanon::Eldag;
+using libcanon::Eldag_perm;
+using libcanon::Node_symms;
 using libcanon::Point;
 using libcanon::Point_vec;
+using libcanon::Simple_perm;
 using libcanon::build_sims_sys;
-using libcanon::Eldag;
-using libcanon::Node_symms;
 using libcanon::canon_eldag;
-using libcanon::Eldag_perm;
 
 //
 // General utilities
@@ -71,7 +71,6 @@ static constexpr I_err err = 1;
 
 static PyObject* build_perm_to_tuple(const Simple_perm& perm)
 {
-
     PyObject* res = NULL;
     PyObject* pre_images = NULL;
     PyObject* acc = NULL;
@@ -389,7 +388,7 @@ static PyGetSetDef perm_getsets[] = {
 // clang-format on
 
 /** Perm type doc string.
-  */
+ */
 
 static const char* perm_doc =
     R"__doc__(Permutation of points with accompanied action.
@@ -478,7 +477,6 @@ static PyObject* serialize_group(const Transv* transv)
     }
 
     for (; transv; transv = transv->next()) {
-
         // Initialize all of them to NULL, so that things can be handled
         // consistently on error.  No memory is going to be accidentally
         // touched by XDECREF.
@@ -559,7 +557,6 @@ std::vector<Simple_perm> read_gens(PyObject* front, PyObject* iter)
         if (PyObject_IsInstance(front, (PyObject*)&perm_type)) {
             gens.push_back(((Perm_object*)front)->perm);
         } else {
-
             try {
                 Simple_perm gen = make_perm_from_args(front, NULL);
                 if (gen.size() == 0) {
@@ -642,7 +639,6 @@ Transv_ptr deserialize_sims(PyObject* front, PyObject* iter)
 
     do {
         try {
-
             // Here we still need some checking, since we might be working on
             // non-first elements from the iterable, which has not been checked.
 
@@ -890,7 +886,7 @@ static PyMethodDef group_methods[] = {
 };
 
 /** Sims transversal type doc string.
-  */
+ */
 
 static const char* group_doc =
     R"__doc__(Permutations groups.
@@ -988,7 +984,6 @@ static std::vector<T> read_py_iter(PyObject* iterable, F get_value)
 
     PyObject* item;
     while ((item = PyIter_Next(iterator))) {
-
         try {
             res.push_back(get_value(item));
         } catch (I_err) {
@@ -1073,7 +1068,6 @@ static PyObject* build_canon_res(const Eldag_perm<Simple_perm>& canon_res)
     size_t n_nodes = canon_res.partition.size();
 
     try {
-
         gl_order = PyList_New(n_nodes);
         if (!gl_order) {
             throw err;
@@ -1247,8 +1241,8 @@ static PyObject* canon_eldag_func(
 /** Docstring for the canonpy module.
  */
 
-static const char* canonpy_docstring
-    = R"__doc__(Canonpy, simple wrapper over libcanon for Python.
+static const char* canonpy_docstring =
+    R"__doc__(Canonpy, simple wrapper over libcanon for Python.
 
 This wrapper of libcanon is directly targeted towards usage using drudge.
 Here, we have a class `Perm`, which wraps over the `Simple_perm` class in
@@ -1263,8 +1257,8 @@ an Eldag.
 
 static PyMethodDef canonpy_methods[]
     = { { "canon_eldag", (PyCFunction)canon_eldag_func,
-            METH_VARARGS | METH_KEYWORDS, canon_eldag_docstring},
-        { NULL, NULL, 0, NULL } };
+            METH_VARARGS | METH_KEYWORDS, canon_eldag_docstring },
+          { NULL, NULL, 0, NULL } };
 
 /** Executes the initialization of the canonpy module.
  */
@@ -1298,7 +1292,8 @@ static int canonpy_exec(PyObject* m)
  */
 
 static struct PyModuleDef_Slot canonpy_slots[] = {
-    { Py_mod_exec, (void*)canonpy_exec }, { 0, NULL },
+    { Py_mod_exec, (void*)canonpy_exec },
+    { 0, NULL },
 };
 
 /** Canonpy module definition.
