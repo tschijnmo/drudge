@@ -1,10 +1,10 @@
 """Tests for special utilities related to nuclear problems."""
 
 import pytest
-from sympy import Symbol, simplify, latex
+from sympy import Symbol, simplify, latex, symbols, KroneckerDelta
 
-from drudge import NuclearBogoliubovDrudge
-from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf
+from drudge import NuclearBogoliubovDrudge, Range
+from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG
 
 
 @pytest.fixture(scope='module')
@@ -31,3 +31,30 @@ def test_jm_dummies_are_integers(nuclear: NuclearBogoliubovDrudge):
     p = nuclear.names
     for i in [p.m1, p.m2, p.M1, p.M2, p.J1, p.J2]:
         assert simplify((-1) ** (i * 2)) == 1
+
+
+def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
+    """Test simplification based on Varshalovich 8.7.2 Eq (4)."""
+    dr = nuclear
+    c, gamma, c_prm, gamma_prm = symbols('c gamma cprm gammaprm')
+    a, alpha, b, beta = symbols('a alpha b beta')
+
+    m_range = Range('m')
+    sums = [
+        (alpha, m_range[-a, a + 1]), (beta, m_range[-b, b + 1])
+    ]
+    amp = CG(a, alpha, b, beta, c, gamma) * CG(
+        a, alpha, b, beta, c_prm, gamma_prm
+    )
+
+    # Make sure that the pattern matching works in any way the summations are
+    # written.
+    for sums_i in [sums, reversed(sums)]:
+        tensor = dr.sum(*sums_i, amp)
+        res = tensor.simplify_cg()
+        assert res.n_terms == 1
+        term = res.local_terms[0]
+        assert len(term.sums) == 0
+        assert term.amp == KroneckerDelta(
+            c, c_prm
+        ) * KroneckerDelta(gamma, gamma_prm)
