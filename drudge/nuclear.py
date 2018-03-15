@@ -342,7 +342,7 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         attempts = [
             cg_simp,
             _simpl_varsh_872_4,
-
+            _simpl_varsh_872_5
         ]
         for attempt in attempts:
             res = attempt(expr)
@@ -414,6 +414,30 @@ def _simpl_varsh_872_4(expr: Sum):
     return None
 
 
+def _simpl_varsh_872_5(expr: Sum):
+    """Make CG simplification based on Varsh 8.7.2 Eq (5).
+    """
+    if len(expr.args) != 3:
+        return None
+
+    dummies = (expr.args[1][0], expr.args[2][0])
+    j1, j2, m2, j3, m3, cj = symbols('j1 j2 m2 j3 m3 J', cls=Wild)
+    for m1, cm in [dummies, reversed(dummies)]:
+        match = expr.args[0].match(
+            CG(j1, m1, j2, m2, cj, cm) * CG(j1, m1, j3, m3, cj, cm)
+        )
+
+        if not match:
+            continue
+
+        cjhat = 2 * match[cj] + 1
+        jhat2 = 2 * match[j2] + 1
+
+        return (cjhat / jhat2) * KroneckerDelta(
+            match[j2], match[j3]
+        ) * KroneckerDelta(match[m2], match[m3])
+
+    return None
 
 
 # Utility constants.
