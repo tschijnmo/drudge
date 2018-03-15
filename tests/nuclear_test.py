@@ -58,3 +58,28 @@ def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
         assert term.amp == KroneckerDelta(
             c, c_prm
         ) * KroneckerDelta(gamma, gamma_prm)
+
+
+def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
+    """Test simplification based on the rule in Varshalovich 8.7.2 Eq (5).
+    """
+    dr = nuclear
+    a, alpha, b, beta, b_prm, beta_prm = symbols(
+        'a alpha b beta bprm betaprm'
+    )
+    c, gamma = symbols('c gamma')
+    sums = [
+        (alpha, Range('m', -a, a + 1)),
+        (gamma, Range('M', -c, c + 1))
+    ]
+    amp = CG(a, alpha, b, beta, c, gamma) * CG(
+        a, alpha, b_prm, beta_prm, c, gamma
+    )
+
+    expected = dr.sum(
+        KroneckerDelta(b, b_prm) * KroneckerDelta(beta, beta_prm)
+        * (2 * c + 1) / (2 * b + 1)
+    )
+    for sums_i in [sums, reversed(sums)]:
+        tensor = dr.sum(*sums_i, amp)
+        assert (tensor.simplify_cg() - expected).simplify() == 0
