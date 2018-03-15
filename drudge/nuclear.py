@@ -389,22 +389,31 @@ def _canon_cg_core(j1, m1, j2, m2, cj, cm):
 
 
 def _simpl_varsh_872_4(expr: Sum):
-    """Make CG simplification based on Varsh 8.7.2 Equation 4.
+    """Make CG simplification based on Varsh 8.7.2 Eq (4).
+
+    Compared with the implementation of the same rule in SymPy, here more care
+    is taken for better robustness toward different initial arrangements of the
+    summations.
     """
     if len(expr.args) != 3:
         return None
-    m1 = expr.args[1][0]
-    m2 = expr.args[2][0]
 
+    dummies = (expr.args[1][0], expr.args[2][0])
     j1, j2, cj1, cm1, cj2, cm2 = symbols('j1 j2 J1 M1 J2 M2', cls=Wild)
-    match = expr.args[0].match(
-        CG(j1, m1, j2, m2, cj1, cm1) * CG(j1, m1, j2, m2, cj2, cm2)
-    )
-    if not match:
-        return None
-    return KroneckerDelta(
-        match[cj1], match[cj2]
-    ) * KroneckerDelta(match[cm1], match[cm2])
+
+    for m1, m2 in [dummies, reversed(dummies)]:
+        match = expr.args[0].match(
+            CG(j1, m1, j2, m2, cj1, cm1) * CG(j1, m1, j2, m2, cj2, cm2)
+        )
+        if not match:
+            continue
+        return KroneckerDelta(
+            match[cj1], match[cj2]
+        ) * KroneckerDelta(match[cm1], match[cm2])
+
+    return None
+
+
 
 
 # Utility constants.
