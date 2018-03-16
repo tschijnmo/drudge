@@ -378,12 +378,12 @@ def _canon_cg_core(j1, m1, j2, m2, cj, cm):
         m1 *= _NEG_UNITY
         m2 *= _NEG_UNITY
         cm *= _NEG_UNITY
-        phase = _NEG_UNITY ** (j1 + j2 - cj)
+        phase *= _NEG_UNITY ** (j1 + j2 - cj)
 
     if (sympy_key(m1), sympy_key(j1)) > (sympy_key(m2), sympy_key(j2)):
         m1, m2 = m2, m1
         j1, j2 = j2, j1
-        phase = _NEG_UNITY ** (j1 + j2 - cj)
+        phase *= _NEG_UNITY ** (j1 + j2 - cj)
 
     return CG(j1, m1, j2, m2, cj, cm) * phase
 
