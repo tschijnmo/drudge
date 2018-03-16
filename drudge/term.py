@@ -778,7 +778,7 @@ class Term(ATerms):
 
     def map(
             self, func=lambda x: x, sums=None, amp=None, vecs=None,
-            skip_vecs=False, skip_ranges=True
+            skip_vecs=False, skip_ranges=False
     ):
         """Map the given function to the SymPy expressions in the term.
 
