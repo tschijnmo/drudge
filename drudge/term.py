@@ -1984,9 +1984,7 @@ def simplify_amp_sums_term(term: Term, simplifiers, excl_bases):
             if n_sums > n_to_proc:
                 break
 
-            for sums in itertools.combinations_with_replacement(
-                    to_proc.keys(), n_sums
-            ):
+            for sums in itertools.combinations(to_proc.keys(), n_sums):
                 curr_infos = [to_proc[i] for i in sums]
                 curr_sums = [i.triple for i in curr_infos]
                 # Factors come and go, here they are tracked by their address.
