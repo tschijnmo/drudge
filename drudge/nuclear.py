@@ -6,7 +6,7 @@ import re
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer
 )
-from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j, cg_simp
+from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
 from .drudge import Tensor
 from .fock import BogoliubovDrudge
@@ -161,6 +161,11 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         self.set_name(
             CG=CG, Wigner3j=Wigner3j, Wigner6j=Wigner6j, Wigner9j=Wigner9j
         )
+
+        self._cg_sum_simplifiers = {
+            # TODO: Add more simplifications here.
+            2: [_simpl_varsh_872_4, _simpl_varsh_872_5]
+        }
         self.set_tensor_method('simplify_cg', self.simplify_cg)
 
         # For angular momentum decoupling.
@@ -311,13 +316,17 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
     def simplify_cg(self, tensor: Tensor):
         """Simplify CG coefficients in the expression.
 
-        Here we just concentrate on CG rather than the general case.
+        Here we specially concentrate on the simplification involving
+        Clebosch-Gordan coefficients.  Since this functionality is put into a
+        separate tensor function, here we need to invoke it explicitly, since it
+        will not be called automatically during the default simplification for
+        performance reason.
         """
 
         tensor = tensor.map2amps(_canon_cg)
 
         # Initial simplification of some summations.
-        tensor = tensor.simplify_sums(simplify=self._simplify_amp_sum)
+        tensor = tensor.simplify_sums(simplifiers=self._cg_sum_simplifiers)
 
         # Deltas could come from some simplification rules.
         tensor = tensor.simplify_deltas()
@@ -326,31 +335,6 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         tensor = tensor.simplify_sums()
 
         return tensor
-
-    @staticmethod
-    def _simplify_amp_sum(expr: Sum):
-        """Attempt to simplify amplitude sums for nuclear problems.
-
-        Here we specially concentrate on the simplification involving
-        Clebosch-Gordan coefficients.  Since this functionality is put into a
-        separate tensor function, here we need to invoke it explicitly, since it
-        will not be called automatically during the default simplification for
-        performance reason.
-        """
-
-        # TODO: Add more simplifications here.
-        attempts = [
-            cg_simp,
-            _simpl_varsh_872_4,
-            _simpl_varsh_872_5
-        ]
-        for attempt in attempts:
-            res = attempt(expr)
-            if res is not None and res != expr:
-                return res
-            continue
-
-        return None
 
 
 #
