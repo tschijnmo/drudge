@@ -4,7 +4,8 @@ import functools
 import re
 
 from sympy import (
-    Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer
+    Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
+    sqrt
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -164,7 +165,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
         self._cg_sum_simplifiers = {
             # TODO: Add more simplifications here.
-            2: [_simpl_varsh_872_4, _simpl_varsh_872_5]
+            2: [_simpl_varsh_872_4, _simpl_varsh_872_5],
+            5: [_simpl_varsh_911_8]
         }
         self.set_tensor_method('simplify_cg', self.simplify_cg)
 
@@ -422,6 +424,39 @@ def _simpl_varsh_872_5(expr: Sum):
         ) * KroneckerDelta(match[m2], match[m3])
 
     return None
+
+
+def _simpl_varsh_911_8(expr: Sum):
+    """Make CG simplification based on Varsh 9.1.1 Eq (8).
+    """
+    if len(expr.args) != 6:
+        return None
+
+    j, m, j12, m12, j2, m2 = symbols('j m j12 m12 j2 m2', cls=Wild)
+    j1, m1 = symbols('j1 m1', cls=Wild)
+    j_prm, m_prm, j22, m22 = symbols('jprm mprm j22 m22', cls=Wild)
+    j23, m23, j3, m3 = symbols('j23 m23 j3 m3', cls=Wild)
+
+    match = expr.args[0].match(
+        CG(j12, m12, j3, m3, j, m) * CG(j1, m1, j2, m2, j12, m12) *
+        CG(j1, m1, j23, m23, j_prm, m_prm) * CG(j2, m2, j3, m3, j23, m23)
+    )
+
+    if not match or sorted((match[i] for i in (
+            m1, m2, m3, m12, m23
+    )), key=sympy_key) != sorted((i[0] for i in expr.args[1:]), key=sympy_key):
+        return None
+
+    jhat12 = sqrt(2 * match[j12] + 1)
+    jhat23 = sqrt(2 * match[j23] + 1)
+
+    phase = _NEG_UNITY ** (match[j1] + match[j2] + match[j3] + match[j])
+
+    return jhat12 * jhat23 * phase * KroneckerDelta(
+        match[j], match[j_prm]
+    ) * KroneckerDelta(match[m], match[m_prm]) * Wigner6j(
+        match[j1], match[j2], match[j12], match[j3], match[j], match[j23]
+    )
 
 
 # Utility constants.

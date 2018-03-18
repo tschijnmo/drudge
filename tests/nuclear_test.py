@@ -1,10 +1,12 @@
 """Tests for special utilities related to nuclear problems."""
 
+import random
+
 import pytest
-from sympy import Symbol, simplify, latex, symbols, KroneckerDelta
+from sympy import Symbol, simplify, latex, symbols, KroneckerDelta, sqrt
 
 from drudge import NuclearBogoliubovDrudge, Range
-from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG
+from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG, Wigner6j
 
 
 @pytest.fixture(scope='module')
@@ -83,3 +85,31 @@ def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
     for sums_i in [sums, reversed(sums)]:
         tensor = dr.sum(*sums_i, amp)
         assert (tensor.simplify_cg() - expected).simplify() == 0
+
+
+def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
+    """Test simplification based on the rule in Varshalovich 9.1.1 Eq (8).
+    """
+    dr = nuclear
+    j, m, j12, m12, j2, m2, j1, m1, j_prm, m_prm, j23, m23, j3, m3 = symbols(
+        'j m j12 m12 j2 m2 j1 m1 jprm mprm j23 m23 j3 m3'
+    )
+    m_range = Range('m')
+    sums = [(m_i, m_range[-j_i, j_i + 1]) for m_i, j_i in [
+        (m1, j1), (m2, j2), (m3, j3), (m12, j12), (m23, j23)
+    ]]
+    amp = CG(j12, m12, j3, m3, j, m) * CG(j1, m1, j2, m2, j12, m12) * CG(
+        j1, m1, j23, m23, j_prm, m_prm
+    ) * CG(j2, m2, j3, m3, j23, m23)
+
+    expected = dr.sum(
+        KroneckerDelta(j, j_prm) * KroneckerDelta(m, m_prm)
+        * (-1) ** (j1 + j2 + j3 + j)
+        * sqrt(2 * j12 + 1) * sqrt(2 * j23 + 1)
+        * Wigner6j(j1, j2, j12, j3, j, j23)
+    )
+
+    # For performance reason, just test a random arrangement of the summations.
+    random.shuffle(sums)
+    tensor = dr.sum(*sums, amp)
+    assert (tensor.simplify_cg() - expected).simplify() == 0
