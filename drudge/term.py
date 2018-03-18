@@ -5,6 +5,7 @@ import collections
 import functools
 import itertools
 import operator
+import types
 import typing
 import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
@@ -1897,9 +1898,14 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
 #
 
 
-def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
+def simplify_amp_sums_term(term: Term, simplifiers, excl_bases):
     """Attempt to make simplifications to summations internal in amplitudes.
+
+    This function has a complex appearance, but it basically just tries to apply
+    the rules repeatedly until it can be guaranteed that none of the rules is
+    applicable to the current term.
     """
+
     # Do some pre-processing for better handling of the factors.
     term = term.map(lambda x: expand_power_base(expand_power_exp(x)))
 
@@ -1909,8 +1915,8 @@ def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
     else:
         all_factors.append(coeff)
 
+    # Factor: pair of the expression and the cached set of its symbols.
     factors = []
-    factor_symbs = []
     res_amp = 1  # Amplitude of the result to be incrementally built.
     imposs_symbs = set()  # Any symbol here will not be attempted.
     for factor in all_factors:
@@ -1922,10 +1928,8 @@ def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
             imposs_symbs |= symbs
             res_amp *= factor
             continue
-        factors.append(factor)
-        factor_symbs.append(symbs)
+        factors.append((factor, symbs))
         continue
-    n_factors = len(factors)
 
     for vec in term.vecs:
         for i in vec.indices:
@@ -1933,11 +1937,14 @@ def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
             continue
         continue
 
-    # From frozenset of indices of factors to the summation pairs.  Note that
-    # the keys might have overlap, while the values should be disjoint.
-    to_proc = collections.defaultdict(list)
     # Summations in the result to be incrementally built.
     res_sums = []
+
+    # Summations to process, mapping from the dummy to information about it,
+    # including the list of factors involving it, the original range, and the
+    # SymPy-style triple range.  The factors list may need to be updated after a
+    # simplification, which may add or remove factors.
+    to_proc = {}
 
     for sum_ in term.sums:
         dumm, range_ = sum_
@@ -1946,121 +1953,97 @@ def simplify_amp_sums_term(term: Term, excl_bases, aggr, simplify):
             res_sums.append(sum_)
             continue
 
-        involving_factors = set()
-        for i in range(n_factors):
-            if dumm not in factor_symbs[i]:
-                continue
-            involving_factors.add(i)
-            continue
+        involving_factors = [
+            i for i in factors if dumm in i[1]
+        ]
 
         # Trivial summations leaked here must have involvement in other sum
         # bounds.
         if len(involving_factors) == 0:
             res_sums.append(sum_)
         else:
-            to_proc[frozenset(involving_factors)].append(sum_)
+            to_proc[dumm] = types.SimpleNamespace(
+                factors=involving_factors, range=range_,
+                triple=(dumm, range_.lower, range_.upper - 1)
+            )
 
         # TODO: Make simplification considering dummies' involvement in the
         # summation bounds as well.
         continue
 
-    proced_factors = set()  # Indices of factors already processed.
+    # Main loop, apply the rules until none of them can be applied.
+    has_simplified = True
+    while has_simplified:
 
-    # Main loop, try each bunch of summations with the same factor involvement
-    # in turn.
-    for curr_factors, curr_sums in to_proc.items():
-        curr_expr = prod_(
-            factors[i] for i in curr_factors
-        )
+        has_simplified = False  # Toppled to true only after simplification.
 
-        # Bitwise tricks for the power set.
-        all_sums_mask = (1 << len(curr_sums)) - 1
-        assert all_sums_mask > 0
-        sums_mask = all_sums_mask
-
-        while sums_mask == all_sums_mask if aggr else sums_mask > 0:
-            sympy_sums = [
-                (v[0], v[1].lower, v[1].upper - 1)
-                for i, v in enumerate(curr_sums) if (1 << i & sums_mask) > 0
-            ]
-            orig = Sum(curr_expr, *sympy_sums)
-            simplified = simplify(orig)
-
-            if simplified is None or simplified == orig:
-                sums_mask -= 1
-                continue
-            else:
-                new_sums, new_factor = _apply_sum_simpl(
-                    curr_sums, sums_mask, simplified
-                )
-                res_sums.extend(new_sums)
-                res_amp *= new_factor
-                proced_factors |= curr_factors
+        # Apply the rules in increasing order of their complexity.  Simpler
+        # rules are attempted first.
+        for n_sums in sorted(simplifiers.keys()):
+            n_to_proc = len(to_proc)
+            if n_sums > n_to_proc:
                 break
-        else:
-            # No simplification has ever been found.
-            res_sums.extend(curr_sums)
 
-        continue
+            for sums in itertools.combinations_with_replacement(
+                    to_proc.keys(), n_sums
+            ):
+                curr_infos = [to_proc[i] for i in sums]
+                curr_sums = [i.triple for i in curr_infos]
+                # Factors come and go, here they are tracked by their address.
+                curr_factors = {
+                    id(j): j
+                    for i in curr_infos for j in i.factors
+                }
+                curr_expr = prod_(i[0] for i in curr_factors.values())
+
+                orig = Sum(curr_expr, *curr_sums)
+                for simplify in simplifiers[n_sums]:
+                    simplified = simplify(orig)
+
+                    if_simplified = (
+                            simplified is not None and simplified != orig and
+                            not isinstance(simplified, Sum)
+                    )
+                    if not if_simplified:
+                        continue
+
+                    # Whe simplification happens.
+                    new_factors = [
+                        i for i in factors if id(i) not in curr_factors
+                    ]
+                    for i in (
+                            simplified.args if isinstance(simplified, Mul)
+                            else (simplified,)
+                    ):
+                        new_factors.append((
+                            i, i.atoms(Symbol)
+                        ))
+                        continue
+                    factors = new_factors
+
+                    for i in sums:
+                        del to_proc[i]
+                    for k, v in to_proc.items():
+                        v.factors = [
+                            i for i in factors if k in i[1]
+                        ]
+                    has_simplified = True
+                    break
+
+                # When simplification is done, try to rewind.
+                if has_simplified:
+                    break
+            if has_simplified:
+                break
 
     # Place the unprocessed factors back.
-    for i in range(n_factors):
-        if i not in proced_factors:
-            res_amp *= factors[i]
+    for i in factors:
+        res_amp *= i[0]
         continue
+    for k, v in to_proc.items():
+        res_sums.append((k, v.range))
 
     return Term(sums=tuple(res_sums), amp=res_amp, vecs=term.vecs)
-
-
-def _apply_sum_simpl(curr_sums, sums_mask, simplified):
-    """Apply a particular summation simplification.
-
-    The treated factors and summations will be equivalent to the returned
-    symbolic summations and factor.
-    """
-
-    # The original symbolic summations.
-    #
-    # Attempted to be summed, but may wind up being untouched in the simplified
-    # result.
-    attempted = {}
-    # The summations involved by the factors but are not included in the current
-    # simplification.
-    rest = []
-
-    for i, v in enumerate(curr_sums):
-        if 1 << i & sums_mask:
-            assert v[0] not in attempted
-            attempted[v[0]] = v[1]
-        else:
-            rest.append(v)
-        continue
-
-    if not isinstance(simplified, Sum):
-        new_factor = simplified
-    else:
-        kept_sums = []  # Summations kept in SymPy amplitudes.
-        for i in simplified.args[1:]:
-            # Filter out summations which was, and can still be, handled by
-            # drudge.
-            if_untouched = (
-                    len(i) == 3
-                    and i[0] in attempted
-                    and i[1] == attempted[i[0]].lower
-                    and i[2] == attempted[i[0]].upper
-            )
-            if if_untouched:
-                rest.append((i[0], attempted[i[0]]))
-            else:
-                kept_sums.append(i)
-            continue
-
-        if len(kept_sums) == 0:
-            new_factor = simplified.args[0]
-        else:
-            new_factor = Sum(simplified.args[0], *kept_sums)
-
-    return rest, new_factor
 
 
 #

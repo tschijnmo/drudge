@@ -482,7 +482,7 @@ class Tensor:
             lambda x: x.simplify_deltas(resolvers.value)
         ).filter(_is_nonzero)
 
-    def simplify_sums(self, excl_bases=True, aggr=True, simplify=None):
+    def simplify_sums(self, simplifiers=True, excl_bases=True):
         """Simplify the summations within the amplitude in the tensor.
 
         This method attempts to perform simplification for concrete summations
@@ -495,45 +495,56 @@ class Tensor:
         Parameters
         ----------
 
+        simplifiers
+
+            The rules to simplify the internally summed factors of the
+            amplitude.  It should be a mapping from the number of summations
+            indices able to be handled to an iterable of functions implementing
+            the rules.
+
+            The functions will be called with SymPy ``Sum`` objects.  If the
+            same expression or ``None`` is returned, it will be considered to be
+            not simplifiable any more.
+
+            By default, it is set to True, which will use the
+            :py:attr:`sum_simplifiers` attribute of the current drudge object.
+            Note that this attribute needs to be serializable in Spark
+            environment.  Notably they cannot be a non-static method of the
+            drudge object.  It can also be set to anything that evaluates to
+            false to disable deep simplification of the summations.
+
+            By default, the ``sum_simplifiers`` attribute is a dictionary having
+            only the SymPy ``eval_sum_symbolic`` function for summations with a
+            single summation index.
+
         excl_bases
             If summations involved by indexed bases are also going to be
             excluded from attempts of simplifications.  This can be safely set
             to true unless customized rules exists.
 
-        aggr
-            If summations involved by the same set of factors are going to be
-            attempted together.  Or all subset of the summations are going to be
-            tested in turn.
-
-        simplify
-            The call-back to simplify the internally summed factors of the
-            amplitude.  It will normally be called with SymPy ``Sum`` objects.
-            If the same expression or ``None`` is returned, it will be
-            considered to be not simplifiable any more.  By default, the
-            :py:meth:`simplify_amp_sum` attribute of the current drudge object
-            will be used.  Note that this attribute needs to be serializable in
-            Spark environment.  Notably they cannot be a non-static method of
-            the drudge object.
         """
 
         return Tensor(self._drudge, self._simplify_sums(
-            self._terms, excl_bases=excl_bases, aggr=aggr, simplify=simplify
+            self._terms, simplifiers=simplifiers, excl_bases=excl_bases
         ))
 
     def _simplify_sums(
-            self, terms: RDD, excl_bases=True, aggr=True, simplify=None
+            self, terms: RDD, simplifiers=True, excl_bases=True
     ):
         """Simplify the summations in the given terms."""
 
-        if simplify is None:
-            simplify = self._drudge.simplify_amp_sum
+        if simplifiers is True:
+            simplifiers = self._drudge.sum_simplifiers
 
         # Make it a two-step process for future extensibility.
         terms = terms.map(lambda x: x.simplify_trivial_sums())
-        terms = terms.map(functools.partial(
-            simplify_amp_sums_term, excl_bases=excl_bases, aggr=aggr,
-            simplify=simplify
-        ))
+
+        if simplifiers:
+            terms = terms.map(functools.partial(
+                simplify_amp_sums_term,
+                simplifiers=simplifiers, excl_bases=excl_bases
+            ))
+
         return terms
 
     def expand(self):
@@ -1964,6 +1975,13 @@ class Drudge:
 
         self._inside_drs = False
 
+        # Default simplification of summation.
+        self.sum_simplifiers = {
+            1: [lambda expr: eval_sum_symbolic(
+                expr.args[0].simplify(), expr.args[1]
+            )]
+        }
+
     @property
     def ctx(self):
         """The Spark context of the drudge.
@@ -2422,31 +2440,6 @@ class Drudge:
             )
 
         return terms
-
-    #
-    # Other tunable behaviour
-    #
-
-    @staticmethod
-    def simplify_amp_sum(expr: Sum):
-        """The default callable to simplify summations within amplitudes.
-
-        This is going to be retrieved as an attribute of the drudge object, and
-        the result should be a callable (serializable for parallel execution)
-        object capable of attempting to simplify summations within amplitudes,
-        which will be used as the default callable in
-        :py:meth:`Tensor.simplify_sums`.
-
-        By default, only the SymPy ``eval_sum_symbolic`` function will be called
-        with simplified summand when there is a single summation.  It might
-        later be updated to higher-level functions when SymPy bug #13979 is
-        resolved.
-        """
-        assert isinstance(expr, Sum)
-        if len(expr.args) == 2:
-            return eval_sum_symbolic(expr.args[0].simplify(), expr.args[1])
-        else:
-            return expr
 
     #
     # Tensor creation
