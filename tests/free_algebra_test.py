@@ -510,6 +510,28 @@ def test_tensor_can_be_canonicalized_with_ops(free_alg):
     assert res == 0
 
 
+def test_canonicalization_connected_summations(free_alg):
+    """Test canonicalization where the summations has relationships."""
+    dr = free_alg
+    p = dr.names
+    i, j, k, l = p.R_dumms[:4]
+    a, b = symbols('a b')
+    t = IndexedBase('t')
+
+    tensor = dr.sum(
+        (i, p.R), (j, p.R[0, i]), (k, p.R[0, a]), (l, p.R[0, b]),
+        t[i] * t[j] * t[k] * t[l]
+    )
+    res = tensor.simplify()
+    sums = res.local_terms[0].sums
+
+    # The desired order for the summations.
+    assert not sums[0][1].bounded
+    assert sums[1][1].upper == a
+    assert sums[2][1].upper == b
+    assert sums[3][1].upper == sums[0][0]
+
+
 def test_tensor_math_ops(free_alg):
     """Test tensor math operations.
 
