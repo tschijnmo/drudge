@@ -185,13 +185,31 @@ def _build_eldag(sums, factors, symms):
     eldag = Eldag()
     factor_idxes = []
 
+    # Simple treatment of edges among sums: a sum has an edge to another sum if
+    # and only if the dummy of the other sum appears in its bounds.
+    #
+    # In this way, for most problem with no relation among the summations,
+    # basically no overhead is introduced.  And it is generally sufficient for
+    # simple relationships among the summations.
+    #
+    # TODO: Better treatment of dummies in summation bounds.
+
+    idx_of_dummies = {v[0]: i for i, v in enumerate(sums)}
+
     # No need to touch edges for sums.
-    for i in sums:
+    for _, i in sums:
+        if i.bounded:
+            symbs = i.lower.atoms(Symbol) | i.upper.atoms(Symbol)
+            edges = [
+                idx_of_dummies[j] for j in symbs if j in idx_of_dummies
+            ]
+        else:
+            edges = []
+
         # Use **label of ranges only** for lex comparison.  The bounds could
         # contain other dummies and may not serve as canonical labels.
         #
-        # TODO: Better treatment of dummies in summation bounds.
-        eldag.add_node([], None, (_SUM, i[1].label))
+        eldag.add_node(edges, None, (_SUM, i.label))
         continue
 
     # Real work, factors.
