@@ -98,4 +98,5 @@ ENV/
 /tests/test-env.sh
 /tests/scratch
 /docs/examples/swap
+.pytest_cache/
 
