@@ -1420,21 +1420,31 @@ Sum_expander = typing.Callable[[Symbol], typing.Iterable[typing.Tuple[
 ]]]
 
 
-def expand_sums_term(term: Term, range_: Range, expander: Sum_expander):
+def expand_sums_term(
+        term: Term, range_: Range, expander: Sum_expander,
+        exts=None, conv_accs=None
+):
     """Expand the given summations in the term.
     """
 
     res_sums = []
+
+    # Pairs, symbol/if a summation dummy.
     dumms_to_expand = []
+    if exts:
+        dumms_to_expand.extend((i, False) for i in exts)
+
     for i in term.sums:
         if i[1] == range_:
-            dumms_to_expand.append(i[0])
+            dumms_to_expand.append((i[0], True))
         else:
             res_sums.append(i)
         continue
 
     repl = {}
-    for dumm in dumms_to_expand:
+    first_new = {}
+    for dumm, is_sum in dumms_to_expand:
+        first_new_added = False
         for new_dumm, new_range, prev_form in expander(dumm):
             # Cleanse results from user callback.
             if not isinstance(new_dumm, Symbol):
@@ -1450,10 +1460,23 @@ def expand_sums_term(term: Term, range_: Range, expander: Sum_expander):
                     'Invalid previous form of the new summation dummy',
                     prev_form
                 )
-            res_sums.append((new_dumm, new_range))
+
+            if is_sum:
+                res_sums.append((new_dumm, new_range))
+
             repl[prev_form] = new_dumm
+            if not first_new_added:
+                first_new[dumm] = new_dumm
+                first_new_added = True
             continue
         continue
+
+    if conv_accs:
+        for k, v in first_new.items():
+            for i in conv_accs:
+                repl[i(k)] = i(v)
+                continue
+            continue
 
     res_term = term.map(
         lambda x: x.xreplace(repl), sums=tuple(res_sums), skip_ranges=False
@@ -1470,6 +1493,7 @@ def expand_sums_term(term: Term, range_: Range, expander: Sum_expander):
         return expr
 
     res_term.map(check_expr)  # Discard result.
+
     return res_term
 
 

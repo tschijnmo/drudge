@@ -15,7 +15,7 @@ from collections.abc import Iterable, Sequence
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
 from sympy import (
-    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Sum, Matrix
+    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Matrix
 )
 from sympy.concrete.summations import eval_sum_symbolic
 
@@ -1367,7 +1367,10 @@ class Tensor:
             self._drudge.ctx.parallelize(new_terms)
         )), new_defs
 
-    def expand_sums(self, range_: Range, expander: Sum_expander):
+    def expand_sums(
+            self, range_: Range, expander: Sum_expander,
+            exts=None, conv_accs=None
+    ):
         """Expand some symbolic summations.
 
         The basic structure of drudge always treat summation dummies as
@@ -1397,9 +1400,20 @@ class Tensor:
             over the expanded range should no longer be present in the
             expression, or an error will be raised.
 
+        exts
+            Free symbols that are also going to be decomposed in the same way as
+            the summations over the given range.
+
+        conv_accs
+            When it is set to an iterable of accessors, all their access of the
+            original dummies will be substituted by the same accessor applied to
+            the first dummy from the expander.  This can be helpful for cases
+            where we just strip one (some) component(s) from a symbolic bundle.
+
         """
         return self.map(functools.partial(
-            expand_sums_term, range_=range_, expander=expander
+            expand_sums_term, range_=range_, expander=expander,
+            exts=exts, conv_accs=conv_accs
         ))
 
     #
