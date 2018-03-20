@@ -148,7 +148,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         # Convenient names for quantum number access functions inside drudge
         # scripts.
         self.set_name(
-            j_=JOf, tilde_=TildeOf, m_=MOf, n_=NOf, l_=LOf, pi_=PiOf
+            n_=NOf, NOf=NOf, l_=LOf, LOf=LOf, j_=JOf, JOf=JOf,
+            tilde_=TildeOf, TildeOf=TildeOf, m_=MOf, MOf=MOf,
+            pi_=PiOf, PiOf=PiOf
         )
 
         self.coll_j_range = coll_j_range
