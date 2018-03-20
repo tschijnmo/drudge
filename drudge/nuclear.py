@@ -1,6 +1,5 @@
 """Utilities for nuclear problems."""
 
-import functools
 import re
 
 from sympy import (
@@ -108,8 +107,21 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 
     Different from the base :py:class:`BogoliubovDrudge` class, which
     concentrates on the transformation and the commutation rules, here we have
-    more utility around the specifics about the nuclear Hamiltonian, especially
-    the spherical symmetry.
+    more utilities around the specifics about the nuclear Hamiltonian,
+    especially the spherical symmetry.  Notably, the single particle states are
+    assumed to be labels by quantum numbers according to the Baranger scheme
+    [Suhonen]_, where each single-particle state can be labeled by the orbit
+    angular momentum :math:`l`, the total angular momentum :math:`j`, the
+    :math:`z`-component of the total angular momentum :math:`m`, and the
+    principal quantum number :math:`n`.  The bundle of all the quantum numbers
+    can be given as a single symbolic quantum number over a symbolic range, as
+    in the base class, while the bundle of quantum numbers other than :math:`m`
+    can also be given by tilde symbols over the corresponding tilde range.
+
+    With this Baranger scheme, some utilities for performing angular momentum
+    coupling for interaction tensors are also provided.
+
+    .. [Suhonen] J Suhonen, From Nucleons to Nucleus, Springer 2007.
 
     .. warning::
 
@@ -170,101 +182,33 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         }
         self.set_tensor_method('simplify_cg', self.simplify_cg)
 
-        # For angular momentum decoupling.
-        #
-        # Here is a dictionary giving a callable for all implemented
-        # decoupling.
-        self._angdec_funcs = {}
+        # For angular momentum coupling.
+        self.set_tensor_method('do_amc', self.do_amc)
 
-        # Cases with total order of 4.
-        qp_dumms = self.qp_dumms
-        cj = coll_j_dumms[0]
-        cm = coll_m_dumms[0]
-        jkt1, jkt2, jkt3, jkt4 = [JOf(TildeOf(i)) for i in qp_dumms[:4]]
-        mk1, mk2, mk3, mk4 = [MOf(i) for i in qp_dumms[:4]]
-        order_4_cases = {
-            (0, 4): (_NEG_UNITY ** (jkt1 + jkt2 + cj + cm), {0, 1}),
-            (1, 3): (_NEG_UNITY ** (jkt2 - mk2 + cj), {1}),
-            (2, 2): (_UNITY, {}),
-            (3, 1): (_NEG_UNITY ** (jkt3 - mk3 + cj), {2}),
-            (4, 0): (_NEG_UNITY ** (jkt3 + jkt4 + cj + cm), {2, 3}),
-        }
-        for k, v in order_4_cases.items():
-            self._angdec_funcs[k] = functools.partial(
-                self._form_angdec_def_4, v[0], v[1]
-            )
-            continue
+    #
+    # Angular momentum coupling utilities
+    #
 
-        order_2_cases = {
-            (0, 2): KroneckerDelta(mk1, -mk2) * _NEG_UNITY ** (jkt2 + mk2),
-            (1, 1): KroneckerDelta(mk1, mk2) * _UNITY,
-            (2, 0): KroneckerDelta(mk1, -mk2) * _NEG_UNITY ** (jkt1 - mk1)
-        }
-        for k, v in order_2_cases.items():
-            self._angdec_funcs[k] = functools.partial(
-                self._form_angdec_def_2, v
-            )
-            continue
-        self.set_tensor_method('do_angdec', self.do_angdec)
-
-    def _form_angdec_def_4(self, phase, neg_ms, base, res_base):
-        """Form the angular momentum decoupled form for total order of 4.
-
-        The phase is the over all phase, and the negative m's in the CG
-        coefficients can be given in a container, as **zero-based** index.
-        """
-
-        ks = self.qp_dumms[:4]
-        k1, k2, k3, k4 = ks
-        kts = [TildeOf(i) for i in ks]
-        kt1, kt2, kt3, kt4 = kts
-        jkt1, jkt2, jkt3, jkt4 = [JOf(i) for i in kts]
-        # Here the m's already includes the phase.
-        mk1, mk2, mk3, mk4 = [
-            MOf(ks[i]) * (-1 if i in neg_ms else 1)
-            for i in range(4)
-        ]
-        cj = self.coll_j_dumms[0]
-        cm = self.coll_m_dumms[0]
-
-        res = self.define(base[k1, k2, k3, k4], self.sum(
-            (cj, self.coll_j_range), (cm, self.coll_m_range[-cj, cj + 1]),
-            phase * res_base[cj, kt1, kt2, kt3, kt4] *
-            CG(jkt1, mk1, jkt2, mk2, cj, cm) *
-            CG(jkt3, mk3, jkt4, mk4, cj, cm)
-        ))
-        return res
-
-    def _form_angdec_def_2(self, phase, base, res_base):
-        """Form the angular momentum decoupled form for total order of 2.
-
-        The phase should include any phase factor except the deltas of pi, J, t
-        and the dense tensor indexing.
-        """
-
-        ks = self.qp_dumms[:2]
-        k1, k2 = ks
-        kts = [TildeOf(i) for i in ks]
-        kt1, kt2 = kts
-
-        res = self.define(base[k1, k2], self.sum(
-            phase * KroneckerDelta(PiOf(kt1), PiOf(kt2))
-            * KroneckerDelta(JOf(kt1), JOf(kt2))
-            * KroneckerDelta(TOf(kt1), TOf(kt2))
-            * res_base[LOf(kt1), JOf(kt1), TOf(kt1), NOf(kt1), NOf(kt2)]
-        ))
-        return res
-
-    def form_angdec_def(
+    def form_amc_def(
             self, base: IndexedBase, cr_order: int, an_order: int,
             res_base: IndexedBase = None
     ):
-        """Form the tensor definition for angular momentum decoupled form.
+        """Form the tensor definition for angular momentum coupled form.
 
         Here for creation and annihilation orders which have been implemented, a
-        :py:class:`TensorDef` object will be created as the definition for the
-        angular momentum decoupling of the given tensor.  The resulted
-        definitions can be used with :py:meth:`do_angdec` method.
+        :py:class:`TensorDef` object will be created for the definition of the
+        original tensor in terms of the angular momentum coupled form of the
+        given tensor.
+
+        The resulted definitions are all written in terms of component accessor
+        functions on the original bundled symbolic quantum numbers.  When atomic
+        symbols are desired for the :math:`m` component, with the rest grouped
+        into a tilde symbol, the :py:meth:`do_amc` method can be used together
+        with the current method.
+
+        Currently, only coupling for 1- and 2-body tensors are supported.
+
+        TODO: Add description of the form of coupling and make it more tunable.
 
         Parameters
         ----------
@@ -285,15 +229,107 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         """
 
         res_base = base if res_base is None else res_base
-        key = (cr_order, an_order)
-        if key not in self._angdec_funcs:
-            raise NotImplementedError(
-                'Invalid creation/annihilation order to decouple', key
-            )
-        return self._angdec_funcs[key](base, res_base)
+        total_order = cr_order + an_order
 
-    def do_angdec(self, tensor: Tensor, defs):
+        if total_order == 2:
+            return self._form_amc_def_1(base, cr_order, an_order, res_base)
+        elif total_order == 4:
+            return self._form_amc_def_2(base, cr_order, an_order, res_base)
+        else:
+            raise NotImplementedError(
+                'AMC has not been implemented for total order', total_order
+            )
+
+    def _form_amc_def_1(self, base, cr_order, an_order, res_base):
+        """Form AMC for 1-body tensors.
+        """
+        assert cr_order + an_order == 2
+
+        k1, k2 = self.qp_dumms[:2]
+        mk1, mk2 = MOf(k1), MOf(k2)
+
+        phase = _UNITY
+        if cr_order == 2:
+            phase = _NEG_UNITY ** (JOf(k2) + mk2),
+            mk2 = -mk2
+        elif cr_order == 1:
+            pass
+        elif cr_order == 0:
+            phase = _NEG_UNITY ** (JOf(k1) - mk1)
+            mk1 = -mk1
+        else:
+            assert 0
+
+        res = self.define(base[k1, k2], self.sum(
+            phase * KroneckerDelta(PiOf(k1), PiOf(k2))
+            * KroneckerDelta(JOf(k1), JOf(k2))
+            * KroneckerDelta(TOf(k1), TOf(k2))
+            * KroneckerDelta(mk1, mk2)
+            * res_base[LOf(k1), JOf(k1), TOf(k1), NOf(k1), NOf(k2)]
+        ))
+        return res
+
+    def _form_amc_def_2(self, base, cr_order, an_order, res_base):
+        """Form AMC for 2-body tensors.
+        """
+        assert cr_order + an_order == 4
+
+        ks = self.qp_dumms[:4]
+        k1, k2, k3, k4 = ks
+        mk1, mk2, mk3, mk4 = [MOf(i) for i in ks]
+        jk1, jk2, jk3, jk4 = [JOf(i) for i in ks]
+        cj = self.coll_j_dumms[0]
+        cm = self.coll_m_dumms[0]
+
+        phase = _UNITY
+        if cr_order == 0:
+            phase = _NEG_UNITY ** (jk1 + jk2 + cj + cm)
+            mk1 = -mk1
+            mk2 = -mk2
+        elif cr_order == 1:
+            phase = _NEG_UNITY ** (jk2 - mk2 + cj)
+            mk2 = -mk2
+        elif cr_order == 2:
+            pass
+        elif cr_order == 3:
+            phase = _NEG_UNITY ** (jk3 - mk3 + cj)
+            mk3 = -mk3
+        elif cr_order == 4:
+            phase = _NEG_UNITY ** (jk3 + jk4 + cj + cm)
+            mk3 = -mk3
+            mk4 = -mk4
+
+        res = self.define(base[k1, k2, k3, k4], self.sum(
+            (cj, self.coll_j_range), (cm, self.coll_m_range[-cj, cj + 1]),
+            phase
+            * res_base[cj, TildeOf(k1), TildeOf(k2), TildeOf(k3), TildeOf(k4)]
+            * CG(jk1, mk1, jk2, mk2, cj, cm)
+            * CG(jk3, mk3, jk4, mk4, cj, cm)
+        ))
+        return res
+
+    def do_amc(self, tensor: Tensor, defs, exts=None):
         """Expand quasi-particle summation into the tilde and m parts.
+
+        This is a small convenience utility for angular momentum coupling of
+        tensors inside :py:class:`Tensor` objects.  The given definitions will
+        all be substituted in, and the original symbols for bundled quantum
+        numbers will be separated into the tilde symbols and the atomic
+        :math:`m` symbols.
+
+        Parameters
+        ----------
+
+        tensor
+            The tensor to be substituted.
+
+        defs
+            The definitions to be substituted in, generally from
+            :py:meth:`form_amc_def` method.
+
+        exts
+            External symbols that is also going to be decomposed.
+
         """
 
         substed = tensor.subst_all(defs)
@@ -313,7 +349,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
                 (form_m(dumm), m_range[-jtilde, jtilde + 1], MOf(dumm))
             ]
 
-        return substed.expand_sums(self.qp_range, expand)
+        return substed.expand_sums(
+            self.qp_range, expand, exts=exts, conv_accs=[NOf, LOf, JOf, TOf]
+        )
 
     def simplify_cg(self, tensor: Tensor):
         """Simplify CG coefficients in the expression.
