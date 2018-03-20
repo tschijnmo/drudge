@@ -1,10 +1,11 @@
 """Utilities for nuclear problems."""
 
+import itertools
 import re
 
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt
+    sqrt, factor
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -184,8 +185,17 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         }
         self.set_tensor_method('simplify_cg', self.simplify_cg)
 
+        # All expressions for J/j, for merging of simple terms with factors in
+        # J/j-hat style.
+        self._j_exprs = frozenset(itertools.chain(self.coll_j_dumms, (
+            JOf(i) for i in self.tilde_dumms
+        )))
+
         # For angular momentum coupling.
         self.set_tensor_method('do_amc', self.do_amc)
+
+        self.set_tensor_method('deep_simplify', self.deep_simplify)
+        self.set_tensor_method('merge_j', self.merge_j)
 
     #
     # Angular momentum coupling utilities
@@ -377,6 +387,29 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         tensor = tensor.simplify_sums()
 
         return tensor
+
+    def merge_j(self, tensor: Tensor):
+        """Merge terms differing only in J/j factors.
+
+        Frequently, from simplification of symbolic angular momentum quantities,
+        we get factors like :math:`(2 j + 1)`.  Such factors could be expanded
+        during the simplification, which may make the result longer and less
+        clear with its physical meaning.  By this utility, such terms differing
+        only by J/j factors will be attempted to be merged.
+        """
+        return tensor.merge(consts=self._j_exprs).map2amps(factor)
+
+    def deep_simplify(self, tensor: Tensor):
+        """Simplify the given tensor deeply.
+
+        This driver function attempts to perform simplifications relevant to
+        nuclear problems deeply.  It can be used in cases where all
+        simplification attempts would like to be used.  When only some
+        simplifications are needed, the individual simplification should better
+        be invoked for better performance.
+        """
+
+        return tensor.simplify().simplify_cg().simplify().merge_j()
 
 
 #
