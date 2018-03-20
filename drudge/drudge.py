@@ -15,7 +15,7 @@ from collections.abc import Iterable, Sequence
 from IPython.display import Math, display
 from pyspark import RDD, SparkContext
 from sympy import (
-    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Matrix
+    IndexedBase, Symbol, Indexed, Wild, symbols, sympify, Expr, Add, Matrix, Mul
 )
 from sympy.concrete.summations import eval_sum_symbolic
 
@@ -3533,13 +3533,26 @@ def _decompose_term(term, specials):
     sums = tuple(
         (dumm, range_.args) for dumm, range_ in term.sums
     )
+    amp = term.amp
 
     if specials is None:
-        coeff = term.amp
+        coeff = amp
         factor = 1
     else:
-        factors, coeff = term.get_amp_factors(specials)
-        factor = prod_(factors)
+        factor = 1
+        coeff = 1
+        all_factors = amp.args if isinstance(amp, Mul) else (amp,)
+        for i in all_factors:
+            symbs = i.atoms(Symbol)
+            if len(symbs) == 0:
+                coeff *= i
+            elif isinstance(i, Indexed) or i in specials or any(
+                    j in specials for j in symbs
+            ):
+                factor *= i
+            else:
+                coeff *= i
+            continue
     return (
         (sums, term.vecs, factor),
         coeff
