@@ -2813,7 +2813,7 @@ class Drudge:
 
     def format_latex(
             self, inp, sep_lines=False, align_terms=False, proc=None,
-            no_sum=False, scalar_mul=''
+            no_sum=False, bounds=False, scalar_mul=''
     ):
         r"""Get the LaTeX form of a given tensor or tensor definition.
 
@@ -2853,6 +2853,11 @@ class Drudge:
             cases where a convention, like the Einstein's, exists for the
             summations.
 
+        bounds : bool
+
+            If the bounds of summations should be printed when they are
+            explicitly present.
+
         scalar_mul : str
 
             The text for scalar multiplication.  By default, scalar
@@ -2883,7 +2888,9 @@ class Drudge:
 
         terms = []
         for i, v in enumerate(inp_terms):
-            term = self._latex_term(v, no_sum=no_sum, scalar_mul=scalar_mul)
+            term = self._latex_term(
+                v, no_sum=no_sum, bounds=bounds, scalar_mul=scalar_mul
+            )
 
             if proc is not None:
                 term = proc(term, term=v, idx=i)
@@ -2899,7 +2906,7 @@ class Drudge:
 
         return prefix + term_sep.join(terms)
 
-    def _latex_term(self, term, no_sum=False, scalar_mul=''):
+    def _latex_term(self, term, no_sum=False, bounds=False, scalar_mul=''):
         """Format a term into LaTeX form.
 
         This method does not generally need to be overridden.
@@ -2957,9 +2964,16 @@ class Drudge:
             amp_parts.append(scalar_mul)
 
         if not no_sum:
-            parts.extend(r'\sum_{{{} \in {}}}'.format(
-                self._latex_sympy(i), j.label
-            ) for i, j in term.sums)
+            for i, j in term.sums:
+                dumm = self._latex_sympy(i)
+                if bounds and j.bounded:
+                    form = r'\sum_{{{} = {}}}^{{{}}}'.format(
+                        dumm, self._latex_sympy(j.lower),
+                        self._latex_sympy(j.upper - 1)  # Math notation.
+                    )
+                else:
+                    form = r'\sum_{{{} \in {}}}'.format(dumm, j.label)
+                parts.append(form)
 
         parts.append(' '.join(amp_parts))
 
