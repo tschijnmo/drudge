@@ -856,7 +856,7 @@ class Term(ATerms):
         if dummbegs is None:
             dummbegs = {}
 
-        new_dumms = []
+        new_sums = []
         substs = {}
         for dumm_i, range_i in sums:
 
@@ -882,18 +882,13 @@ class Term(ATerms):
                 else:
                     continue
 
-            new_dumms.append(new_dumm)
+            new_sums.append((new_dumm, range_i))
             substs[dumm_i] = new_dumm
             dummbegs[range_i] = new_beg
 
             continue
 
-        new_sums = tuple(
-            (i, j[1].map(lambda x: x.xreplace(substs)))
-            for i, j in zip(new_dumms, sums)
-        )
-
-        return new_sums, substs, dummbegs
+        return tuple(new_sums), substs, dummbegs
 
     #
     # Amplitude simplification
