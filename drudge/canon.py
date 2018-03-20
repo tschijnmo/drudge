@@ -198,18 +198,28 @@ def _build_eldag(sums, factors, symms):
 
     # No need to touch edges for sums.
     for _, i in sums:
+        edges = []
+        free_var_keys = []  # As part of the colour.
+        with_dummy = 0
         if i.bounded:
+            bounded = 1
             symbs = i.lower.atoms(Symbol) | i.upper.atoms(Symbol)
-            edges = [
-                idx_of_dummies[j] for j in symbs if j in idx_of_dummies
-            ]
+            for j in symbs:
+                if j in idx_of_dummies:
+                    with_dummy = 1
+                    edges.append(idx_of_dummies[j])
+                else:
+                    free_var_keys.append(sympy_key(j))
         else:
+            bounded = 0
             edges = []
 
-        # Use **label of ranges only** for lex comparison.  The bounds could
-        # contain other dummies and may not serve as canonical labels.
-        #
-        eldag.add_node(edges, None, (_SUM, i.label))
+        free_var_keys.sort()
+        # Unbounded comes before bounded, those without dummy involvement comes
+        # before those with.
+        eldag.add_node(edges, None, (
+            _SUM, i.label, bounded, with_dummy, free_var_keys
+        ))
         continue
 
     # Real work, factors.
