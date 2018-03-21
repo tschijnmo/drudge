@@ -1983,7 +1983,7 @@ class Drudge:
         self._tensor_methods = {}
 
         self._drs_specials = types.SimpleNamespace()
-        self._drs_specials.S = DrsSymbol
+        self._drs_specials.S = functools.partial(DrsSymbol, self)
         self._drs_specials.sum_ = sum
         self._drs_specials.DRUDGE = self
 
