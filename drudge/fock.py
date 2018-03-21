@@ -1116,7 +1116,7 @@ class BogoliubovDrudge(GenMBDrudge):
 
     def __init__(
             self, ctx, p_range=Range('L'), p_dumms=DEFAULT_P_DUMMS,
-            qp_range=Range('Q'), qp_dumms=DEFAULT_QP_DUMMS,
+            qp_range=Range('Q', 0, Symbol('N')), qp_dumms=DEFAULT_QP_DUMMS,
             u_base=IndexedBase('u'), v_base=IndexedBase('v'),
             one_body=IndexedBase('epsilon'), two_body=IndexedBase('vbar'),
             dbbar=True, qp_op_label=r'\beta', ham_me_format='H^{{{}{}}}',

@@ -140,7 +140,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             coll_m_dumms=tuple(
                 Symbol('M{}'.format(i), integer=True) for i in range(1, 30)
             ),
-            tilde_range=Range(r'\tilde{Q}'), form_tilde=form_tilde,
+            tilde_range=Range(r'\tilde{Q}', 0, Symbol('Ntilde')),
+            form_tilde=form_tilde,
             m_range=Range('m'), form_m=form_m, **kwargs
     ):
         """Initialize the drudge object."""
