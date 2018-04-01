@@ -11,7 +11,7 @@ import warnings
 from collections.abc import Iterable, Mapping, Callable, Sequence
 
 from sympy import (
-    sympify, Symbol, KroneckerDelta, Eq, solveset, S, Integer, Add, Mul,
+    sympify, Symbol, KroneckerDelta, Eq, solveset, S, Integer, Add, Mul, Number,
     Indexed, IndexedBase, Expr, Basic, Pow, Wild, conjugate, Sum, Piecewise,
     Intersection, expand_power_base, expand_power_exp
 )
@@ -1760,6 +1760,8 @@ def simplify_deltas_in_expr(sums_dict, amp, resolvers):
         _proc_delta_in_amp, sums_dict, resolvers, substs
     )))
 
+    # Attempt some simple simplifications on simple unresolved deltas.
+    new_amp = _try_simpl_unresolved_deltas(new_amp)
     return new_amp, substs
 
 
@@ -1909,6 +1911,85 @@ def _proc_delta_in_amp(sums_dict, resolvers, substs, *args):
     )
 
     return new_amp
+
+
+def _try_simpl_unresolved_deltas(amp: Expr):
+    """Try some simplification on unresolved deltas.
+
+    This function aims to normalize the usage of free indices in the amplitude
+    when a delta factor is present to require their equality.
+
+    TODO: Unify the treatment here and the treatment for summation dummies.
+    """
+
+    if not isinstance(amp, Mul):
+        return amp
+
+    substs = {}
+    deltas = _UNITY
+    others = _UNITY
+    for i in amp.args:
+        if isinstance(i, KroneckerDelta):
+            arg1, arg2 = i.args
+
+            # Here, only the simplest case is treated, a * x = b * y, with a, b
+            # being numbers and x, y being atomic symbols.  One of the symbols
+            # can be missing.  But not both, since SymPy will automatically
+            # resolve a delta between two numbers.
+
+            factor1, symb1 = _parse_factor_symb(arg1)
+            factor2, symb2 = _parse_factor_symb(arg2)
+            if factor1 is not None and factor2 is not None:
+                if symb1 is None:
+                    assert symb2 is not None
+                    arg1 = symb2
+                    arg2 = factor1 / factor2
+                elif symb2 is None:
+                    assert symb1 is not None
+                    arg1 = symb1
+                    arg2 = factor2 / factor1
+                elif sympy_key(symb1) < sympy_key(symb2):
+                    arg1 = symb2
+                    arg2 = factor1 * symb1 / factor2
+                else:
+                    arg1 = symb1
+                    arg2 = factor2 * symb2 / factor1
+                substs[arg1] = arg2
+            deltas *= KroneckerDelta(arg1, arg2)
+        else:
+            others *= i
+
+    return deltas * others.xreplace(substs)
+
+
+def _parse_factor_symb(expr: Expr):
+    """Parse a number times a symbol.
+
+    When the expression is of that form, that number and the only symbol is
+    returned.  For plain numbers, the symbol part is none.  For completely
+    non-compliant expressions, a pair of none is going to be returned.
+    """
+
+    if isinstance(expr, Symbol):
+        return _UNITY, expr
+    elif isinstance(expr, Number):
+        return expr, None
+    elif isinstance(expr, Mul):
+        factor = _UNITY
+        symb = None
+        for i in expr.args:
+            if isinstance(i, Number):
+                factor *= i
+            elif isinstance(i, Symbol):
+                if symb is None:
+                    symb = i
+                else:
+                    return None, None
+            else:
+                return None, None
+        return factor, symb
+    else:
+        return None, None
 
 
 #
