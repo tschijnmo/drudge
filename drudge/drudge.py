@@ -1669,11 +1669,6 @@ class TensorDef(Tensor):
 
     """
 
-    __slots__ = [
-        '_base',
-        '_exts',
-    ]
-
     def __init__(self, base, exts, tensor: Tensor):
         """Initialize the tensor definition.
 
