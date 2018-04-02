@@ -186,12 +186,12 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             CG=CG, Wigner3j=Wigner3j, Wigner6j=Wigner6j, Wigner9j=Wigner9j
         )
 
-        self._cg_sum_simplifiers = {
+        self._am_sum_simplifiers = {
             # TODO: Add more simplifications here.
-            2: [_simpl_varsh_872_4, _simpl_varsh_872_5],
-            5: [_simpl_varsh_911_8]
+            2: [_sum_2_3j_to_delta],
+            5: [_sum_4_3j_to_6j]
         }
-        self.set_tensor_method('simplify_cg', self.simplify_cg)
+        self.set_tensor_method('simplify_am', self.simplify_am)
 
         # All expressions for J/j, for merging of simple terms with factors in
         # J/j-hat style.
@@ -373,20 +373,25 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             self.qp_range, expand, exts=exts, conv_accs=[NOf, LOf, JOf, TOf]
         )
 
-    def simplify_cg(self, tensor: Tensor):
-        """Simplify CG coefficients in the expression.
+    def simplify_am(self, tensor: Tensor):
+        """Simplify the tensor for quantities related to angular momentum.
 
-        Here we specially concentrate on the simplification involving
-        Clebosch-Gordan coefficients.  Since this functionality is put into a
-        separate tensor function, here we need to invoke it explicitly, since it
-        will not be called automatically during the default simplification for
-        performance reason.
+        Here we specially concentrate on the simplification involving scalar
+        quantities related to angular momentum, like the Clebsch-Gordan
+        coefficients.  For such simplifications, we need to invoke it explicitly
+        or by the :py:meth:`deep_simplify` driver function, since it will not be
+        called automatically during the default simplification for performance
+        reasons.
+
+        Note that this function will rewrite all CG coefficients in terms of
+        Wigner 3j symbols even if no simplification comes from this.
+
         """
 
-        tensor = tensor.map2amps(_canon_cg)
+        tensor = tensor.map2amps(_rewrite_cg)
 
         # Initial simplification of some summations.
-        tensor = tensor.simplify_sums(simplifiers=self._cg_sum_simplifiers)
+        tensor = tensor.simplify_sums(simplifiers=self._am_sum_simplifiers)
 
         # Deltas could come from some simplification rules.
         tensor = tensor.simplify_deltas()
@@ -417,7 +422,7 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         be invoked for better performance.
         """
 
-        return tensor.simplify().simplify_cg().simplify().merge_j()
+        return tensor.simplify().simplify_am().simplify().merge_j()
 
 
 #
