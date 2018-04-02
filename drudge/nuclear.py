@@ -1,11 +1,13 @@
 """Utilities for nuclear problems."""
 
+import functools
 import itertools
 import re
+import typing
 
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt, factor
+    sqrt, factor, Mul, Expr
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -13,6 +15,11 @@ from .drudge import Tensor
 from .fock import BogoliubovDrudge
 from .term import Range
 from .utils import sympy_key
+
+# Utility constants.
+
+_UNITY = Integer(1)
+_NEG_UNITY = Integer(-1)
 
 
 class _QNOf(Function):
@@ -417,6 +424,496 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 # Angular momentum quantities simplification.
 #
 
+def _parse_sum(expr: Sum):
+    """Parse a SymPy summation into the summand and the summations.
+
+    The summations are given as a hash set indexed by the dummies.
+    """
+    assert isinstance(expr, Sum)
+    args = expr.args
+    return args[0], {
+        i: (j, k) for i, j, k in args[1:]
+    }
+
+
+class _UnexpectedForm(ValueError):
+    """Exceptions for unexpected mathematical forms encountered.
+
+    This exception can be raised during the matching of a mathematical
+    expression against a pattern when it is found that the expression cannot
+    possibly have a compliant form.  With this, each simplification attempt
+    can have a central handling for noncompliance.
+
+    """
+    pass
+
+
+def _fail(raise_):
+    """Mark the failure of a pattern matching attempt.
+
+    This utility can be used in functions which can be tuned to raise exception
+    or return a None.  Note that it must be used together with return.
+    """
+    if raise_:
+        raise _UnexpectedForm()
+    return None
+
+
+def _rewrite_cg(expr):
+    """Rewrite CG coefficients in terms of the Wigner 3j symbols.
+    """
+    j1, m1, j2, m2, j3, m3 = symbols(
+        'j1 m1 j2 m2 j3 m3', cls=Wild
+    )
+    return expr.replace(
+        CG(j1, m1, j2, m2, j3, m3),
+        (-1) ** (-j1 + j2 - m3) * sqrt(2 * j3 + 1) * Wigner3j(
+            j1, m1, j2, m2, j3, -m3
+        )
+    )
+
+
+#
+# Some utilities for J/M pairs and Wigner symbols for angular momentum.  Note
+# that here a bare m symbol is defined to be a symbol appearing as the m quantum
+# number that is either an atomic symbol or a negation.  A bare m symbol is
+# called an bare m dummy when it is also summed.
+#
+# Due to their presence in a lot of simplifications, here some work is given for
+# their special treatment.
+#
+
+class _JM:
+    """A pair of j and m quantum numbers.
+
+    Attributes
+    ----------
+
+    j
+        The j part.
+
+    m
+        The m part.
+
+    """
+
+    __slots__ = [
+        'j',
+        '_m',
+        '_m_symb',
+        '_m_phase'
+    ]
+
+    def __init__(self, j: Expr, m: Expr):
+        """Initialize the pair."""
+        self.j = j
+
+        # For linters.
+        self._m = None
+        self._m_symb = None
+        self._m_phase = None
+
+        self.m = m
+
+    @property
+    def m(self):
+        """The m part."""
+        return self._m
+
+    @m.setter
+    def m(self, new_val):
+        """Set new value for m."""
+
+        self._m = new_val
+        self._m_symb = None
+        self._m_phase = None
+
+        m_symbs = new_val.atoms(Symbol)
+        if len(m_symbs) == 1:
+            m_symb = m_symbs.pop()
+            quotient = (new_val / m_symb).simplify()
+            if quotient == 1 or quotient == -1:
+                self._m_symb = m_symb
+                self._m_phase = quotient
+
+    @property
+    def m_symb(self):
+        """The only symbol in the m part when it is a bare symbol.
+        """
+        return self._m_symb
+
+    @property
+    def m_phase(self):
+        """The phase for the bare symbol in the m part, when applicable.
+        """
+        return self._m_phase
+
+    def inv_m(self):
+        """Invert the sign of the m part.
+        """
+        self.m = -self.m
+
+    def __repr__(self):
+        """Get a simple string form for debugging.
+        """
+        return '{!s}, {!s}'.format(self.j, self.m)
+
+
+class _Wigner3j:
+    """Wrapper for a Wigner 3j symbols for easy manipulation.
+
+    Parameters
+    ----------
+
+    expr
+        The original Wigner 3j symbol as a SymPy expression.
+
+    sums
+        A container having the dummies as keys for the summations.  It is None
+        by default, which disables the special treatment for m dummies.
+
+    uniq_m
+        If the bare m dummies are required to be unique within it.  When it is
+        set to true, the m dummies mapping gives the slot index directly,
+        otherwise it gives a set of indices.  If duplicated bare m dummies
+        appears when it is set to true, exception is raised.
+
+    Attributes
+    ----------
+
+    indices
+        The list of the six indices to the Wigner 3j symbol, as j/m pairs.
+
+    phase_decided
+        If the phase of the m symbols are decided.
+
+    """
+
+    __slots__ = [
+        'indices',
+        '_slot_decided',
+        'phase_decided',
+        '_uniq_m',
+        '_total_j',
+        '_m_dumms'
+    ]
+
+    def __init__(self, expr: Wigner3j, sums=None, uniq_m=True):
+        """Initialize the handler."""
+        assert isinstance(expr, Wigner3j)
+
+        args = expr.args
+        indices = [
+            _JM(args[i], args[i + 1]) for i in range(0, 6, 2)
+        ]
+        self.indices = indices
+        self._slot_decided = [False for _ in range(3)]
+        self.phase_decided = False
+
+        if sums is not None:
+            self._uniq_m = uniq_m
+            m_dumms = {}
+            self._m_dumms = m_dumms
+            for i, v in enumerate(indices):
+                m_symb = v.m_symb
+                if m_symb is None or m_symb not in sums:
+                    continue
+
+                if m_symb in m_dumms:
+                    if uniq_m:
+                        raise _UnexpectedForm()
+                    else:
+                        m_dumms[m_symb].add(i)
+                else:
+                    m_dumms[m_symb] = i if uniq_m else {i}
+                continue
+
+        # This does not change after the manipulations.
+        self._total_j = sum(i.j for i in indices)
+
+    @property
+    def m_dumms(self):
+        """The bare m dummies in this symbol.
+
+        A mapping from bare m dummies to the slot index for the j/m pair that it
+        appears at as a bare m symbol.
+        """
+        return self._m_dumms
+
+    def is_decided(self, slot_index):
+        """If the content for a slot has been decided.
+        """
+        return self._slot_decided[slot_index]
+
+    def decide(self, slot_index):
+        """Mark a slot index as decided.
+
+        Note that a slot can be marked as decided multiple times.
+        """
+        self._slot_decided[slot_index] = True
+
+    def swap(
+            self, src, dest, raise_src=False, raise_dest=False,
+            raise_pred=False
+    ) -> typing.Optional[Expr]:
+        """Try to swap index slots.
+
+        The source can be given either as an index or a predicate on _JM object.
+        When a predicate is given, there should be only one slot satisfying the
+        predicate.  The destination has to be given as an index.  After the
+        swapping, the destination slot will be automatically marked as decided.
+
+        For the action to be successful, both slots needs to be undecided.  The
+        ``try_`` arguments controls if _UnexpectedForm is to be raised or a
+        plain None is to be returned.  When the swapping is successful, the
+        phase for that swap is returned.
+
+        """
+
+        if not isinstance(src, int):
+            pred = src
+            src = None  # None for not found, False for duplicated.
+            for i, v in enumerate(self.indices):
+                if pred(v):
+                    src = i if src is None else False
+                else:
+                    continue
+            if src is None or src is False:
+                return _fail(raise_pred)
+
+        for i, j in [(src, raise_src), (dest, raise_dest)]:
+            if self.is_decided(i):
+                return _fail(j)
+
+        indices = self.indices
+        src_jm, dest_jm = indices[src], indices[dest]
+        # Core swapping.
+        indices[src], indices[dest] = dest_jm, src_jm
+        # Update bare m dummy mapping.
+        src_m, dest_m = src_jm.m_symb, dest_jm.m_symb
+        if src_m != dest_m:
+            # When src_m and dest_m are both None, no need for any treatment.
+            # Or when they are the same symbol, the set of appearances of that
+            # symbol does not need to be changed as well.
+            for m_symb, old_idx, new_idx in [
+                (src_m, src, dest),
+                (dest_m, dest, src)
+            ]:
+                if m_symb is None or m_symb not in self._m_dumms:
+                    continue
+                entry = self._m_dumms[m_symb]
+                if self._uniq_m:
+                    assert entry == old_idx
+                    self._m_dumms[m_symb] = new_idx
+                else:
+                    entry.remove(old_idx)  # Key error when not present.
+                    assert new_idx not in entry
+                    entry.add(new_idx)
+
+        self.decide(dest)
+        return -1 ** self._total_j
+
+    def inv_ms(self):
+        """Invert the sign of all m quantum numbers.
+        """
+        for i in self.indices:
+            i.inv_m()
+            continue
+
+        return -1 ** self._total_j
+
+    def __repr__(self):
+        """Form a string representation for easy debugging.
+        """
+        return '_Wigner3j({})'.format(', '.join([
+            repr(i) for i in self.indices
+        ]))
+
+
+def _check_m_contr(
+        factor1: _Wigner3j, factor2: _Wigner3j, normal, inv, raise_=True
+) -> typing.Optional[Expr]:
+    """Check if two Wigner 3j symbols contracts according to the given pattern.
+
+    A (normal) contraction is defined as a pair of slots in the two Wigner 3j
+    factors with equal j parts and equal bare m parts that are summed over -j to
+    j.  Or when the bare m parts are negation of each other, it will be called
+    inverted contractions.
+
+    Each normal/inverted contraction is given as a pair of slot indices.  Then
+    this function will attempt to permute the indices to the factors to arrange
+    them into the contraction pattern.  When it fails, a _UnexpectedForm will be
+    thrown if ``raise_`` is turned on, otherwise a none will be returned.  When
+    it succeeds, the phase factor that comes with the arrangement will be
+    returned.
+
+    .. warning::
+
+        Due to the naive handling of phases, usage of this function should
+        gradually expand the tested part of the contraction graph, rather than
+        starting with disconnected parts and them try to patch them together.
+
+    """
+
+    # Bare m dummies contracted between the two factors.
+    shared_dumms = factor1.m_dumms.keys() & factor2.m_dumms.keys()
+    if len(shared_dumms) != len(normal) + len(inv):
+        return _fail(raise_)
+
+    # Initial contraction checking.
+    for i in shared_dumms:
+        jm1 = factor1.indices[factor1.m_dumms[i]]
+        jm2 = factor2.indices[factor2.m_dumms[i]]
+        if jm1.j != jm2.j:
+            return _fail(raise_)
+        # TODO: Add summation range checking.
+
+    # Try two phases if possible.
+    check = functools.partial(
+        _check_m_contr_fixed_phase, factor1, factor2, normal, inv, shared_dumms
+    )
+    phase_undecided = [i for i in [factor1, factor2] if not i.phase_decided]
+    if len(phase_undecided) == 0:
+        res = check()
+    else:
+        res = check()
+        if res is None:
+            inv_phase = phase_undecided[0].inv_ms()
+            res = check()
+            if res is None:
+                # Try restore original phase.
+                phase_undecided[0].inv_ms()
+            else:
+                res *= inv_phase
+
+    if res is not None:
+        factor1.phase_decided = True
+        factor2.phase_decided = True
+        return res
+    else:
+        return _fail(raise_)
+
+
+def _check_m_contr_fixed_phase(
+        factor1, factor2, normal, inv, shared_dumms):
+    """Check the m contraction of two symbols with fixed phase.
+
+    """
+
+    factors = [factor1, factor2]
+    indices1 = factor1.indices
+    indices2 = factor2.indices
+
+    # Free dummies are dummies whose both appearance are on undecided slots.
+    normal_dumms = set()
+    free_normal_dumms = set()
+    inv_dumms = set()
+    free_inv_dumms = set()
+    for dumm in shared_dumms:
+        i1, i2 = [j.m_dumms[dumm] for j in factors]
+        m1, m2 = indices1[i1].m, indices2[i2].m
+        if m1 == m2:
+            dumms = normal_dumms
+            frees = free_normal_dumms
+        elif m1 == -m2:
+            dumms = inv_dumms
+            frees = free_inv_dumms
+        else:
+            assert False
+        dumms.add(dumm)
+        if not factor1.is_decided(i1) and not factor2.is_decided(i2):
+            frees.add(dumm)
+        continue
+
+    if len(normal_dumms) != len(normal) or len(inv_dumms) != len(inv):
+        return None
+
+    phase = _UNITY
+    for to_proc, dumms, frees in [
+        (normal, normal_dumms, free_normal_dumms),
+        (inv, inv_dumms, free_inv_dumms)
+    ]:
+        for i1, i2 in to_proc:
+            decided1 = factor1.is_decided(i1)
+            decided2 = factor2.is_decided(i2)
+            m1 = indices1[i1].m_symb
+            m2 = indices2[i2].m_symb
+            if m1 == m2 and m1 in dumms:
+                # Break loop immediately when we found the contraction is
+                # already satisfied.
+                factor1.decide(i1)
+                factor2.decide(i2)
+                if m1 in frees:
+                    frees.remove(m1)
+                continue
+            # Now the contraction must be currently unsatisfied.
+
+            if decided1 and decided2:
+                return None
+            elif decided1:
+                # Try move slot 2 to match the m in 1.
+                if m1 not in dumms:
+                    return None
+                curr_i2 = factor2.m_dumms[m1]
+                if factor2.is_decided(curr_i2):
+                    return None
+                phase *= factor2.swap(curr_i2, i2)
+            elif decided2:
+                if m2 not in dumms:
+                    return None
+                curr_i1 = factor1.m_dumms[m2]
+                if factor1.is_decided(curr_i1):
+                    return None
+                phase *= factor1.swap(curr_i1, i1)
+            else:
+                # Try to move a free contraction to the two required slots.
+                if len(frees) == 0:
+                    return None
+                # Try to get an m already touching.
+                if indices1[i1].m_symb in frees:
+                    new_m = indices1[i1].m_symb
+                    frees.remove(new_m)
+                elif indices2[i2].m_symb in frees:
+                    new_m = indices2[i2].m_symb
+                    frees.remove(new_m)
+                else:
+                    new_m = frees.pop()
+                curr_i1 = factor1.m_dumms[new_m]
+                curr_i2 = factor2.m_dumms[new_m]
+                assert not factor1.is_decided(curr_i1)
+                assert not factor2.is_decided(curr_i2)
+                phase *= factor1.swap(curr_i1, i1)
+                phase *= factor2.swap(curr_i2, i2)
+
+            # Continue to next contraction.
+            continue
+        # Continue to inverted contractions.
+        continue
+
+    return phase
+
+
+def _parse_3js(expr, **kwargs) -> typing.Tuple[
+    Expr, typing.List[_Wigner3j]
+]:
+    """Parse an expression of Wigner 3j symbol product.
+
+    The result is a phase and a list of wrappers of 3j symbols.  All keyword
+    arguments are forwarded to the Wigner 3j wrapper.
+    """
+
+    factors = expr.args if isinstance(expr, Mul) else (expr,)
+    phase = _UNITY
+    wigner_3js = []
+    for i in factors:
+        if isinstance(i, Wigner3j):
+            wigner_3js.append(_Wigner3j(i, **kwargs))
+        else:
+            phase *= i
+        continue
+    return phase, wigner_3js
+
+
 def _canon_cg(expr):
     """Pose CG coefficients in the expression into canonical form.
     """
@@ -531,9 +1028,3 @@ def _simpl_varsh_911_8(expr: Sum):
     ) * KroneckerDelta(match[m], match[m_prm]) * Wigner6j(
         match[j1], match[j2], match[j12], match[j3], match[j], match[j23]
     )
-
-
-# Utility constants.
-
-_UNITY = Integer(1)
-_NEG_UNITY = Integer(-1)
