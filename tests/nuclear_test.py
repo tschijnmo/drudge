@@ -6,7 +6,10 @@ import pytest
 from sympy import Symbol, simplify, latex, symbols, KroneckerDelta, sqrt
 
 from drudge import NuclearBogoliubovDrudge, Range
-from drudge.nuclear import JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG, Wigner6j
+from drudge.nuclear import (
+    JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG, Wigner6j, Wigner3j, _Wigner3j,
+    _Wigner3jMSimpl
+)
 
 
 @pytest.fixture(scope='module')
@@ -33,6 +36,25 @@ def test_jm_dummies_are_integers(nuclear: NuclearBogoliubovDrudge):
     p = nuclear.names
     for i in [p.m1, p.m2, p.M1, p.M2, p.J1, p.J2]:
         assert simplify((-1) ** (i * 2)) == 1
+
+
+def test_wigner_3j_m_simpl():
+    """Test the internal utility for simplification based on Wigner 3j symbols.
+    """
+    j = Symbol('j')
+    a, b, c, d, e = symbols('a b c d e')
+    sums = {a, b, c, d, e}
+    wigner_3js = [
+        _Wigner3j(Wigner3j(j, a, j, b, j, c)),
+        _Wigner3j(Wigner3j(j, c, j, d, j, e))
+    ]
+
+    simpl = _Wigner3jMSimpl(wigner_3js, sums)
+
+    assert simpl.simplify((-1) ** (a + b + c)) == 1
+    assert simpl.simplify((-1) ** (c + d + e)) == 1
+    assert simpl.simplify((-1) ** (a + b + 2 * c + d + e)) == 1
+    assert simpl.simplify((-1) ** (a + b - d - e)) == 1
 
 
 def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):

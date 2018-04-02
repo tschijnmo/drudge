@@ -5,9 +5,10 @@ import itertools
 import re
 import typing
 
+import collections
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt, factor, Mul, Expr, Number
+    sqrt, factor, Mul, Expr, Matrix, Add, Number
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -1059,6 +1060,128 @@ def _sum_4_3j_to_6j(expr: Sum):
             * KroneckerDelta(m3, mprm3)
             * Wigner6j(j1, j2, j3, j4, j5, j6)
     )
+
+
+class _Wigner3jMSimpl:
+    """Simplifier based the relations among m's of Wigner 3j symbols.
+
+    The three m quantum numbers in a Wigner 3j symbol need to add to zero for it
+    to be non-zero.  This can be used for the simplification of the factor ahead
+    of a product of 3j symbols.
+
+    This simplifier can be initialized with an iterable of 3j symbols, then it
+    can be used to simplify factors multiplying their product.
+
+    Parameters
+    ----------
+
+    wigner_3js
+        The Wigner 3j symbols.
+
+    sums
+        When given, only relations among m symbols inside this container will be
+        considered.  Or all relations from 3j symbols with bare m symbols will
+        be considered.
+
+    Notes
+    -----
+
+    Currently, only bare m symbols are considered.
+
+    TODO: Make it applicable to more general forms of the m quantum number.
+
+    """
+
+    __slots__ = [
+        '_symb2idx',
+        '_rel_vecs'
+    ]
+
+    def __init__(self, wigner_3js: typing.Iterable[_Wigner3j], sums=None):
+        """Initialize the simplifier.
+        """
+
+        symb2idx = collections.OrderedDict()
+
+        rels = []  # Written as dictionary.
+        for i in wigner_3js:
+            rel = {}
+            for j in i.indices:
+                m_symb = j.m_symb
+                if m_symb is None:
+                    break
+                if sums is not None and m_symb not in sums:
+                    break
+
+                if m_symb not in symb2idx:
+                    symb2idx[m_symb] = len(symb2idx)
+                rel[m_symb] = j.m_phase
+
+            else:
+                rels.append(rel)
+            continue
+
+        # Cast the relations into vectors.
+        raw_rel_vecs = []
+        n_symbs = len(symb2idx)
+        for i in rels:
+            coeffs = [0 for _ in range(n_symbs)]
+            for k, v in i.items():
+                coeffs[symb2idx[k]] = v
+                continue
+            raw_rel_vecs.append(Matrix(coeffs))
+            continue
+
+        # Gram-Schmidt procedure to make the relations orthogonal.
+        rel_vecs = []
+        for i in raw_rel_vecs:
+            vec = _proj_out(rel_vecs, i)
+            if not vec.is_zero:
+                rel_vecs.append(vec)
+
+        self._symb2idx = symb2idx
+        self._rel_vecs = rel_vecs
+
+    def simplify(self, expr: Expr):
+        """Simplify the given expression given the m relations of 3j symbols.
+        """
+        return expr.replace(Add, self._simpl_add)
+
+    def _simpl_add(self, *args):
+        """Simplify an addition.
+        """
+
+        # Separate the addends into the linear factors in the m symbols under
+        # consideration, and others.
+        other = 0
+        coeffs = [0 for _ in self._symb2idx]
+
+        symb2idx = self._symb2idx
+        for arg in args:
+            coeff, symb = _parse_linear(arg)
+            if symb is None or symb not in symb2idx:
+                other += arg
+            else:
+                coeffs[symb2idx[symb]] += coeff
+            continue
+
+        res = other
+        simpl_coeffs = _proj_out(self._rel_vecs, Matrix(coeffs))
+        for i, j in zip(symb2idx.keys(), simpl_coeffs):
+            if j != 0:
+                res += i * j
+
+        return res
+
+
+def _proj_out(bases, vec):
+    """Project out the components of the vector on the given bases.
+
+    The bases are assumed to be orthogonal, not necessarily normalized.
+    """
+    for i in bases:
+        vec -= vec.project(i)
+    return vec
 
 
 def _canon_cg(expr):
