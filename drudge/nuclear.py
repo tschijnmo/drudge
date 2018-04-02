@@ -730,7 +730,7 @@ class _Wigner3j:
                     entry.add(new_idx)
 
         self.decide(dest)
-        return -1 ** self._total_j
+        return (-1) ** self._total_j
 
     def inv_ms(self):
         """Invert the sign of all m quantum numbers.
@@ -739,7 +739,7 @@ class _Wigner3j:
             i.inv_m()
             continue
 
-        return -1 ** self._total_j
+        return (-1) ** self._total_j
 
     def __repr__(self):
         """Form a string representation for easy debugging.
