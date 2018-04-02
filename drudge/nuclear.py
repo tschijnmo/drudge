@@ -7,7 +7,7 @@ import typing
 
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt, factor, Mul, Expr
+    sqrt, factor, Mul, Expr, Number
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -464,6 +464,23 @@ def _fail(raise_):
     return None
 
 
+def _parse_linear(expr: Expr):
+    """Parse a linear function over a single symbol.
+
+    When the expression is not of the form of a number times a symbol, a pair of
+    none will be returned.
+    """
+
+    symbs = expr.atoms(Symbol)
+    if len(symbs) == 1:
+        symb = symbs.pop()
+        quotient = (expr / symb).simplify()
+        if isinstance(quotient, Number):
+            return quotient, symb
+
+    return None, None
+
+
 def _rewrite_cg(expr):
     """Rewrite CG coefficients in terms of the Wigner 3j symbols.
     """
@@ -533,13 +550,10 @@ class _JM:
         self._m_symb = None
         self._m_phase = None
 
-        m_symbs = new_val.atoms(Symbol)
-        if len(m_symbs) == 1:
-            m_symb = m_symbs.pop()
-            quotient = (new_val / m_symb).simplify()
-            if quotient == 1 or quotient == -1:
-                self._m_symb = m_symb
-                self._m_phase = quotient
+        coeff, m_symb = _parse_linear(new_val)
+        if m_symb is not None and coeff == 1 or coeff == -1:
+            self._m_symb = m_symb
+            self._m_phase = coeff
 
     @property
     def m_symb(self):
