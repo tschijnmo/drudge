@@ -914,6 +914,49 @@ def _parse_3js(expr, **kwargs) -> typing.Tuple[
     return phase, wigner_3js
 
 
+def _sum_2_3j_to_delta(expr: Sum):
+    """Attempt to sum two 3j symbols into deltas.
+
+    The exact rule can be found at Wolfram_, Equations 1-3.  Here they are
+    implemented as a unified rule.
+
+    .. _Wolfram: http://functions.wolfram.com/HypergeometricFunctions
+    /ThreeJSymbol/23/01/02/
+
+    """
+
+    if len(expr.args) != 3:
+        return None
+    summand, sums = _parse_sum(expr)
+
+    try:
+        phase, wigner_3js = _parse_3js(summand, sums=sums)
+        if len(wigner_3js) != 2:
+            return None
+
+        phase *= _check_m_contr(wigner_3js[0], wigner_3js[1], [
+            (0, 0), (1, 1)
+        ], [])
+    except _UnexpectedForm:
+        return None
+
+    if phase.powsimp().simplify() != 1:
+        return None
+
+    indices0 = wigner_3js[0].indices
+    indices1 = wigner_3js[1].indices
+    j1, m1 = indices0[0].j, indices0[0].m
+    j2, m2 = indices0[1].j, indices0[1].m
+    j3, m3 = indices0[2].j, indices0[2].m
+    assert j1 == indices1[0].j and m1 == indices1[0].m
+    assert j2 == indices1[1].j and m2 == indices1[1].m
+    j4, m4 = indices1[2].j, indices1[2].m
+
+    return KroneckerDelta(j3, j4) * KroneckerDelta(
+        m3, m4
+    ) / (2 * j3 + 1)
+
+
 def _canon_cg(expr):
     """Pose CG coefficients in the expression into canonical form.
     """
