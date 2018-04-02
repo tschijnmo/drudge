@@ -957,6 +957,91 @@ def _sum_2_3j_to_delta(expr: Sum):
     ) / (2 * j3 + 1)
 
 
+def _sum_4_3j_to_6j(expr: Sum):
+    """Attempt to sum four 3j symbols into a 6j symbol.
+
+    The exact rule can be found at Wolfram_.
+
+    .. _Wolfram: http://functions.wolfram.com/07.39.23.0014.01
+
+    """
+
+    if len(expr.args) != 6:
+        return None
+
+    summand, sums = _parse_sum(expr)
+
+    # From here on, we gradually rewrite the expression into the pattern of the
+    # rule.
+    try:
+        phase, wigner_3js = _parse_3js(summand, sums=sums)
+        if len(wigner_3js) != 4:
+            return None
+
+        ext_3js = []
+        int_3js = []
+        for i in wigner_3js:
+            if len(i.m_dumms) == 3:
+                int_3js.append(i)
+            elif len(i.m_dumms) == 2:
+                ext_3js.append(i)
+            else:
+                return None
+            continue
+        if len(ext_3js) != 2 or len(int_3js) != 2:
+            return None
+
+        # Put the external ones in the middle.
+        for ext_3j in ext_3js:
+            phase *= ext_3j.swap(
+                lambda x: x.m_symb not in sums, 1
+            )
+            continue
+
+        # For performance.
+        empty = []
+
+        # Get the edge between the two internal 3js.
+        phase *= _check_m_contr(int_3js[0], int_3js[1], empty, [(2, 2)])
+
+        # Match the corresponding slots in the pattern.
+        phase *= _check_m_contr(ext_3js[0], int_3js[0], empty, [(2, 0)])
+        phase *= _check_m_contr(int_3js[0], ext_3js[1], empty, [(1, 0)])
+        phase *= _check_m_contr(ext_3js[1], int_3js[1], empty, [(2, 0)])
+        phase *= _check_m_contr(ext_3js[0], int_3js[1], empty, [(0, 1)])
+    except _UnexpectedForm:
+        return None
+
+    ext_0 = ext_3js[0].indices
+    ext_1 = ext_3js[1].indices
+    int_0 = int_3js[0].indices
+    int_1 = int_3js[1].indices
+    j2, m2 = ext_0[0].j, ext_0[0].m
+    j3, m3 = ext_0[1].j, -ext_0[1].m
+    j1, m1 = ext_0[2].j, ext_0[2].m
+    assert j1 == int_0[0].j and m1 == -int_0[0].m
+    j5, m5 = int_0[1].j, int_0[1].m
+    j6, m6 = int_0[2].j, int_0[2].m
+    assert j5 == ext_1[0].j and m5 == -ext_1[0].m
+    jprm3, mprm3 = ext_1[1].j, ext_1[1].m
+    j4, m4 = ext_1[2].j, ext_1[2].m
+    assert j4 == int_1[0].j, m4 == -int_1[0].m
+    assert j2 == int_1[1].j, m2 == -int_1[1].m
+    assert j6 == int_1[2].j, m6 == -int_1[2].m
+
+    phase = phase.powsimp().simplify()
+    diff = phase - (-1) ** (
+            j1 + j2 + j4 + j5 + j6 - m1 - m2 - m4 - m5 - m6
+    )
+    if diff.powsimp().simplify() != 0:
+        return None
+    return (-1) ** (j3 - m3) / (2 * j3 + 1) * (
+            KroneckerDelta(j3, jprm3)
+            * KroneckerDelta(m3, mprm3)
+            * Wigner6j(j1, j2, j3, j4, j5, j6)
+    )
+
+
 def _canon_cg(expr):
     """Pose CG coefficients in the expression into canonical form.
     """
