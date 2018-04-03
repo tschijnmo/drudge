@@ -60,8 +60,8 @@ def test_wigner_3j_m_simpl():
 def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
     """Test simplification based on Varshalovich 8.7.2 Eq (4)."""
     dr = nuclear
-    c, gamma, c_prm, gamma_prm = symbols('c gamma cprm gammaprm')
-    a, alpha, b, beta = symbols('a alpha b beta')
+    c, gamma, c_prm, gamma_prm = symbols('c gamma cprm gammaprm', integer=True)
+    a, alpha, b, beta = symbols('a alpha b beta', integer=True)
 
     m_range = Range('m')
     sums = [
@@ -75,7 +75,7 @@ def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
     # written.
     for sums_i in [sums, reversed(sums)]:
         tensor = dr.sum(*sums_i, amp)
-        res = tensor.simplify_cg()
+        res = tensor.simplify_am()
         assert res.n_terms == 1
         term = res.local_terms[0]
         assert len(term.sums) == 0
@@ -89,9 +89,9 @@ def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
     """
     dr = nuclear
     a, alpha, b, beta, b_prm, beta_prm = symbols(
-        'a alpha b beta bprm betaprm'
+        'a alpha b beta bprm betaprm', integer=True
     )
-    c, gamma = symbols('c gamma')
+    c, gamma = symbols('c gamma', integer=True)
     sums = [
         (alpha, Range('m', -a, a + 1)),
         (gamma, Range('M', -c, c + 1))
@@ -100,13 +100,18 @@ def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
         a, alpha, b_prm, beta_prm, c, gamma
     )
 
-    expected = dr.sum(
-        KroneckerDelta(b, b_prm) * KroneckerDelta(beta, beta_prm)
-        * (2 * c + 1) / (2 * b + 1)
+    expected = (
+            KroneckerDelta(b, b_prm) * KroneckerDelta(beta, beta_prm)
+            * (2 * c + 1) / (2 * b + 1)
     )
     for sums_i in [sums, reversed(sums)]:
         tensor = dr.sum(*sums_i, amp)
-        assert (tensor.simplify_cg() - expected).simplify() == 0
+        res = tensor.deep_simplify().merge()
+        assert res.n_terms == 1
+        term = res.local_terms[0]
+        assert len(term.sums) == 0
+        assert len(term.vecs) == 0
+        assert (term.amp - expected).simplify() == 0
 
 
 def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
