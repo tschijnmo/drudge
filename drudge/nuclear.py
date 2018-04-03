@@ -1087,17 +1087,22 @@ def _sum_4_3j_to_6j(expr: Sum):
     assert j2 == int_1[1].j, m2 == -int_1[1].m
     assert j6 == int_1[2].j, m6 == -int_1[2].m
 
-    phase = phase.powsimp().simplify()
-    diff = phase - (-1) ** (
-            j1 + j2 + j4 + j5 + j6 - m1 - m2 - m4 - m5 - m6
+    noinv_phase, phase = _decomp_phase(phase, sums)
+    ratio = phase / (-1) ** (
+            - m1 - m2 - m4 - m5 - m6
     )
-    if diff.powsimp().simplify() != 0:
+    simpl = _Wigner3jMSimpl(wigner_3js, sums)
+    simpl_ratio = simpl.simplify(
+        ratio.powsimp().simplify()
+    )
+    if simpl_ratio != 1:
         return None
-    return (-1) ** (j3 - m3) / (2 * j3 + 1) * (
+
+    return (-1) ** (j3 - m3 - j1 - j2 - j4 - j5 - j6) / (2 * j3 + 1) * (
             KroneckerDelta(j3, jprm3)
             * KroneckerDelta(m3, mprm3)
             * Wigner6j(j1, j2, j3, j4, j5, j6)
-    )
+    ) * noinv_phase
 
 
 class _Wigner3jMSimpl:
