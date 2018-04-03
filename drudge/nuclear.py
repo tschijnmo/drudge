@@ -482,6 +482,37 @@ def _parse_linear(expr: Expr):
     return None, None
 
 
+def _decomp_phase(phase: Expr, sums):
+    """Decompose a phase into two factors according to dummy involvement.
+
+    The phase is going to be decomposed into a product of two factors, with one
+    having no reference to the symbols that is summed, and the other having the
+    rest of the factors.
+
+    In addition to the separation, the resulted two factors are also tried to be
+    simplified.
+
+    """
+
+    expanded = phase.expand()
+    dumms = sums.keys()
+
+    inv = _UNITY
+    other = _UNITY
+    for i in (
+            expanded.args if isinstance(expanded, Mul) else (expanded,)
+    ):
+        if factor.atoms(Symbol).isdisjoint(dumms):
+            other *= i
+        else:
+            inv *= i
+        continue
+
+    return tuple(
+        i.powsimp().simplify() for i in (other, inv)
+    )
+
+
 def _rewrite_cg(expr):
     """Rewrite CG coefficients in terms of the Wigner 3j symbols.
     """
