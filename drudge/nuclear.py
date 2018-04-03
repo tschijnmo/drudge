@@ -995,7 +995,10 @@ def _sum_2_3j_to_delta(expr: Sum):
     except _UnexpectedForm:
         return None
 
-    if phase.powsimp().simplify() != 1:
+    noinv_phase, phase = _decomp_phase(phase, sums)
+    simpl = _Wigner3jMSimpl(wigner_3js, sums)
+    simpl_phase = simpl.simplify(phase)
+    if simpl_phase != 1:
         return None
 
     indices0 = wigner_3js[0].indices
@@ -1009,7 +1012,7 @@ def _sum_2_3j_to_delta(expr: Sum):
 
     return KroneckerDelta(j3, j4) * KroneckerDelta(
         m3, m4
-    ) / (2 * j3 + 1)
+    ) / (2 * j3 + 1) * noinv_phase
 
 
 def _sum_4_3j_to_6j(expr: Sum):
