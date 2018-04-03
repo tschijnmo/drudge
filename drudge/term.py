@@ -1834,7 +1834,7 @@ def proc_delta(arg1, arg2, sums_dict, resolvers):
     if len(dumms) == 0:
         range1 = try_resolve_range(arg1, sums_dict, resolvers)
         range2 = try_resolve_range(arg2, sums_dict, resolvers)
-        if range1 == range2:
+        if range1 is None or range2 is None or range1 == range2:
             return KroneckerDelta(arg1, arg2), None
         else:
             return _NAUGHT, None
