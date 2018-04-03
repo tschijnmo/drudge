@@ -502,7 +502,7 @@ def _decomp_phase(phase: Expr, sums):
     for i in (
             expanded.args if isinstance(expanded, Mul) else (expanded,)
     ):
-        if factor.atoms(Symbol).isdisjoint(dumms):
+        if i.atoms(Symbol).isdisjoint(dumms):
             other *= i
         else:
             inv *= i
