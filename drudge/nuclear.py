@@ -820,13 +820,20 @@ def _check_m_contr(
     if len(shared_dumms) != len(normal) + len(inv):
         return _fail(raise_)
 
-    # Initial contraction checking.
-    for i in shared_dumms:
-        jm1 = factor1.indices[factor1.m_dumms[i]]
-        jm2 = factor2.indices[factor2.m_dumms[i]]
-        if jm1.j != jm2.j:
-            return _fail(raise_)
-        # TODO: Add summation range checking.
+    #
+    # TODO: Add more pedantic checking
+    #
+    # For two m slots to be actually considered to be contracted together, the j
+    # symbols above them need to be the same, and they need to be summed over
+    # the correct range.  Here, due to some limitations, pedantic checking can
+    # possibly block some important simplifications.  For instance, two
+    # different j's above the two m's can actually be equal by a delta, which is
+    # hard to recognized inside the current framework.  Hence pedantic checking
+    # is temporarily skipped here.
+    #
+    # In actual rules, we also generally skip the checking of j and the range of
+    # m as well for the same reason.
+    #
 
     # Try two phases if possible.
     check = functools.partial(
@@ -1011,8 +1018,8 @@ def _sum_2_3j_to_delta(expr: Sum):
     j1, m1 = indices0[0].j, indices0[0].m
     j2, m2 = indices0[1].j, indices0[1].m
     j3, m3 = indices0[2].j, indices0[2].m
-    assert j1 == indices1[0].j and m1 == indices1[0].m
-    assert j2 == indices1[1].j and m2 == indices1[1].m
+    assert m1 == indices1[0].m
+    assert m2 == indices1[1].m
     j4, m4 = indices1[2].j, indices1[2].m
 
     return KroneckerDelta(j3, j4) * KroneckerDelta(
@@ -1082,15 +1089,15 @@ def _sum_4_3j_to_6j(expr: Sum):
     j2, m2 = ext_0[0].j, ext_0[0].m
     j3, m3 = ext_0[1].j, -ext_0[1].m
     j1, m1 = ext_0[2].j, ext_0[2].m
-    assert j1 == int_0[0].j and m1 == -int_0[0].m
+    assert m1 == -int_0[0].m
     j5, m5 = int_0[1].j, int_0[1].m
     j6, m6 = int_0[2].j, int_0[2].m
-    assert j5 == ext_1[0].j and m5 == -ext_1[0].m
+    assert m5 == -ext_1[0].m
     jprm3, mprm3 = ext_1[1].j, ext_1[1].m
     j4, m4 = ext_1[2].j, ext_1[2].m
-    assert j4 == int_1[0].j, m4 == -int_1[0].m
-    assert j2 == int_1[1].j, m2 == -int_1[1].m
-    assert j6 == int_1[2].j, m6 == -int_1[2].m
+    assert m4 == -int_1[0].m
+    assert m2 == -int_1[1].m
+    assert m6 == -int_1[2].m
 
     noinv_phase, phase = _decomp_phase(phase, sums)
     ratio = phase / (-1) ** (
