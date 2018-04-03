@@ -140,3 +140,50 @@ def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
     random.shuffle(sums)
     tensor = dr.sum(*sums, amp)
     assert (tensor.simplify_cg() - expected).simplify() == 0
+
+
+def test_wigner3j_sum_to_wigner6j(nuclear: NuclearBogoliubovDrudge):
+    """Test simplification of sum of product of four 3j's to a 6j.
+
+    This test tries to simplify the original LHS of the equation from the
+    Wolfram website.
+    """
+
+    dr = nuclear
+    j1, j2, j3, jprm3, j4, j5, j6 = symbols(
+        'j1 j2 j3 jprm3 j4 j5 j6', integer=True
+    )
+    m1, m2, m3, mprm3, m4, m5, m6 = symbols(
+        'm1 m2 m3 mprm3 m4 m5 m6', integer=True
+    )
+
+    m_range = Range('m')
+    sums = [(m_i, m_range[-j_i, j_i + 1]) for m_i, j_i in [
+        (m1, j1), (m2, j2), (m4, j4), (m5, j5), (m6, j6)
+    ]]
+
+    phase = (-1) ** (
+            j1 + j2 + j4 + j5 + j6 - m1 - m2 - m4 - m5 - m6
+    )
+    amp = (
+            Wigner3j(j2, m2, j3, -m3, j1, m1)
+            * Wigner3j(j1, -m1, j5, m5, j6, m6)
+            * Wigner3j(j5, -m5, jprm3, mprm3, j4, m4)
+            * Wigner3j(j4, -m4, j2, -m2, j6, -m6)
+    )
+
+    expected = (
+            ((-1) ** (j3 - m3) / (2 * j3 + 1))
+            * KroneckerDelta(j3, jprm3) * KroneckerDelta(m3, mprm3)
+            * Wigner6j(j1, j2, j3, j4, j5, j6)
+    ).expand().simplify()
+
+    # For performance reason, just test a random arrangement of the summations.
+    random.shuffle(sums)
+    tensor = dr.sum(*sums, phase * amp)
+    res = tensor.deep_simplify().merge()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert len(term.sums) == 0
+    assert len(term.vecs) == 0
+    assert (term.amp - expected).simplify() == 0
