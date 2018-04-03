@@ -8,7 +8,7 @@ import typing
 import collections
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt, factor, Mul, Expr, Matrix, Add, Number
+    sqrt, factor, Mul, Expr, Matrix, Add, Number, Pow
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -1200,7 +1200,23 @@ class _Wigner3jMSimpl:
     def simplify(self, expr: Expr):
         """Simplify the given expression given the m relations of 3j symbols.
         """
-        return expr.replace(Add, self._simpl_add)
+        expr = expr.powsimp().simplify()
+
+        if not isinstance(expr, Pow):
+            expr = expr.replace(Add, self._simpl_add)
+        else:
+            # Specialized treatment for the form we normally see in spherical
+            # problems.  The above general treatment could skip the processing
+            # when we have a simple exponential of a plain symbol
+            base, expon = expr.args
+            if isinstance(expon, Add):
+                expon = self._simpl_add(*expon.args)
+            else:
+                # For a single term in the exponent.
+                expon = self._simpl_add(expon)
+            expr = base ** expon
+
+        return expr.simplify()
 
     def _simpl_add(self, *args):
         """Simplify an addition.
