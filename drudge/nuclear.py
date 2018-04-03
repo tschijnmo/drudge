@@ -423,7 +423,12 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         be invoked for better performance.
         """
 
-        return tensor.simplify().simplify_am().simplify().merge_j()
+        return (
+            tensor.simplify()  # Initial simplification.
+                .merge_j()  # This can possibly reduce the number of terms.
+                .simplify_am()
+                .simplify().merge_j()  # Final trial.
+        )
 
 
 #
