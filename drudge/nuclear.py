@@ -732,6 +732,10 @@ class _Wigner3j:
             if src is None or src is False:
                 return _fail(raise_pred)
 
+        if src == dest:
+            self.decide(dest)
+            return _UNITY
+
         for i, j in [(src, raise_src), (dest, raise_dest)]:
             if self.is_decided(i):
                 return _fail(j)
@@ -846,9 +850,9 @@ def _check_m_contr(
 
 
 def _check_m_contr_fixed_phase(
-        factor1, factor2, normal, inv, shared_dumms):
+        factor1, factor2, normal, inv, shared_dumms
+):
     """Check the m contraction of two symbols with fixed phase.
-
     """
 
     factors = [factor1, factor2]
