@@ -791,7 +791,8 @@ class _Wigner3j:
 
 
 def _check_m_contr(
-        factor1: _Wigner3j, factor2: _Wigner3j, normal, inv, raise_=True
+        factor1: _Wigner3j, factor2: _Wigner3j, decided_ms, normal, inv,
+        raise_=True
 ) -> typing.Optional[Expr]:
     """Check if two Wigner 3j symbols contracts according to the given pattern.
 
@@ -807,11 +808,19 @@ def _check_m_contr(
     it succeeds, the phase factor that comes with the arrangement will be
     returned.
 
+    This function also attempts to put the two m symbols for normal
+    contractions, and the contracted m of the first Wigner 3j symbol in inverted
+    contractions, to be in plain symbol form, without any negation.  The
+    substitutions needed in the phase for this are added to the dictionary
+    ``decided_ms`` in the argument.
+
     .. warning::
 
         Due to the naive handling of phases, usage of this function should
         gradually expand the tested part of the contraction graph, rather than
         starting with disconnected parts and them try to patch them together.
+
+    TODO: Improve the interface of this function.
 
     """
 
@@ -853,12 +862,55 @@ def _check_m_contr(
             else:
                 res *= inv_phase
 
-    if res is not None:
-        factor1.phase_decided = True
-        factor2.phase_decided = True
-        return res
-    else:
+    if res is None:
         return _fail(raise_)
+
+    factor1.phase_decided = True
+    factor2.phase_decided = True
+
+    # Finalize the phase of the m dummies.
+    for if_normal, slots in ((True, normal), (False, inv)):
+        for i1, i2 in slots:
+            assert factor1.is_decided(i1)
+            assert factor2.is_decided(i2)
+            # The contracted.
+            index1 = factor1.indices[i1]
+            index2 = factor2.indices[i2]
+            assert index1.m_symb == index2.m_symb
+            m_symb = index1.m_symb
+            if m_symb in decided_ms:
+                # Non-conventional contraction pattern where the dummy has
+                # already been summed elsewhere.
+                return _fail(raise_)
+
+            if if_normal:
+                if index1.m_phase == -1:
+                    assert index2.m_phase == -1
+                    assert index1.m == -m_symb
+                    assert index2.m == -m_symb
+                    index1.m = m_symb
+                    index2.m = m_symb
+                    decided_ms[m_symb] = -m_symb
+                else:
+                    assert index2.m_phase == 1
+                    assert index1.m == m_symb
+                    assert index2.m == m_symb
+                    decided_ms[m_symb] = m_symb
+            else:
+                if index1.m_phase == -1:
+                    assert index2.m_phase == 1
+                    assert index1.m == -m_symb
+                    assert index2.m == m_symb
+                    index1.m = m_symb
+                    index2.m = -m_symb
+                    decided_ms[m_symb] = -m_symb
+                else:
+                    assert index2.m_phase == -1
+                    assert index1.m == m_symb
+                    assert index2.m == -m_symb
+                    decided_ms[m_symb] = m_symb
+
+    return res
 
 
 def _check_m_contr_fixed_phase(
@@ -906,19 +958,16 @@ def _check_m_contr_fixed_phase(
             m1 = indices1[i1].m_symb
             m2 = indices2[i2].m_symb
             if m1 == m2 and m1 in dumms:
-                # Break loop immediately when we found the contraction is
-                # already satisfied.
+                # When we found the contraction is already satisfied.
                 factor1.decide(i1)
                 factor2.decide(i2)
                 if m1 in frees:
                     frees.remove(m1)
-                continue
             # Now the contraction must be currently unsatisfied.
-
-            if decided1 and decided2:
+            elif decided1 and decided2:
                 return None
             elif decided1:
-                # Try move slot 2 to match the m in 1.
+                # Try refill slot 2 to match the m in slot 1.
                 if m1 not in dumms:
                     return None
                 curr_i2 = factor2.m_dumms[m1]
@@ -926,6 +975,7 @@ def _check_m_contr_fixed_phase(
                     return None
                 phase *= factor2.swap(curr_i2, i2)
             elif decided2:
+                # Try refill slot 1 to match the m in slot 2.
                 if m2 not in dumms:
                     return None
                 curr_i1 = factor1.m_dumms[m2]
@@ -1001,13 +1051,14 @@ def _sum_2_3j_to_delta(expr: Sum):
         if len(wigner_3js) != 2:
             return None
 
-        phase *= _check_m_contr(wigner_3js[0], wigner_3js[1], [
+        decided_ms = {}
+        phase *= _check_m_contr(wigner_3js[0], wigner_3js[1], decided_ms, [
             (0, 0), (1, 1)
         ], [])
     except _UnexpectedForm:
         return None
 
-    noinv_phase, phase = _decomp_phase(phase, sums)
+    noinv_phase, phase = _decomp_phase(phase.xreplace(decided_ms), sums)
     simpl = _Wigner3jMSimpl(wigner_3js, sums)
     simpl_phase = simpl.simplify(phase)
     if simpl_phase != 1:
@@ -1068,17 +1119,29 @@ def _sum_4_3j_to_6j(expr: Sum):
             )
             continue
 
+        decided_ms = {}
+
         # For performance.
         empty = []
 
         # Get the edge between the two internal 3js.
-        phase *= _check_m_contr(int_3js[0], int_3js[1], empty, [(2, 2)])
+        phase *= _check_m_contr(
+            int_3js[0], int_3js[1], decided_ms, empty, [(2, 2)]
+        )
 
         # Match the corresponding slots in the pattern.
-        phase *= _check_m_contr(ext_3js[0], int_3js[0], empty, [(2, 0)])
-        phase *= _check_m_contr(int_3js[0], ext_3js[1], empty, [(1, 0)])
-        phase *= _check_m_contr(ext_3js[1], int_3js[1], empty, [(2, 0)])
-        phase *= _check_m_contr(ext_3js[0], int_3js[1], empty, [(0, 1)])
+        phase *= _check_m_contr(
+            ext_3js[0], int_3js[0], decided_ms, empty, [(2, 0)]
+        )
+        phase *= _check_m_contr(
+            int_3js[0], ext_3js[1], decided_ms, empty, [(1, 0)]
+        )
+        phase *= _check_m_contr(
+            ext_3js[1], int_3js[1], decided_ms, empty, [(2, 0)]
+        )
+        phase *= _check_m_contr(
+            ext_3js[0], int_3js[1], decided_ms, empty, [(0, 1)]
+        )
     except _UnexpectedForm:
         return None
 
@@ -1099,7 +1162,7 @@ def _sum_4_3j_to_6j(expr: Sum):
     assert m2 == -int_1[1].m
     assert m6 == -int_1[2].m
 
-    noinv_phase, phase = _decomp_phase(phase, sums)
+    noinv_phase, phase = _decomp_phase(phase.xreplace(decided_ms), sums)
     simpl = _Wigner3jMSimpl(wigner_3js, sums)
     simpl_phase = simpl.simplify(phase)
     expected_phase = simpl.simplify((-1) ** (
