@@ -422,7 +422,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             lambda term: _simpl_pono_term(term, resolvers.value)
         )
 
-    def deep_simplify(self, tensor: Tensor):
+    @staticmethod
+    def deep_simplify(tensor: Tensor):
         """Simplify the given tensor deeply.
 
         This driver function attempts to perform simplifications relevant to
@@ -432,12 +433,16 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         be invoked for better performance.
         """
 
-        return (
-            tensor.simplify()  # Initial simplification.
-                .merge_j()  # This can possibly reduce the number of terms.
-                .simplify_am()
-                .simplify().merge_j()  # Final trial.
-        )
+        # Initial simplification.
+        res = tensor.simplify()
+        # This can possibly reduce the number of terms.
+        res = res.merge_j()
+        res = res.simplify_am()
+
+        # Final trial.
+        res = res.simplify().merge_j()
+
+        return res
 
 
 #
