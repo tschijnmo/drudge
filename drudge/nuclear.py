@@ -40,9 +40,6 @@ class _QNOf(Function):
             self._latex_header, '{', printer.doprint(self.args[0]), '}'
         ])
 
-    def _eval_is_integer(self):
-        return True
-
 
 class JOf(_QNOf):
     """Symbolic access of j quantum number of an orbit."""
@@ -108,7 +105,7 @@ def form_tilde(orig: Symbol):
 def form_m(orig: Symbol):
     """Form the symbol for m quantum number for a given orbit symbol.
     """
-    return _decor_base(orig, lambda _: 'm', integer=True)
+    return _decor_base(orig, lambda _: 'm')
 
 
 class NuclearBogoliubovDrudge(BogoliubovDrudge):
@@ -143,10 +140,10 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             self, ctx, coll_j_range=Range('J', 0, Symbol('Jmax') + 1),
             coll_m_range=Range('M'),
             coll_j_dumms=tuple(
-                Symbol('J{}'.format(i), integer=True) for i in range(1, 30)
+                Symbol('J{}'.format(i)) for i in range(1, 30)
             ),
             coll_m_dumms=tuple(
-                Symbol('M{}'.format(i), integer=True) for i in range(1, 30)
+                Symbol('M{}'.format(i)) for i in range(1, 30)
             ),
             tilde_range=Range(r'\tilde{Q}', 0, Symbol('Ntilde')),
             form_tilde=form_tilde,
