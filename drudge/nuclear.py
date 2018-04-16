@@ -15,7 +15,7 @@ from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 from .drudge import Tensor
 from .fock import BogoliubovDrudge
 from .term import Range
-from .utils import sympy_key
+from .utils import sympy_key, BCastVar
 
 # Utility constants.
 
@@ -184,11 +184,11 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
             CG=CG, Wigner3j=Wigner3j, Wigner6j=Wigner6j, Wigner9j=Wigner9j
         )
 
-        self._am_sum_simplifiers = {
+        self._am_sum_simplifiers = BCastVar(self.ctx, {
             # TODO: Add more simplifications here.
             2: [_sum_2_3j_to_delta],
             5: [_sum_4_3j_to_6j]
-        }
+        })
         self.set_tensor_method('simplify_am', self.simplify_am)
 
         # All expressions for J/j, for merging of simple terms with factors in
@@ -389,7 +389,9 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         tensor = tensor.map2amps(_rewrite_cg)
 
         # Initial simplification of some summations.
-        tensor = tensor.simplify_sums(simplifiers=self._am_sum_simplifiers)
+        tensor = tensor.simplify_sums(
+            simplifiers=self._am_sum_simplifiers.bcast
+        )
 
         # Deltas could come from some simplification rules.
         tensor = tensor.simplify_deltas()
