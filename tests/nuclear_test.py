@@ -3,12 +3,11 @@
 import random
 
 import pytest
-from sympy import Symbol, simplify, latex, symbols, KroneckerDelta, sqrt
+from sympy import Symbol, latex, symbols, KroneckerDelta, sqrt
 
-from drudge import NuclearBogoliubovDrudge, Range
+from drudge import NuclearBogoliubovDrudge, Range, Term
 from drudge.nuclear import (
-    JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf, CG, Wigner6j, Wigner3j, _Wigner3j,
-    _Wigner3jMSimpl
+    JOf, MOf, CG, Wigner6j, Wigner3j, _simpl_pono_term
 )
 
 
@@ -18,43 +17,66 @@ def nuclear(spark_ctx):
     return NuclearBogoliubovDrudge(spark_ctx)
 
 
-def test_qn_accessors():
-    """Test the symbolic functions for quantum number access."""
+#
+# Test of the core power of negative one simplification.
+#
+
+def test_jm_acc_as_half_integer():
+    """Test j/m access of single-particle k to be half integers.
+    """
 
     k = Symbol('k')
-    for acc in [JOf, TildeOf, MOf, NOf, LOf, PiOf, TOf]:
-        # Test that they are considered integers.
+    for acc in [JOf, MOf]:
         e = acc(k)
-        assert simplify((-1) ** (e * 2)) == 1
+        term = Term(
+            (), (-1) ** (e * 2), ()
+        )
+        res = _simpl_pono_term(term, [])
 
-        latex_form = latex(e)
-        assert latex_form[-3:] == '{k}'
+        assert len(res.sums) == 0
+        assert res.amp == -1
+        assert len(res.vecs) == 0
 
 
-def test_jm_dummies_are_integers(nuclear: NuclearBogoliubovDrudge):
-    """Test that the angular momentum dummies has the right assumptions."""
+def test_coll_jm_integer(nuclear: NuclearBogoliubovDrudge):
+    """Test integrity of collective angular momentum symbols.
+    """
+
     p = nuclear.names
-    for i in [p.m1, p.m2, p.M1, p.M2, p.J1, p.J2]:
-        assert simplify((-1) ** (i * 2)) == 1
+    k = Symbol('k')
+    wigner = Wigner3j(p.J1, p.M1, p.J2, p.M2, JOf(k), p.m1)
+    for factor, phase in [
+        (p.M1, 1), (p.M2, 1), (p.J1, 1), (p.J2, 1),
+        (JOf(k), -1), (p.m1, -1)
+    ]:
+        term = Term(
+            (), (-1) ** (factor * 2) * wigner, ()
+        )
+        res = _simpl_pono_term(term, nuclear.resolvers.value)
+
+        assert len(res.sums) == 0
+        assert res.amp == phase * wigner
+        assert len(res.vecs) == 0
 
 
-def test_wigner_3j_m_simpl():
-    """Test the internal utility for simplification based on Wigner 3j symbols.
+def test_wigner_3j_m_rels_simpl():
+    """Test simplification based on m-sum rules of Wigner 3j symbols.
     """
     j = Symbol('j')
     a, b, c, d, e = symbols('a b c d e')
-    sums = {a, b, c, d, e}
-    wigner_3js = [
-        _Wigner3j(Wigner3j(j, a, j, b, j, c)),
-        _Wigner3j(Wigner3j(j, c, j, d, j, e))
-    ]
+    wigner_3js = Wigner3j(j, a, j, b, j, c) * Wigner3j(j, c, j, d, j, e)
 
-    simpl = _Wigner3jMSimpl(wigner_3js, sums)
-
-    assert simpl.simplify((-1) ** (a + b + c)) == 1
-    assert simpl.simplify((-1) ** (c + d + e)) == 1
-    assert simpl.simplify((-1) ** (a + b + 2 * c + d + e)) == 1
-    assert simpl.simplify((-1) ** (a + b - d - e)) == 1
+    for amp in [
+        (-1) ** (a + b + c),
+        (-1) ** (c + d + e),
+        (-1) ** (a + b + 2 * c + d + e),
+        (-1) ** (a + b - d - e)
+    ]:
+        term = Term((), wigner_3js * amp, ())
+        res = _simpl_pono_term(term, [])
+        assert len(res.sums) == 0
+        assert res.amp == wigner_3js
+        assert len(res.vecs) == 0
 
 
 def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
@@ -119,7 +141,7 @@ def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
     """
     dr = nuclear
     j, m, j12, m12, j2, m2, j1, m1, j_prm, m_prm, j23, m23, j3, m3 = symbols(
-        'j m j12 m12 j2 m2 j1 m1 jprm mprm j23 m23 j3 m3'
+        'j m j12 m12 j2 m2 j1 m1 jprm mprm j23 m23 j3 m3', integer=True
     )
     m_range = Range('m')
     sums = [(m_i, m_range[-j_i, j_i + 1]) for m_i, j_i in [
@@ -129,17 +151,22 @@ def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
         j1, m1, j23, m23, j_prm, m_prm
     ) * CG(j2, m2, j3, m3, j23, m23)
 
-    expected = dr.sum(
-        KroneckerDelta(j, j_prm) * KroneckerDelta(m, m_prm)
-        * (-1) ** (j1 + j2 + j3 + j)
-        * sqrt(2 * j12 + 1) * sqrt(2 * j23 + 1)
-        * Wigner6j(j1, j2, j12, j3, j, j23)
+    expected = (
+            KroneckerDelta(j, j_prm) * KroneckerDelta(m, m_prm)
+            * (-1) ** (j1 + j2 + j3 + j)
+            * sqrt(2 * j12 + 1) * sqrt(2 * j23 + 1)
+            * Wigner6j(j1, j2, j12, j3, j, j23)
     )
 
     # For performance reason, just test a random arrangement of the summations.
     random.shuffle(sums)
     tensor = dr.sum(*sums, amp)
-    assert (tensor.simplify_cg() - expected).simplify() == 0
+    res = tensor.deep_simplify().merge()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert len(term.sums) == 0
+    assert len(term.vecs) == 0
+    assert (term.amp - expected).simplify() == 0
 
 
 def test_wigner3j_sum_to_wigner6j(nuclear: NuclearBogoliubovDrudge):
