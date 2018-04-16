@@ -434,6 +434,93 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
 # Angular momentum quantities simplification.
 #
 
+#
+# Some utilities for J/M pairs in angular momentum quantities.  Note that here a
+# bare m symbol is defined to be a symbol appearing as the m quantum number that
+# is either an atomic symbol or a negation.  A bare m symbol is called an bare m
+# dummy when it is also summed.
+#
+# Due to their presence in a lot of simplifications, here some work is given for
+# their special treatment.
+#
+
+class _JM:
+    """A pair of j and m quantum numbers.
+
+    Attributes
+    ----------
+
+    j
+        The j part.
+
+    m
+        The m part.
+
+    """
+
+    __slots__ = [
+        'j',
+        '_m',
+        '_m_symb',
+        '_m_phase'
+    ]
+
+    def __init__(self, j: Expr, m: Expr):
+        """Initialize the pair."""
+        self.j = j
+
+        # For linters.
+        self._m = None
+        self._m_symb = None
+        self._m_phase = None
+
+        self.m = m
+
+    @property
+    def m(self):
+        """The m part."""
+        return self._m
+
+    @m.setter
+    def m(self, new_val):
+        """Set new value for m."""
+
+        self._m = new_val
+        self._m_symb = None
+        self._m_phase = None
+
+        coeff, m_symb = _parse_linear(new_val)
+        if m_symb is not None and coeff == 1 or coeff == -1:
+            self._m_symb = m_symb
+            self._m_phase = coeff
+
+    @property
+    def m_symb(self):
+        """The only symbol in the m part when it is a bare symbol.
+        """
+        return self._m_symb
+
+    @property
+    def m_phase(self):
+        """The phase for the bare symbol in the m part, when applicable.
+        """
+        return self._m_phase
+
+    def inv_m(self):
+        """Invert the sign of the m part.
+        """
+        self.m = -self.m
+
+    def __repr__(self):
+        """Get a simple string form for debugging.
+        """
+        return '{!s}, {!s}'.format(self.j, self.m)
+
+
+#
+# General utilities
+#
+
 def _parse_sum(expr: Sum):
     """Parse a SymPy summation into the summand and the summations.
 
@@ -532,87 +619,7 @@ def _rewrite_cg(expr):
 
 
 #
-# Some utilities for J/M pairs and Wigner symbols for angular momentum.  Note
-# that here a bare m symbol is defined to be a symbol appearing as the m quantum
-# number that is either an atomic symbol or a negation.  A bare m symbol is
-# called an bare m dummy when it is also summed.
 #
-# Due to their presence in a lot of simplifications, here some work is given for
-# their special treatment.
-#
-
-class _JM:
-    """A pair of j and m quantum numbers.
-
-    Attributes
-    ----------
-
-    j
-        The j part.
-
-    m
-        The m part.
-
-    """
-
-    __slots__ = [
-        'j',
-        '_m',
-        '_m_symb',
-        '_m_phase'
-    ]
-
-    def __init__(self, j: Expr, m: Expr):
-        """Initialize the pair."""
-        self.j = j
-
-        # For linters.
-        self._m = None
-        self._m_symb = None
-        self._m_phase = None
-
-        self.m = m
-
-    @property
-    def m(self):
-        """The m part."""
-        return self._m
-
-    @m.setter
-    def m(self, new_val):
-        """Set new value for m."""
-
-        self._m = new_val
-        self._m_symb = None
-        self._m_phase = None
-
-        coeff, m_symb = _parse_linear(new_val)
-        if m_symb is not None and coeff == 1 or coeff == -1:
-            self._m_symb = m_symb
-            self._m_phase = coeff
-
-    @property
-    def m_symb(self):
-        """The only symbol in the m part when it is a bare symbol.
-        """
-        return self._m_symb
-
-    @property
-    def m_phase(self):
-        """The phase for the bare symbol in the m part, when applicable.
-        """
-        return self._m_phase
-
-    def inv_m(self):
-        """Invert the sign of the m part.
-        """
-        self.m = -self.m
-
-    def __repr__(self):
-        """Get a simple string form for debugging.
-        """
-        return '{!s}, {!s}'.format(self.j, self.m)
-
 
 class _Wigner3j:
     """Wrapper for a Wigner 3j symbols for easy manipulation.
