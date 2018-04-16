@@ -525,7 +525,7 @@ def _rewrite_cg(expr):
     )
     return expr.replace(
         CG(j1, m1, j2, m2, j3, m3),
-        (-1) ** (-j1 + j2 - m3) * sqrt(2 * j3 + 1) * Wigner3j(
+        _NEG_UNITY ** (-j1 + j2 - m3) * sqrt(2 * j3 + 1) * Wigner3j(
             j1, m1, j2, m2, j3, -m3
         )
     )
@@ -770,7 +770,7 @@ class _Wigner3j:
                     entry.add(new_idx)
 
         self.decide(dest)
-        return (-1) ** self._total_j
+        return _NEG_UNITY ** self._total_j
 
     def inv_ms(self):
         """Invert the sign of all m quantum numbers.
@@ -779,7 +779,7 @@ class _Wigner3j:
             i.inv_m()
             continue
 
-        return (-1) ** self._total_j
+        return _NEG_UNITY ** self._total_j
 
     def __repr__(self):
         """Form a string representation for easy debugging.
