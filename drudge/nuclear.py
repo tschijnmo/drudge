@@ -556,21 +556,28 @@ def _fail(raise_):
     return None
 
 
-def _parse_linear(expr: Expr):
-    """Parse a linear function over a single symbol.
+def _parse_linear(expr: Expr, symb_only=False):
+    """Parse a linear function over a single symbolic quantity.
 
-    When the expression is not of the form of a number times a symbol, a pair of
-    none will be returned.
+    When the expression is a number already, the symbolic part will be returned
+    as None.  When the expression is not of the form of a number times a simple
+    symbolic part, a pair of none will be returned.
+
+    When symb_only is turned on, the symbolic part has to be an atomic symbol.
+
     """
 
-    symbs = expr.atoms(Symbol)
-    if len(symbs) == 1:
-        symb = symbs.pop()
-        quotient = (expr / symb).simplify()
-        if isinstance(quotient, Number):
-            return quotient, symb
+    coeff, factors = expr.as_coeff_mul()
 
-    return None, None
+    if len(factors) == 0:
+        return coeff, None
+    elif len(factors) == 1:
+        factor = factors[0]
+        if symb_only and not isinstance(factor, Symbol):
+            return None, None
+        return coeff, factor
+    else:
+        return None, None
 
 
 def _decomp_phase(phase: Expr, sums):
@@ -619,6 +626,7 @@ def _rewrite_cg(expr):
 
 
 #
+# Special simplifications
 #
 
 class _Wigner3j:
