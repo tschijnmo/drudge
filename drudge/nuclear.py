@@ -14,8 +14,8 @@ from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
 from .drudge import Tensor
 from .fock import BogoliubovDrudge
-from .term import Range
-from .utils import sympy_key, BCastVar
+from .term import Range, try_resolve_range, Term
+from .utils import sympy_key, prod_, BCastVar
 
 # Utility constants.
 
@@ -1012,6 +1012,18 @@ class _Wigner3j:
         """
         return self._m_dumms
 
+    @property
+    def expr(self):
+        """The SymPy Wigner 3j form of the expression.
+
+        It may not be the same as the original one if mutation happened.
+        """
+
+        args = []
+        for i in self.indices:
+            args.extend((i.j, i.m))
+        return Wigner3j(*args)
+
     def is_decided(self, slot_index):
         """If the content for a slot has been decided.
         """
@@ -1347,7 +1359,21 @@ def _parse_3js(expr, **kwargs) -> typing.Tuple[
     return phase, wigner_3js
 
 
-def _sum_2_3j_to_delta(expr: Sum):
+def _get_jms_rels(wigner_3js: typing.Iterable[_Wigner3j]):
+    """Get the j/m pairs and linear relations from an iterable of 3j symbols.
+
+    The 3j symbols need to have the relation of being multiplied together with
+    each other for this function to make sense.
+
+    """
+
+    return (
+        [j for i in wigner_3js for j in i.indices],
+        [i.indices for i in wigner_3js]
+    )
+
+
+def _sum_2_3j_to_delta(expr: Sum, resolvers, sums_dict):
     """Attempt to sum two 3j symbols into deltas.
 
     The exact rule can be found at Wolfram_, Equations 1-3.  Here they are
@@ -1375,8 +1401,8 @@ def _sum_2_3j_to_delta(expr: Sum):
         return None
 
     noinv_phase, phase = _decomp_phase(phase.xreplace(decided_ms), sums)
-    simpl = _Wigner3jMSimpl(wigner_3js, sums)
-    simpl_phase = simpl.simplify(phase)
+    jms, rels = _get_jms_rels(wigner_3js)
+    simpl_phase = _simpl_pono(phase, resolvers, sums_dict, jms, rels)
     if simpl_phase != 1:
         return None
 
@@ -1394,7 +1420,7 @@ def _sum_2_3j_to_delta(expr: Sum):
     ) / (2 * j3 + 1) * noinv_phase
 
 
-def _sum_4_3j_to_6j(expr: Sum):
+def _sum_4_3j_to_6j(expr: Sum, resolvers, sums_dict):
     """Attempt to sum four 3j symbols into a 6j symbol.
 
     The exact rule can be found at Wolfram_.
@@ -1479,15 +1505,15 @@ def _sum_4_3j_to_6j(expr: Sum):
     assert m6 == -int_1[2].m
 
     noinv_phase, phase = _decomp_phase(phase.xreplace(decided_ms), sums)
-    simpl = _Wigner3jMSimpl(wigner_3js, sums)
-    simpl_phase = simpl.simplify(phase)
-    expected_phase = simpl.simplify((-1) ** (
+    jms, rels = _get_jms_rels(wigner_3js)
+    simpl_phase = _simpl_pono(phase, resolvers, sums_dict, jms, rels)
+    expected_phase = _simpl_pono(_NEG_UNITY ** (
             - m1 - m2 - m4 - m5 - m6
-    ))
+    ), resolvers, sums_dict, jms, rels)
     if (simpl_phase / expected_phase).simplify() != 1:
         return None
 
-    return (-1) ** (j3 - m3 - j1 - j2 - j4 - j5 - j6) / (2 * j3 + 1) * (
+    return _NEG_UNITY ** (j3 - m3 - j1 - j2 - j4 - j5 - j6) / (2 * j3 + 1) * (
             KroneckerDelta(j3, jprm3)
             * KroneckerDelta(m3, mprm3)
             * Wigner6j(j1, j2, j3, j4, j5, j6)
