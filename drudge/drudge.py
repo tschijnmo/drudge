@@ -498,24 +498,28 @@ class Tensor:
         simplifiers
 
             The rules to simplify the internally summed factors of the
-            amplitude.  It should be a mapping from the number of summations
-            indices able to be handled to an iterable of functions implementing
-            the rules.
+            amplitude.  It should be a Spark broadcast of a mapping from the
+            number of summations indices able to be handled to an iterable of
+            functions implementing the rules.
 
-            The functions will be called with SymPy ``Sum`` objects.  If the
-            same expression or ``None`` is returned, it will be considered to be
-            not simplifiable any more.
+            The functions will be called with SymPy ``Sum`` objects as the first
+            positional argument.  Then keyword arguments ``resolvers`` will be
+            the resolvers for the ranges, and ``sums_dict`` will hold the
+            original summation dictionary for the term.
+
+            If the same expression or ``None`` is returned, it will be
+            considered to be not simplifiable any more.  When it is
+            simplifiable, the simplified SymPy expression should be returned.
+            Note that, currently, the simplified form cannot be a Sum by itself.
 
             By default, it is set to True, which will use the
             :py:attr:`sum_simplifiers` attribute of the current drudge object.
-            Note that this attribute needs to be serializable in Spark
-            environment.  Notably they cannot be a non-static method of the
-            drudge object.  It can also be set to anything that evaluates to
-            false to disable deep simplification of the summations.
+            It can also be set to anything that evaluates to false to disable
+            deep simplification of the summations.
 
-            By default, the ``sum_simplifiers`` attribute is a dictionary having
-            only the SymPy ``eval_sum_symbolic`` function for summations with a
-            single summation index.
+            By default, the ``sum_simplifiers`` attribute holds a dictionary
+            having only the SymPy ``eval_sum_symbolic`` function for summations
+            with a single summation index.
 
         excl_bases
             If summations involved by indexed bases are also going to be
@@ -534,7 +538,7 @@ class Tensor:
         """Simplify the summations in the given terms."""
 
         if simplifiers is True:
-            simplifiers = self._drudge.sum_simplifiers
+            simplifiers = self._drudge.sum_simplifiers.bcast
 
         # Make it a two-step process for future extensibility.
         terms = terms.map(lambda x: x.simplify_trivial_sums())
@@ -542,7 +546,8 @@ class Tensor:
         if simplifiers:
             terms = terms.map(functools.partial(
                 simplify_amp_sums_term,
-                simplifiers=simplifiers, excl_bases=excl_bases
+                simplifiers=simplifiers, excl_bases=excl_bases,
+                resolvers=self._drudge.resolvers
             ))
 
         return terms
@@ -1985,11 +1990,11 @@ class Drudge:
         self._inside_drs = False
 
         # Default simplification of summation.
-        self.sum_simplifiers = {
-            1: [lambda expr: eval_sum_symbolic(
+        self.sum_simplifiers = BCastVar(self._ctx, {
+            1: [lambda expr, **_: eval_sum_symbolic(
                 expr.args[0].simplify(), expr.args[1]
             )]
-        }
+        })
 
     @property
     def ctx(self):

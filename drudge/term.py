@@ -1998,13 +1998,17 @@ def _parse_factor_symb(expr: Expr):
 #
 
 
-def simplify_amp_sums_term(term: Term, simplifiers, excl_bases):
+def simplify_amp_sums_term(term: Term, simplifiers, excl_bases, resolvers):
     """Attempt to make simplifications to summations internal in amplitudes.
 
     This function has a complex appearance, but it basically just tries to apply
     the rules repeatedly until it can be guaranteed that none of the rules is
     applicable to the current term.
     """
+
+    simplifiers = simplifiers.value
+    resolvers = resolvers.value
+    sums_dict = dict(term.sums)
 
     # Do some pre-processing for better handling of the factors.
     term = term.map(lambda x: expand_power_base(expand_power_exp(x)))
@@ -2096,7 +2100,11 @@ def simplify_amp_sums_term(term: Term, simplifiers, excl_bases):
 
                 orig = Sum(curr_expr, *curr_sums)
                 for simplify in simplifiers[n_sums]:
-                    simplified = simplify(orig)
+
+                    # Call user-provided simplifier.
+                    simplified = simplify(
+                        orig, resolvers=resolvers, sums_dict=sums_dict
+                    )
 
                     if_simplified = (
                             simplified is not None and simplified != orig and
