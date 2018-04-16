@@ -8,7 +8,7 @@ import typing
 import collections
 from sympy import (
     Symbol, Function, Sum, symbols, Wild, KroneckerDelta, IndexedBase, Integer,
-    sqrt, factor, Mul, Expr, Matrix, Add, Number, Pow
+    sqrt, factor, Mul, Expr, Matrix, Pow
 )
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
 
@@ -200,6 +200,8 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         # For angular momentum coupling.
         self.set_tensor_method('do_amc', self.do_amc)
 
+        # Special simplification routines.
+        self.set_tensor_method('simplify_pono', self.simplify_pono)
         self.set_tensor_method('deep_simplify', self.deep_simplify)
         self.set_tensor_method('merge_j', self.merge_j)
 
@@ -412,6 +414,14 @@ class NuclearBogoliubovDrudge(BogoliubovDrudge):
         """
         return tensor.merge(consts=self._j_exprs).map2amps(factor)
 
+    def simplify_pono(self, tensor: Tensor):
+        """Simplify the powers of negative ones in the amplitudes of the tensor.
+        """
+        resolvers = self.resolvers
+        return tensor.map(
+            lambda term: _simpl_pono_term(term, resolvers.value)
+        )
+
     def deep_simplify(self, tensor: Tensor):
         """Simplify the given tensor deeply.
 
@@ -515,6 +525,293 @@ class _JM:
         """Get a simple string form for debugging.
         """
         return '{!s}, {!s}'.format(self.j, self.m)
+
+
+#
+# Special simplifications of general scalar quantities.
+#
+
+def _simpl_pono(
+        expr: Expr, resolvers, sums_dict, jms=None, rels=None, sums_only=True
+):
+    """Simplify powers of negative one (pono) in the given expression.
+
+    Powers of negative one form a very special position in spherical nuclear
+    problems.  Here we have special simplifications based for them.  Whether a
+    j/m symbol is an integer or a half-integer is inferred from the range
+    obtained from the standard drudge resolver facility.
+
+    In addition to the simplification from integer/half integer nature of the
+    j/m symbols, for example, the three m quantum numbers in a Wigner 3j symbol
+    need to add to zero for it to be non-zero.  These can be used for the
+    simplification of the factor ahead of a product of 3j symbols.
+
+    Parameters
+    ----------
+
+    expr
+        The SymPy expression to simplify.
+
+    resolvers
+        The resolvers for the range of the symbols.
+
+    sums_dict
+        The mapping from summed dummy to its range.
+
+    jms
+        The _JM pairs.  When the corresponding j of an m symbol can be decided,
+        it will be used for the decision of the integer/half-integer nature of
+        the m symbols.  The pairing to be given in ``rels`` do not have to be
+        given here.
+
+    rels
+        An iterable of linear relationships among m symbols.  Each relation is
+        given as a iterable of _JM objects, whose m symbols must sum to zero.
+        Note that only bare m symbols are considered.
+
+    sums_only
+        When given, only relations among m symbols inside this container will be
+        considered.  Or all given relations with bare m symbols will be
+        considered.
+
+    Notes
+    -----
+
+    Currently, only bare m symbols are fully considered.
+
+    TODO: Make it applicable to more general forms of the m quantum number.
+
+    """
+
+    # Preparatory steps.
+
+    # Mapping from m symbols to the corresponding j symbols.
+    j_of = {
+        i.m: i.j for i in jms
+    } if jms else {}
+
+    # m symbols considered in the relations.  A mapping from the symbol to its
+    # index number, which is going to be used for coefficient vectors.
+    symb2idx = collections.OrderedDict()
+
+    rels = [] if rels is None else rels
+    rel_dicts = []  # Written as dictionary.
+    for i in rels:
+        rel = {}
+        for j in i:
+            # Possibly add to the j_of dictionary.
+            j_of[j.m] = j.j
+
+            m_symb = j.m_symb
+            if m_symb is None:
+                break
+            if sums_only and m_symb not in sums_dict:
+                break
+
+            if m_symb not in symb2idx:
+                symb2idx[m_symb] = len(symb2idx)
+            rel[m_symb] = j.m_phase
+
+        else:
+            rel_dicts.append(rel)
+        continue
+
+    # Cast the relations into vectors.
+    raw_rel_vecs = []
+    n_symbs = len(symb2idx)
+    for i in rel_dicts:
+        coeffs = [0] * n_symbs
+        for k, v in i.items():
+            coeffs[symb2idx[k]] = v
+            continue
+        raw_rel_vecs.append(Matrix(coeffs))
+        continue
+
+    # Gram-Schmidt procedure to make the relations orthogonal.
+    rel_vecs = []
+    for i in raw_rel_vecs:
+        vec = _proj_out(rel_vecs, i)
+        if not vec.is_zero:
+            rel_vecs.append(vec)
+
+    # Main simplification.
+    expr = expr.powsimp().simplify()
+    expr = expr.replace(
+        lambda x: isinstance(x, Pow) and x.args[0] == -1,
+        lambda x: _simpl_one_pono(
+            x, resolvers, sums_dict, j_of, symb2idx, rel_vecs
+        )
+    )
+
+    return expr.powsimp().simplify()
+
+
+def _simpl_one_pono(
+        expr: Pow, resolvers, sums_dict, j_of, symb2idx, rel_vecs
+):
+    """Simplify a power of negative one.
+
+    Current strategy: first the linear factors over j/m symbols will be given
+    canonicalized coefficients.  Then the linear relations are projected out.
+    Finally the coefficients are canonicalized again.
+
+    No idea if it works in general cases...
+
+    TODO: Find and implement a mathematically rigourous canonicalization with
+    simultaneous consideration of relations and modular arithmetic.
+    """
+
+    expr = _simpl_pono_jm(expr, resolvers, sums_dict, j_of)
+    if not isinstance(expr, Pow):
+        return expr
+
+    exps = _parse_pono(expr)
+
+    # Next, simplification based on the linear relations are performed.
+    coeffs = [0 for _ in symb2idx]  # Coefficients for symbols with relations.
+    other = []  # Other addends.
+
+    for i in exps:
+        coeff, symb = _parse_linear(i)
+        if symb is None or symb not in symb2idx:
+            other.append(i)
+        else:
+            coeffs[symb2idx[symb]] += coeff
+        continue
+
+    projed_coeffs = _proj_out(rel_vecs, Matrix(coeffs))
+    addends = other
+    for i, j in zip(symb2idx.keys(), projed_coeffs):
+        if j != 0:
+            addends.append(i * j)
+        continue
+
+    # Finally, canonicalize the coefficients again.
+    expr = _NEG_UNITY ** sum(addends)
+    if not isinstance(expr, Pow):
+        return expr
+
+    expr = _simpl_pono_jm(
+        expr, resolvers, sums_dict, j_of
+    )
+
+    return expr
+
+
+def _simpl_pono_jm(expr: Pow, resolvers, sums_dict, j_of):
+    """Simplify expression based on integer/half-integer properties of j/m.
+    """
+
+    addends = _parse_pono(expr)
+
+    res = _UNITY  # The result.
+
+    def add_to_res(expon):
+        """Add one exponent of -1 to the result.
+        """
+        nonlocal res
+        res *= (_NEG_UNITY ** expon).simplify()
+        return
+
+    phase = 1  # The overall +- 1 phase, separated out for performance.
+
+    for i in addends:
+        coeff, symb = _parse_linear(i)
+        if symb is None:
+            # Not a linear function over a symbol.
+            add_to_res(i)
+            continue
+
+        numer, denom = coeff.as_numer_denom()
+        if not (numer.is_integer and denom.is_integer):
+            add_to_res(i)
+            continue
+
+        indics = [j_of[symb], symb] if symb in j_of else [symb]
+        if_half = _find_if_half_int(indics, sums_dict, resolvers)
+        if if_half is None:
+            add_to_res(i)
+            continue
+
+        # If we reach here, we can make some simplification.
+        #
+        # For (-1) ** (n/d * s), we can always add 2*s to the exponent, possibly
+        # with the side effect of a -1 phase when s is a half integer.
+
+        stride = 2 * denom
+        canon_numer = numer % stride
+        diff = canon_numer - numer
+        steps, rem = divmod(diff, stride)
+        assert rem == 0
+        if if_half and steps % 2 != 0:
+            phase *= _NEG_UNITY
+
+        add_to_res(canon_numer / denom * symb)
+        continue
+
+    return res.powsimp().simplify() * phase
+
+
+def _find_if_half_int(indics, sums_dict, resolvers):
+    """Find if a quantity indicated by the indicator a half integer or not.
+
+    If it cannot be decided to be neither an integer nor a half-integer, None
+    will be returned.
+    """
+
+    for indic in indics:
+        if isinstance(indic, (JOf, MOf)):
+            # j component is always considered half integer for nuclear
+            # problems.
+            #
+            # TODO: Make this behaviour configurable.
+            return True
+        else:
+            range_ = try_resolve_range(indic, sums_dict, resolvers)
+            if range_ is None or not range_.bounded:
+                continue
+
+            lower = range_.lower
+            if lower.is_integer:
+                return False
+            elif (2 * lower).is_integer:
+                return True
+
+            continue
+
+    # After all indicators have been tried.
+    return None
+
+
+def _parse_pono(expr: Pow):
+    """Parse the exponent terms from a PONO.
+
+    This internal function assumes the correct shape of the argument.
+    """
+
+    assert isinstance(expr, Pow)
+    base, exp = expr.args
+    assert base == -1
+    return exp.as_ordered_terms()
+
+
+def _simpl_pono_term(term: Term, resolvers) -> Term:
+    """Try to simplify powers of negative unity in a term.
+    """
+
+    sums_dict = dict(term.sums)
+    other, wigner_3js = _parse_3js(term.amp)
+    jms, rels = _get_jms_rels(wigner_3js)
+
+    new_other = _simpl_pono(
+        other, resolvers, sums_dict, jms, rels, sums_only=False
+    )
+
+    new_amp = new_other * prod_(
+        i.expr for i in wigner_3js
+    )
+
+    return Term(term.sums, new_amp, term.vecs)
 
 
 #
@@ -1190,134 +1487,6 @@ def _sum_4_3j_to_6j(expr: Sum):
             * KroneckerDelta(m3, mprm3)
             * Wigner6j(j1, j2, j3, j4, j5, j6)
     ) * noinv_phase
-
-
-class _Wigner3jMSimpl:
-    """Simplifier based the relations among m's of Wigner 3j symbols.
-
-    The three m quantum numbers in a Wigner 3j symbol need to add to zero for it
-    to be non-zero.  This can be used for the simplification of the factor ahead
-    of a product of 3j symbols.
-
-    This simplifier can be initialized with an iterable of 3j symbols, then it
-    can be used to simplify factors multiplying their product.
-
-    Parameters
-    ----------
-
-    wigner_3js
-        The Wigner 3j symbols.
-
-    sums
-        When given, only relations among m symbols inside this container will be
-        considered.  Or all relations from 3j symbols with bare m symbols will
-        be considered.
-
-    Notes
-    -----
-
-    Currently, only bare m symbols are considered.
-
-    TODO: Make it applicable to more general forms of the m quantum number.
-
-    """
-
-    __slots__ = [
-        '_symb2idx',
-        '_rel_vecs'
-    ]
-
-    def __init__(self, wigner_3js: typing.Iterable[_Wigner3j], sums=None):
-        """Initialize the simplifier.
-        """
-
-        symb2idx = collections.OrderedDict()
-
-        rels = []  # Written as dictionary.
-        for i in wigner_3js:
-            rel = {}
-            for j in i.indices:
-                m_symb = j.m_symb
-                if m_symb is None:
-                    break
-                if sums is not None and m_symb not in sums:
-                    break
-
-                if m_symb not in symb2idx:
-                    symb2idx[m_symb] = len(symb2idx)
-                rel[m_symb] = j.m_phase
-
-            else:
-                rels.append(rel)
-            continue
-
-        # Cast the relations into vectors.
-        raw_rel_vecs = []
-        n_symbs = len(symb2idx)
-        for i in rels:
-            coeffs = [0 for _ in range(n_symbs)]
-            for k, v in i.items():
-                coeffs[symb2idx[k]] = v
-                continue
-            raw_rel_vecs.append(Matrix(coeffs))
-            continue
-
-        # Gram-Schmidt procedure to make the relations orthogonal.
-        rel_vecs = []
-        for i in raw_rel_vecs:
-            vec = _proj_out(rel_vecs, i)
-            if not vec.is_zero:
-                rel_vecs.append(vec)
-
-        self._symb2idx = symb2idx
-        self._rel_vecs = rel_vecs
-
-    def simplify(self, expr: Expr):
-        """Simplify the given expression given the m relations of 3j symbols.
-        """
-        expr = expr.powsimp().simplify()
-
-        if not isinstance(expr, Pow):
-            expr = expr.replace(Add, self._simpl_add)
-        else:
-            # Specialized treatment for the form we normally see in spherical
-            # problems.  The above general treatment could skip the processing
-            # when we have a simple exponential of a plain symbol
-            base, expon = expr.args
-            if isinstance(expon, Add):
-                expon = self._simpl_add(*expon.args)
-            else:
-                # For a single term in the exponent.
-                expon = self._simpl_add(expon)
-            expr = base ** expon
-
-        return expr.simplify()
-
-    def _simpl_add(self, *args):
-        """Simplify an addition.
-        """
-
-        # Separate the addends into the linear factors in the m symbols under
-        # consideration, and others.
-        other = 0
-        coeffs = [0 for _ in self._symb2idx]
-
-        symb2idx = self._symb2idx
-        for arg in args:
-            coeff, symb = _parse_linear(arg)
-            if symb is None or symb not in symb2idx:
-                other += arg
-            else:
-                coeffs[symb2idx[symb]] += coeff
-            continue
-
-        res = other
-        simpl_coeffs = _proj_out(self._rel_vecs, Matrix(coeffs))
-        for i, j in zip(symb2idx.keys(), simpl_coeffs):
-            if j != 0:
-                res += i * j
-
-        return res
 
 
 def _proj_out(bases, vec):
