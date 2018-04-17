@@ -3,7 +3,7 @@
 import random
 
 import pytest
-from sympy import Symbol, latex, symbols, KroneckerDelta, sqrt
+from sympy import Symbol, symbols, KroneckerDelta, sqrt, IndexedBase
 
 from drudge import NuclearBogoliubovDrudge, Range, Term
 from drudge.nuclear import (
@@ -214,3 +214,58 @@ def test_wigner3j_sum_to_wigner6j(nuclear: NuclearBogoliubovDrudge):
     assert len(term.sums) == 0
     assert len(term.vecs) == 0
     assert (term.amp - expected).simplify() == 0
+
+
+def test_sum_4_3j_to_6j_in_bccd(nuclear: NuclearBogoliubovDrudge):
+    """Test summation of 4 Wigner 3j symbols in a really BCCD term.
+
+    This example comes from the angular momentum coupled BCCD doubles equation
+    where the H04 term in the Hamiltonian contracts with the T tensor.
+    """
+
+    dr = nuclear
+    p = dr.names
+    j_range = dr.coll_j_range
+    m_range = dr.m_range
+    tilde_range = dr.tilde_range
+
+    J1, J2, J3 = p.J1, p.J2, p.J3
+    M1, M2 = p.M1, p.M2
+    ktilde1, ktilde2, ktilde3 = p.ktilde1, p.ktilde2, p.ktilde3
+    ktilde4, ktilde5, ktilde6 = p.ktilde4, p.ktilde5, p.ktilde6
+    ktilde7, ktilde8 = p.ktilde7, p.ktilde8
+    m1, m2, m3, m4 = p.m1, p.m2, p.m3, p.m4
+    t = IndexedBase('t')
+    h04 = IndexedBase('H04')
+
+    tensor = dr.sum(
+        (J2, j_range), (J3, j_range), (M2, m_range[-J2, J2 + 1]),
+        (ktilde5, tilde_range),
+        (ktilde6, tilde_range),
+        (ktilde7, tilde_range),
+        (ktilde8, tilde_range),
+        (m1, m_range[-JOf(ktilde1), JOf(ktilde1) + 1]),
+        (m2, m_range[-JOf(ktilde2), JOf(ktilde2) + 1]),
+        (m3, m_range[-JOf(ktilde4), JOf(ktilde4) + 1]),
+        (m4, m_range[-JOf(ktilde5), JOf(ktilde5) + 1]),
+        -(-1) ** J1 * (-1) ** J2 * (-1) ** (6 * J3) * (-1) ** (-M1)
+        * (-1) ** (-M2) * (-1) ** JOf(ktilde2) * (-1) ** (3 * JOf(ktilde3))
+        * (-1) ** (4 * JOf(ktilde4)) * (-1) ** (2 * JOf(ktilde5))
+        * (-1) ** (4 * JOf(ktilde7)) * (-1) ** (2 * JOf(ktilde8))
+        * (
+                4 * J1 * J2 * J3 + 2 * J1 * J2 + 2 * J1 * J3 + J1 + 2 * J2 * J3
+                + J2 + J3
+        ) * KroneckerDelta(JOf(ktilde3), JOf(ktilde5))
+        * h04[J3, ktilde6, ktilde7, ktilde8, ktilde5]
+        * t[J2, ktilde5, ktilde1, ktilde2, ktilde4]
+        * t[J3, ktilde6, ktilde7, ktilde8, ktilde3]
+        * Wigner3j(JOf(ktilde1), m1, JOf(ktilde2), m2, J1, -M1)
+        * Wigner3j(JOf(ktilde2), -m2, JOf(ktilde4), -m3, J2, -M2)
+        * Wigner3j(JOf(ktilde3), -m4, JOf(ktilde4), -m3, J1, -M1)
+        * Wigner3j(JOf(ktilde5), m4, JOf(ktilde1), m1, J2, -M2)
+        / (3 * (2 * JOf(ktilde5) + 1))
+    )
+    res = tensor.deep_simplify()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert term.amp.has(Wigner6j)
