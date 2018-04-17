@@ -136,6 +136,7 @@ def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
         assert (term.amp - expected).simplify() == 0
 
 
+@pytest.mark.skip(reason='Pending improvement in PONO simplification')
 def test_varsh_911_8(nuclear: NuclearBogoliubovDrudge):
     """Test simplification based on the rule in Varshalovich 9.1.1 Eq (8).
     """
@@ -216,6 +217,7 @@ def test_wigner3j_sum_to_wigner6j(nuclear: NuclearBogoliubovDrudge):
     assert (term.amp - expected).simplify() == 0
 
 
+@pytest.mark.skip(reason='Pending improvement in PONO simplification')
 def test_sum_4_3j_to_6j_in_bccd(nuclear: NuclearBogoliubovDrudge):
     """Test summation of 4 Wigner 3j symbols in a really BCCD term.
 
