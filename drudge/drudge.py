@@ -28,7 +28,7 @@ from .term import (
     expand_sums_term, ATerms, simplify_amp_sums_term
 )
 from .utils import (
-    ensure_symb, BCastVar, nest_bind, prod_, sympy_key, SymbResolver
+    ensure_symb, BCastVar, nest_bind, sympy_key, SymbResolver
 )
 
 
@@ -1991,9 +1991,7 @@ class Drudge:
 
         # Default simplification of summation.
         self.sum_simplifiers = BCastVar(self._ctx, {
-            1: [lambda expr, **_: eval_sum_symbolic(
-                expr.args[0].simplify(), expr.args[1]
-            )]
+            1: [_simplify_symbolic_sum]
         })
 
     @property
@@ -3588,3 +3586,16 @@ class _Decred(int):
     needed.
     """
     __slots__ = []
+
+
+def _simplify_symbolic_sum(expr, **_):
+    """Try to simplify a symbolic summation of one dummy by SymPy.
+
+    This is the only default way of simplifying internal summations.
+    """
+
+    assert len(expr.args) == 2
+
+    return eval_sum_symbolic(
+        expr.args[0].simplify(), expr.args[1]
+    )
