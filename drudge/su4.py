@@ -278,7 +278,7 @@ def _swap_su4(vec1: Vec, vec2: Vec, depth=None, *,spec: _SU4Spec):
         elif char2 == _YPZ:
             return _UNITY, _NOUGHT
         elif char2 == _YZP:
-            return _UNITY, _NEGHALF * delta * spec.raise2[indice1]
+            return _UNITY, _NEGHALF * delta * spec.raise1[indice1]
         elif char2 == _YPM:
             if key1 < key2:
                 return _UNITY, _NOUGHT
@@ -620,7 +620,7 @@ def _parse_vec(vec, spec: _SU4Spec):
     
     return char, indices, keys
 
-_QUARTER = Rational(1,2)
+_QUARTER = Rational(1,4)
 _NEGHALF = -Rational(1,2)
 _NEGTWO = -Integer(2)
 _UNITY = Integer(1)
