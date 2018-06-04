@@ -449,9 +449,30 @@ def test_tensor_can_be_canonicalized(free_alg):
             dr.sum((i, r), (j, r), m[j, i] * v[i] * v[j])
     )
     assert tensor.n_terms == 2
-
     res = tensor.simplify()
     assert res == 0
+
+    # With wrapping under an even function.
+    tensor = (
+            dr.sum((i, r), (j, r), m[i, j] ** 2 * v[i] * v[j]) +
+            dr.sum((i, r), (j, r), m[j, i] ** 2 * v[i] * v[j])
+    )
+    assert tensor.n_terms == 2
+    res = tensor.simplify()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert term.sums == ((i, r), (j, r))
+    assert term.amp == 2 * m[i, j] ** 2
+    assert term.vecs == (v[i], v[j])
+
+    # With wrapping under an odd function.
+    tensor = (
+            dr.sum((i, r), (j, r), m[i, j] ** 3 * v[i] * v[j]) +
+            dr.sum((i, r), (j, r), m[j, i] ** 3 * v[i] * v[j])
+    )
+    assert tensor.n_terms == 2
+    res = tensor.simplify()
+    assert res.n_terms == 0
 
     # Hermitian matrix.
     tensor = dr.einst(
@@ -485,29 +506,6 @@ def test_tensors_w_functions_can_be_canonicalized(free_alg):
     )
     assert tensor.n_terms == 2
     assert tensor.simplify() == 0
-
-
-def test_tensor_can_be_canonicalized_with_ops(free_alg):
-    """Test tensor canonicalization in simplification under operations.
-
-    Here some factors are going to be put inside non-linear mathematical
-    operations, power specifically.
-    """
-
-    dr = free_alg
-    p = dr.names
-    i, j, k, l = p.R_dumms[:4]
-    m = p.m
-    rho = p.rho
-
-    tensor = (
-            dr.einst(m[i, j] ** 2 * rho[i, k, j, l] ** 3) +
-            dr.einst(m[j, i] ** 2 * rho[k, i, l, j] ** 3)
-    )
-    assert tensor.n_terms == 2
-
-    res = tensor.simplify()
-    assert res == 0
 
 
 def test_canonicalization_connected_summations(free_alg):
