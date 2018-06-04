@@ -508,6 +508,37 @@ def test_tensors_w_functions_can_be_canonicalized(free_alg):
     assert tensor.simplify() == 0
 
 
+def test_canonicalization_of_vectors_w_symm(free_alg):
+    """Test the canonicalization when vectors are given (anti-)symmetries.
+    """
+
+    dr = free_alg
+    p = dr.names
+    x = IndexedBase('x')
+    r = p.R
+    i, j = p.i, p.j
+
+    vs = Vec('vs')
+    dr.set_symm(vs, Perm([1, 0]), valence=2)
+    tensor = dr.sum((i, r), (j, r), x[i, j] * vs[j, i])
+    res = tensor.simplify()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert term.sums == ((i, r), (j, r))
+    assert term.amp == x[i, j]
+    assert term.vecs == (vs[i, j],)
+
+    va = Vec('va')
+    dr.set_symm(va, Perm([1, 0], NEG), valence=2)
+    tensor = dr.sum((i, r), (j, r), x[i, j] * va[j, i])
+    res = tensor.simplify()
+    assert res.n_terms == 1
+    term = res.local_terms[0]
+    assert term.sums == ((i, r), (j, r))
+    assert term.amp == -x[i, j]
+    assert term.vecs == (va[i, j],)
+
+
 def test_canonicalization_connected_summations(free_alg):
     """Test canonicalization where the summations has relationships."""
     dr = free_alg
