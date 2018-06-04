@@ -115,6 +115,8 @@ def canon_factors(sums, factors, symms):
 
     """
 
+    from .term import Vec
+
     # They need to be looped over multiple times.
     sums = list(sums)
     factors = list(factors)
@@ -145,6 +147,7 @@ def canon_factors(sums, factors, symms):
             is_indexed = False
         valency = len(indices)
         perm = perms[factor_idxes[i]]
+        if_vector = isinstance(factor, Vec)
 
         if valency < 2 or perm is None:
             factor_res = factor
@@ -157,9 +160,16 @@ def canon_factors(sums, factors, symms):
 
             acc = perm.acc
             if acc & NEG:
-                coeff *= -1
+                if if_vector:
+                    coeff *= -1
+                else:
+                    factor_res = -factor_res
             if acc & CONJ:
-                # TODO: Make vector has sensible error here.
+                # TODO: Allow vectors to have their own dagger form, maybe.
+                if if_vector:
+                    raise ValueError(
+                        'Vector', factor, 'cannot have conjugation symmetry'
+                    )
                 factor_res = conjugate(factor_res)
 
         factors_res.append(factor_res)
