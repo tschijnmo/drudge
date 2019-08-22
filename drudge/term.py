@@ -802,7 +802,7 @@ class Term(ATerms):
 
         res_vecs = self._vecs if vecs is None else vecs
         if not skip_vecs:
-            res_vecs = tuple(i.map(func) for i in res_vecs)
+            res_vecs = tuple(vec.map(func) for vec in res_vecs)
 
         return Term(res_sums, res_amp, res_vecs)
 
@@ -820,7 +820,7 @@ class Term(ATerms):
         if sums is None:
             sums = self._sums
         if purge_sums:
-            sums = tuple(i for i in sums if i[0] not in substs)
+            sums = tuple(sum_ for sum_ in sums if sum_[0] not in substs)
 
         return self.map(
             lambda x: x.xreplace(substs), sums=sums, amp=amp, vecs=vecs,

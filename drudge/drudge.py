@@ -1084,7 +1084,7 @@ class Tensor:
             if len(term.sums) != 0 or term.amp != 1:
                 raise ValueError('Invalid LHS to substitute', term)
             vecs = term.vecs
-            bases = {i.base for i in vecs}
+            bases = {vec.base for vec in vecs}
 
             # In this way, lhs is either an SymPy expression (Indexed or Symbol)
             # or a tuple.
@@ -1095,7 +1095,7 @@ class Tensor:
                 'expecting vector, indexed, or symbol'
             )
 
-        if not all(self.has_base(i) for i in bases):
+        if not all(self.has_base(base) for base in bases):
             return self
 
         # Shallow processing of the right-hand side.
@@ -1108,7 +1108,7 @@ class Tensor:
             rhs_terms = parse_terms(rhs)
 
         if if_scalar and not all(
-                i.is_scalar for i in rhs_terms
+                term.is_scalar for term in rhs_terms
         ):
             raise ValueError('Invalid RHS for substituting a scalar', rhs)
 
@@ -1120,21 +1120,23 @@ class Tensor:
                 if if_scalar:
                     index_bunches = [lhs.indices]
                 else:
-                    index_bunches = [i.indices for i in lhs]
+                    index_bunches = [vec.indices for vec in lhs]
                 for indices in index_bunches:
                     wilds.update(
-                        (i, Wild(i.name))
-                        for i in indices if isinstance(i, Symbol)
+                        (index, Wild(index.name))
+                        for index in indices if isinstance(index, Symbol)
                     )
 
         if if_scalar:
             lhs = lhs.xreplace(wilds)
         else:
             lhs = tuple(
-                i.map(lambda x: x.xreplace(wilds)) for i in lhs
+                vec.map(lambda x: x.xreplace(wilds)) for vec in lhs
             )
 
-        rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
+        rhs_terms = [
+            i.subst(wilds) for term in rhs_terms for i in term.expand()
+        ]
 
         # Processing of the expression to be substituted.
         #
