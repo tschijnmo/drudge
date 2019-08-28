@@ -32,6 +32,10 @@ from .utils import (
 )
 
 
+# To be used by Tensor.subst and Tensor.subst_all
+_DECR_SUFFIX = '_InternalProxy'
+
+
 class Tensor:
     """The main tensor class.
 
@@ -957,9 +961,26 @@ class Tensor:
         )
 
     @staticmethod
-    def _restore(term: Term, decr_vars: typing.Dict):
+    def _restore(term: Term, decr_vars=None):
 
-        restore_vars = {decr_var: var for var, decr_var in decr_vars.items()}
+        if decr_vars != None:
+            restore_vars = {decr_var: var for var, decr_var in decr_vars.items()}
+        else:
+            suffix_index = -len(_DECR_SUFFIX)
+            restore_vars = {}
+            for var in term.free_vars:
+                if isinstance(var, Symbol):
+                    name = var.name
+                    Ref = Symbol
+                elif isinstance(var, IndexedBase):
+                    name = var.label.name
+                    Ref = IndexedBase
+                else:
+                    raise TypeError('Expecting Symbol or IndexedBase')
+
+                if name.endswith(_DECR_SUFFIX):
+                    restore_vars[var] = Ref(name[:suffix_index])
+
         func = lambda x: x.xreplace(restore_vars)
 
         new_vecs = tuple(
@@ -974,7 +995,7 @@ class Tensor:
 
     def subst(
             self, lhs, rhs, wilds=None, full_balance=False, excl=None,
-            simult=True
+            simult=True, keep_decorated=False
     ):
         """Substitute the all appearance of the defined tensor.
 
@@ -1080,6 +1101,8 @@ class Tensor:
 
         """
 
+        assert simult or not keep_decorated
+
         # Special case of the unity LHS.
         if lhs == 1:
             scalar_part = self.filter(lambda x: len(x.vecs) == 0)
@@ -1159,6 +1182,8 @@ class Tensor:
             )
 
         # XXX: Why is it necessary to expand the terms?
+        # Expansion is probably only necessary for complex matching patterns,
+        # which has not been implemented for now.
         rhs_terms = [
             expanded_term.subst(wilds)
             for term in rhs_terms for expanded_term in term.expand()
@@ -1167,20 +1192,20 @@ class Tensor:
         # "Decorate" the RHS to ensure simultaneous substitution
         decr_vars = {}
         if simult:
-            # symbols and indexedBases
-            decr_suffix = 'InternalProxy'
-            # Note that free_vars are defined before the handling of the wilds
+            # for symbols and indexedBases
+            # (Note that free_vars have been defined before the handling of the 
+            # wilds            for var in free_vars:
             for var in free_vars:
                 if isinstance(var, Symbol):
-                    decr_vars[var] = Symbol(var.name + decr_suffix)
+                    decr_vars[var] = Symbol(var.name + _DECR_SUFFIX)
                 elif isinstance(var, IndexedBase):
-                    decr_vars[var] = IndexedBase(var.label.name + decr_suffix)
+                    decr_vars[var] = IndexedBase(var.label.name + _DECR_SUFFIX)
                 else:
                     raise TypeError('Expecting Symbol or IndexedBase')
 
             rhs_terms = [term.subst(decr_vars) for term in rhs_terms]
 
-            # vectors
+            # for vectors
             rhs_terms = [
                 term.map(vecs=self._decr_vecs(term.vecs)) for term in rhs_terms
             ]
@@ -1190,7 +1215,7 @@ class Tensor:
             lhs, rhs_terms, full_balance=full_balance, excl=excl
         )
 
-        if not simult:
+        if not simult or keep_decorated:
             return res
         else:
             restore = functools.partial(self._restore, decr_vars=decr_vars)
@@ -1245,16 +1270,24 @@ class Tensor:
 
     def subst_all(
             self, defs, simplify=False, full_balance=False, excl=None,
-            simult=True
+            simult=True, simult_all=False
     ):
-        """Substitute all given definitions serially.
+        """Substitute all given definitions.
 
         The definitions should be given as an iterable of either
         :py:class:`TensorDef` instances or pairs of left-hand side and
-        right-hand side of the substitutions.  Note that the substitutions are
-        going to be performed **according to the given order** one-by-one,
-        rather than simultaneously.
+        right-hand side of the substitutions. Note that, by default, the
+        substitutions are going to be performed **according to the given
+        order** one-by-one; simultaneous substitutions can be turned on by
+        setting ``simult_all`` to be true.
         """
+
+        # assert simult or not simult_all
+
+        if simplify and not simult_all:
+            sequentially_simplify = True
+        else:
+            sequentially_simplify = False
 
         res = self
         for i in defs:
@@ -1270,14 +1303,20 @@ class Tensor:
                 )
 
             res = res.subst(
-                lhs, rhs, full_balance=full_balance, excl=excl, simult=simult
+                lhs, rhs, full_balance=full_balance, excl=excl, 
+                simult=simult, keep_decorated=simult_all
             )
-            if simplify:
+            if sequentially_simplify:
                 res = res.simplify().repartition()
 
             # Mostly to make the evaluation eagerly.
             if res.n_terms == 0:
                 return res
+
+        if simult_all:
+            res = res.map(self._restore)
+            if simplify:
+                res = res.simplify().repartition()
 
         return res
 
