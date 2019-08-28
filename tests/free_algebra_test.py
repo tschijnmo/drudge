@@ -945,8 +945,18 @@ def test_batch_vector_substitutions(
         dr.define(v[i, DOWN], x[i] * v[i, DOWN] + y[i] * v_dag[i, UP]),
     ]
 
+    # Sequentially apply the definitions of the substitutions
+    expected_sequential = orig2
+    for def_ in defs2:
+        expected_sequential = def_.act(expected_sequential)
+    expected_sequential = expected_sequential.simplify()
+    res = orig2.subst_all(
+        defs2, simult_all=False, full_balance=full_balance, simplify=simplify
+    ).simplify()
+    assert res == expected_sequential
+
     # Simultaneously apply the definitions of the substitutions
-    expected = dr.sum(
+    expected_simutaneous = dr.sum(
         (i, p.R), (j, p.R), a[i, j] * (
             (x[i] * v_dag[i, UP] - y[i] * v[i, DOWN])
             * (x[j] * v[j, UP] - y[j] * v_dag[j, DOWN])
@@ -957,7 +967,46 @@ def test_batch_vector_substitutions(
     res = orig2.subst_all(
         defs2, simult_all=True, full_balance=full_balance, simplify=simplify
     ).simplify()
-    assert res == expected
+    assert res == expected_simutaneous
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_batch_amp_substitutions(free_alg, full_balance):
+    """Test the batch amplitude substitutions using the subst_all method
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    a = IndexedBase('a')
+    b = Symbol('b')
+    i = p.i
+    r = p.R
+    v = p.v
+
+    orig = dr.einst(b * a[i] * v[i])
+    defs = [
+        dr.define(a[i], a[i] + b),
+        dr.define(b, sin(b))
+    ]
+
+    # Sequentially apply the definitions of the substitutions
+    expected_sequential = dr.sum(
+        (i, r), sin(b) * (a[i] + sin(b)) * v[i]
+    ).simplify()
+    res = orig.subst_all(
+        defs, simult_all=False, full_balance=full_balance, simplify=True
+    )
+    assert res == expected_sequential
+
+    # Simultaneously apply the definitions of the substitutions
+    expected_simutaneous = dr.sum(
+        (i, r), sin(b) * (a[i] + b) * v[i]
+    ).simplify()
+    res = orig.subst_all(
+        defs, simult_all=True, full_balance=full_balance, simplify=True
+    )
+    assert res == expected_simutaneous
 
 
 def test_special_substitution_of_identity(free_alg):
