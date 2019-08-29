@@ -12,7 +12,9 @@ from sympy import (
     Rational, Symbol, Function
 )
 
-from drudge import Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef
+from drudge import (
+    Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef, CR, UP, DOWN
+)
 
 
 @pytest.fixture(scope='module')
@@ -881,6 +883,130 @@ def test_tensors_can_be_substituted_strings_of_vectors(
     orig = dr.einst(x[i, j] * v[i] * v[j])
     res = orig.subst(v[i] * v[i], vivi_def)
     assert res == orig
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+@pytest.mark.parametrize('simplify', [True, False])
+def test_batch_vector_substitutions(
+        free_alg, full_balance, simplify
+):
+    """Test the batch substitutions using the subst_all method
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    a = IndexedBase('a')
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+    i, j = p.i, p.j
+    v = p.v
+    v_dag = Vec('v', indices=(CR,))
+
+    #
+    # Spin flipping
+    #
+
+    orig1 = dr.sum((i, p.R), (j, p.R), a[i, j] * v[i, UP] * v[j, DOWN])
+    defs1 = [
+        dr.define(v[i, UP], v[i, DOWN]), dr.define(v[i, DOWN], v[i, UP])
+    ]
+
+    # Sequentially apply the definitions of the substitutions
+    expected_sequential = dr.sum(
+        (i, p.R), (j, p.R), a[i, j] * v[i, UP] * v[j, UP]
+    )
+    res = orig1.subst_all(
+        defs1, simult_all=False, full_balance=full_balance, simplify=simplify
+    )
+    assert res == expected_sequential
+
+    # Simultaneously apply the definitions of the substitutions
+    expected_simutaneous = dr.sum(
+        (i, p.R), (j, p.R), a[i, j] * v[i, DOWN] * v[j, UP]
+    )
+    res = orig1.subst_all(
+        defs1, simult_all=True, full_balance=full_balance, simplify=simplify
+    )
+    assert res == expected_simutaneous
+
+    #
+    # In-place BCS transformation
+    #
+
+    orig2 = dr.einst(
+        a[i, j] * v_dag[i, UP] * v[j, UP] +
+        a[i, j] * v_dag[i, DOWN] * v[j, DOWN]
+    )
+    defs2 = [
+        dr.define(v_dag[i, UP], x[i] * v_dag[i, UP] - y[i] * v[i, DOWN]),
+        dr.define(v_dag[i, DOWN], x[i] * v_dag[i, DOWN] + y[i] * v[i, UP]),
+        dr.define(v[i, UP], x[i] * v[i, UP] - y[i] * v_dag[i, DOWN]),
+        dr.define(v[i, DOWN], x[i] * v[i, DOWN] + y[i] * v_dag[i, UP]),
+    ]
+
+    # Sequentially apply the definitions of the substitutions
+    expected_sequential = orig2
+    for def_ in defs2:
+        expected_sequential = def_.act(expected_sequential)
+    expected_sequential = expected_sequential.simplify()
+    res = orig2.subst_all(
+        defs2, simult_all=False, full_balance=full_balance, simplify=simplify
+    ).simplify()
+    assert res == expected_sequential
+
+    # Simultaneously apply the definitions of the substitutions
+    expected_simutaneous = dr.sum(
+        (i, p.R), (j, p.R), a[i, j] * (
+            (x[i] * v_dag[i, UP] - y[i] * v[i, DOWN])
+            * (x[j] * v[j, UP] - y[j] * v_dag[j, DOWN])
+            + (x[i] * v_dag[i, DOWN] + y[i] * v[i, UP])
+            * (x[j] * v[j, DOWN] + y[j] * v_dag[j, UP])
+        )
+    ).simplify()
+    res = orig2.subst_all(
+        defs2, simult_all=True, full_balance=full_balance, simplify=simplify
+    ).simplify()
+    assert res == expected_simutaneous
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_batch_amp_substitutions(free_alg, full_balance):
+    """Test the batch amplitude substitutions using the subst_all method
+    """
+
+    dr = free_alg
+    p = dr.names
+
+    a = IndexedBase('a')
+    b = Symbol('b')
+    i = p.i
+    r = p.R
+    v = p.v
+
+    orig = dr.einst(b * a[i] * v[i])
+    defs = [
+        dr.define(a[i], a[i] + b),
+        dr.define(b, sin(b))
+    ]
+
+    # Sequentially apply the definitions of the substitutions
+    expected_sequential = dr.sum(
+        (i, r), sin(b) * (a[i] + sin(b)) * v[i]
+    ).simplify()
+    res = orig.subst_all(
+        defs, simult_all=False, full_balance=full_balance, simplify=True
+    )
+    assert res == expected_sequential
+
+    # Simultaneously apply the definitions of the substitutions
+    expected_simutaneous = dr.sum(
+        (i, r), sin(b) * (a[i] + b) * v[i]
+    ).simplify()
+    res = orig.subst_all(
+        defs, simult_all=True, full_balance=full_balance, simplify=True
+    )
+    assert res == expected_simutaneous
 
 
 def test_special_substitution_of_identity(free_alg):

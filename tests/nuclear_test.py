@@ -214,7 +214,8 @@ def test_wigner3j_sum_to_wigner6j(nuclear: NuclearBogoliubovDrudge):
     term = res.local_terms[0]
     assert len(term.sums) == 0
     assert len(term.vecs) == 0
-    assert (term.amp - expected).simplify() == 0
+    difference = (res - dr.sum(expected)).deep_simplify()
+    assert len(difference.local_terms) == 0
 
 
 @pytest.mark.skip(reason='Pending improvement in PONO simplification')

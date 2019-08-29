@@ -32,6 +32,10 @@ from .utils import (
 )
 
 
+# To be used by Tensor.subst and Tensor.subst_all
+_DECR_SUFFIX = '_InternalProxy'
+
+
 class Tensor:
     """The main tensor class.
 
@@ -949,9 +953,51 @@ class Tensor:
     # Substitution
     #
 
+    @staticmethod
+    def _decr_vecs(vecs: typing.Tuple[Vec]):
+        return tuple(
+            Vec(label=(vec.label, _Decred(0)), indices=vec.indices)
+            for vec in vecs
+        )
+
+    @staticmethod
+    def _restore(term: Term, decr_vars=None):
+
+        if decr_vars != None:
+            restore_vars = {decr_var: var for var, decr_var in decr_vars.items()}
+        else:
+            suffix_index = -len(_DECR_SUFFIX)
+            restore_vars = {}
+            for var in term.free_vars:
+                if isinstance(var, Symbol):
+                    name = var.name
+                    Ref = Symbol
+                elif isinstance(var, IndexedBase):
+                    name = var.label.name
+                    Ref = IndexedBase
+                else:
+                    raise TypeError('Expecting Symbol or IndexedBase')
+
+                if name.endswith(_DECR_SUFFIX):
+                    restore_vars[var] = Ref(
+                        name[:suffix_index], **var._assumptions
+                    )
+
+        func = lambda x: x.xreplace(restore_vars)
+
+        new_vecs = tuple(
+            Vec(label=vec.label[0], indices=vec.indices)
+            if isinstance(vec.label, tuple) and len(vec.label) == 2
+                and isinstance(vec.label[1], _Decred)
+            else vec
+            for vec in term.vecs
+        )
+
+        return term.map(func, vecs=new_vecs, skip_vecs=True)
+
     def subst(
             self, lhs, rhs, wilds=None, full_balance=False, excl=None,
-            simult=True
+            simult=True, keep_decorated=False
     ):
         """Substitute the all appearance of the defined tensor.
 
@@ -1003,8 +1049,8 @@ class Tensor:
             loop will be resulted.  When it is set to true, the
             newly-substituted part will no longer participate in the matching.
 
-            By default, it is true.  Internally, it decorates the bases on the
-            LHS to special forms, so that the originally-present ones are
+            By default, it is true.  Internally, it decorates the free variables
+            on the RHS to special forms, so that the originally-present ones are
             different from the newly-substituted ones.  Note that its disabling
             makes sense only when the LHS is a complex pattern.
 
@@ -1057,6 +1103,8 @@ class Tensor:
 
         """
 
+        assert simult or not keep_decorated
+
         # Special case of the unity LHS.
         if lhs == 1:
             scalar_part = self.filter(lambda x: len(x.vecs) == 0)
@@ -1084,7 +1132,7 @@ class Tensor:
             if len(term.sums) != 0 or term.amp != 1:
                 raise ValueError('Invalid LHS to substitute', term)
             vecs = term.vecs
-            bases = {i.base for i in vecs}
+            bases = {vec.base for vec in vecs}
 
             # In this way, lhs is either an SymPy expression (Indexed or Symbol)
             # or a tuple.
@@ -1095,7 +1143,7 @@ class Tensor:
                 'expecting vector, indexed, or symbol'
             )
 
-        if not all(self.has_base(i) for i in bases):
+        if not all(self.has_base(base) for base in bases):
             return self
 
         # Shallow processing of the right-hand side.
@@ -1104,118 +1152,79 @@ class Tensor:
         # that the RHS is usually small in real problems.
         if isinstance(rhs, Tensor):
             rhs_terms = rhs.local_terms
+            free_vars = rhs.free_vars
         else:
             rhs_terms = parse_terms(rhs)
+            free_vars = set.union(*[term.free_vars for term in rhs_terms])
 
         if if_scalar and not all(
-                i.is_scalar for i in rhs_terms
+                term.is_scalar for term in rhs_terms
         ):
             raise ValueError('Invalid RHS for substituting a scalar', rhs)
 
-        # Handling of the wilds.
-
+        # Handling of the wilds
         if wilds is None:
             wilds = {}
             if if_indexed:
                 if if_scalar:
                     index_bunches = [lhs.indices]
                 else:
-                    index_bunches = [i.indices for i in lhs]
+                    index_bunches = [vec.indices for vec in lhs]
                 for indices in index_bunches:
                     wilds.update(
-                        (i, Wild(i.name))
-                        for i in indices if isinstance(i, Symbol)
+                        (index, Wild(index.name))
+                        for index in indices if isinstance(index, Symbol)
                     )
 
         if if_scalar:
             lhs = lhs.xreplace(wilds)
         else:
             lhs = tuple(
-                i.map(lambda x: x.xreplace(wilds)) for i in lhs
+                vec.map(lambda x: x.xreplace(wilds)) for vec in lhs
             )
 
-        rhs_terms = [j.subst(wilds) for i in rhs_terms for j in i.expand()]
+        # XXX: Why is it necessary to expand the terms?
+        # Expansion is probably only necessary for complex matching patterns,
+        # which has not been implemented for now.
+        rhs_terms = [
+            expanded_term.subst(wilds)
+            for term in rhs_terms for expanded_term in term.expand()
+        ]
 
-        # Processing of the expression to be substituted.
-        #
-        # Here we manipulate lhs and create target and restore.
+        # "Decorate" the RHS to ensure simultaneous substitution
+        decr_vars = {}
+        if simult:
+            # for symbols and indexedBases
+            # (Note that free_vars have been defined before the handling of the 
+            # wilds            for var in free_vars:
+            for var in free_vars:
+                if isinstance(var, Symbol):
+                    decr_vars[var] = Symbol(
+                        var.name + _DECR_SUFFIX, **var._assumptions
+                    )
+                elif isinstance(var, IndexedBase):
+                    decr_vars[var] = IndexedBase(
+                        var.label.name + _DECR_SUFFIX, **var._assumptions
+                    )
+                else:
+                    raise TypeError('Expecting Symbol or IndexedBase')
 
-        decr_suffix = 'InternalProxy'
+            rhs_terms = [term.subst(decr_vars) for term in rhs_terms]
 
-        if not simult:
-
-            target = self
-            restore = None
-
-        elif if_scalar and not if_indexed:
-
-            assert isinstance(lhs, Symbol)
-            orig_lhs = lhs
-            decored_lhs = Symbol(lhs.name + decr_suffix)
-            target = self.map2amps(lambda x: x.xreplace({
-                orig_lhs: decored_lhs
-            }))
-            lhs = decored_lhs
-
-            # Not possible for the target to be failed to be matched against.
-            restore = None
-
-        elif if_scalar:
-
-            assert isinstance(lhs, Indexed)
-            orig_base = lhs.base
-            decored_base = IndexedBase(orig_base.label.name + decr_suffix)
-
-            def decr(x: Expr):
-                return x.xreplace({
-                    orig_base: decored_base
-                })
-
-            target = self.map2amps(decr)
-            lhs = decr(lhs)
-
-            def restore(t: Term):
-                return t.map(lambda x: x.xreplace({
-                    decored_base: orig_base
-                }), skip_vecs=True)
-
-        else:
-
-            # For vectors, we decorate them by attaching a special placeholder
-            # to their original labels, since vector labels has been documented
-            # to be allowed to be anything.
-
-            def decr_vecs(vs: typing.Tuple[Vec]):
-                return tuple(
-                    Vec(label=(i.label, _Decred(0)), indices=i.indices)
-                    for i in vs
-                )
-
-            target = self.map(lambda t: t.map(vecs=decr_vecs(t.vecs)))
-            assert isinstance(lhs, tuple)
-            lhs = decr_vecs(lhs)
-
-            def restore(t: Term):
-                # Only restore the decorated vectors.
-                return t.map(vecs=tuple(
-                    Vec(label=i.label[0], indices=i.indices)
-                    if isinstance(i.label, tuple) and len(i.label) == 2
-                       and isinstance(i.label[1], _Decred)
-                    else i
-                    for i in t.vecs
-                ))
-
-        target = target.expand()
+            # for vectors
+            rhs_terms = [
+                term.map(vecs=self._decr_vecs(term.vecs)) for term in rhs_terms
+            ]
 
         # Invoke the core facility.
-        res = target._subst(
+        res = self.expand()._subst(
             lhs, rhs_terms, full_balance=full_balance, excl=excl
         )
 
-        # Restore
-        if restore is None:
+        if not simult or keep_decorated:
             return res
         else:
+            restore = functools.partial(self._restore, decr_vars=decr_vars)
             return res.map(restore)
 
     def _subst(
@@ -1230,7 +1239,7 @@ class Tensor:
         """
 
         free_vars_local = (
-                self.free_vars | set.union(*[i.free_vars for i in rhs_terms])
+            self.free_vars | set.union(*[term.free_vars for term in rhs_terms])
         )
         if excl is not None:
             free_vars_local |= excl
@@ -1267,16 +1276,24 @@ class Tensor:
 
     def subst_all(
             self, defs, simplify=False, full_balance=False, excl=None,
-            simult=True
+            simult=True, simult_all=False
     ):
-        """Substitute all given definitions serially.
+        """Substitute all given definitions.
 
         The definitions should be given as an iterable of either
         :py:class:`TensorDef` instances or pairs of left-hand side and
-        right-hand side of the substitutions.  Note that the substitutions are
-        going to be performed **according to the given order** one-by-one,
-        rather than simultaneously.
+        right-hand side of the substitutions. Note that, by default, the
+        substitutions are going to be performed **according to the given
+        order** one-by-one; simultaneous substitutions can be turned on by
+        setting ``simult_all`` to be true.
         """
+
+        # assert simult or not simult_all
+
+        if simplify and not simult_all:
+            sequentially_simplify = True
+        else:
+            sequentially_simplify = False
 
         res = self
         for i in defs:
@@ -1292,14 +1309,20 @@ class Tensor:
                 )
 
             res = res.subst(
-                lhs, rhs, full_balance=full_balance, excl=excl, simult=simult
+                lhs, rhs, full_balance=full_balance, excl=excl, 
+                simult=simult, keep_decorated=simult_all
             )
-            if simplify:
+            if sequentially_simplify:
                 res = res.simplify().repartition()
 
             # Mostly to make the evaluation eagerly.
             if res.n_terms == 0:
                 return res
+
+        if simult_all:
+            res = res.map(self._restore)
+            if simplify:
+                res = res.simplify().repartition()
 
         return res
 
