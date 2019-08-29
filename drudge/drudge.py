@@ -979,7 +979,9 @@ class Tensor:
                     raise TypeError('Expecting Symbol or IndexedBase')
 
                 if name.endswith(_DECR_SUFFIX):
-                    restore_vars[var] = Ref(name[:suffix_index])
+                    restore_vars[var] = Ref(
+                        name[:suffix_index], **var._assumptions
+                    )
 
         func = lambda x: x.xreplace(restore_vars)
 
@@ -1197,9 +1199,13 @@ class Tensor:
             # wilds            for var in free_vars:
             for var in free_vars:
                 if isinstance(var, Symbol):
-                    decr_vars[var] = Symbol(var.name + _DECR_SUFFIX)
+                    decr_vars[var] = Symbol(
+                        var.name + _DECR_SUFFIX, **var._assumptions
+                    )
                 elif isinstance(var, IndexedBase):
-                    decr_vars[var] = IndexedBase(var.label.name + _DECR_SUFFIX)
+                    decr_vars[var] = IndexedBase(
+                        var.label.name + _DECR_SUFFIX, **var._assumptions
+                    )
                 else:
                     raise TypeError('Expecting Symbol or IndexedBase')
 
