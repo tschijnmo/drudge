@@ -15,10 +15,24 @@ jobs:
             python3 setup.py install
             cd tests
             pytest -sv
+  test_spark:
+    docker:
+      - image: tschijnmo/drudge:base
+    steps:
+      - run:
+          name: Run tests with Apache Spark
+          command: |
+            git clone --recurse-submodules https://github.com/tschijnmo/drudge.git
+            cd drudge
+            python3 setup.py build
+            python3 setup.py install
+            cd tests
+            pytest -sv
 
 workflows:
   version: 2
   tests:
     jobs:
       - test_dummy
+      - test_spark
 
