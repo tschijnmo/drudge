@@ -16,6 +16,8 @@ from drudge import (
     Drudge, Range, Vec, Term, Perm, NEG, CONJ, TensorDef, CR, UP, DOWN
 )
 
+from conftest import skip_in_spark
+
 
 @pytest.fixture(scope='module')
 def free_alg(spark_ctx):
@@ -416,6 +418,7 @@ def test_simplify_delta_of_two_ranges(free_alg):
     assert tensor.simplify() == 0
 
 
+@skip_in_spark(reason="SymPy Function cannot be pickled (GitHub Issue #4297)")
 def test_simplify_delta_of_unsolvable_functions(free_alg):
     """Test simplification of delta of with functions unable to solve."""
 
