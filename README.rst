@@ -1,3 +1,6 @@
+.. image:: https://circleci.com/gh/tschijnmo/drudge.svg?style=shield
+    :target: https://circleci.com/gh/tschijnmo/drudge
+
 .. image:: https://travis-ci.org/tschijnmo/drudge.svg?branch=master
     :target: https://travis-ci.org/tschijnmo/drudge
 

@@ -208,7 +208,6 @@ def test_dagger_of_field_operators(genmb):
     assert compl_dag == dr.einst(conjugate(x[a, b]) * c_dag[b] * c_[a])
 
 
-@pytest.mark.skip(reason="Wait until SymPy issue #13979 is resolved")
 def test_diag_tight_binding_hamiltonian(spark_ctx):
     """Test automatic diagonalization of the tight-binding Hamiltonian.
 

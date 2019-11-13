@@ -2,15 +2,28 @@ version: 2
 jobs:
   test_dummy:
     docker:
-      - image: tschijnmo/drudgedevel:latest
+      - image: tschijnmo/drudge:base
     steps:
-      - checkout
-      - run: git submodule update --init --recursive
       - run:
           name: Run tests with dummy Spark
           environment:
             DUMMY_SPARK: 1
           command: |
+            git clone --recurse-submodules https://github.com/tschijnmo/drudge.git
+            cd drudge
+            python3 setup.py build
+            python3 setup.py install
+            cd tests
+            pytest -sv
+  test_spark:
+    docker:
+      - image: tschijnmo/drudge:base
+    steps:
+      - run:
+          name: Run tests with Apache Spark
+          command: |
+            git clone --recurse-submodules https://github.com/tschijnmo/drudge.git
+            cd drudge
             python3 setup.py build
             python3 setup.py install
             cd tests
@@ -21,4 +34,5 @@ workflows:
   tests:
     jobs:
       - test_dummy
+      - test_spark
 

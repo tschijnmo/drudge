@@ -10,6 +10,7 @@ from drudge.nuclear import (
     JOf, MOf, CG, Wigner6j, Wigner3j, _simpl_pono_term
 )
 
+from conftest import skip_in_spark
 
 @pytest.fixture(scope='module')
 def nuclear(spark_ctx):
@@ -106,8 +107,11 @@ def test_varsh_872_4(nuclear: NuclearBogoliubovDrudge):
         ) * KroneckerDelta(gamma, gamma_prm)
 
 
+@skip_in_spark(reason="Maybe assumptions are not serialized with symbols")
 def test_varsh_872_5(nuclear: NuclearBogoliubovDrudge):
     """Test simplification based on the rule in Varshalovich 8.7.2 Eq (5).
+
+    TODO: Investigate its failure in Apache Spark environment.
     """
     dr = nuclear
     a, alpha, b, beta, b_prm, beta_prm = symbols(

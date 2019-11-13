@@ -100,3 +100,5 @@ ENV/
 /docs/examples/swap
 .pytest_cache/
 
+# For usage in dockerignore.
+.git
