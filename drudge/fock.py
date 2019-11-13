@@ -1061,7 +1061,7 @@ class BogoliubovDrudge(GenMBDrudge):
 
     .. math::
 
-        \beta^\dagger_k = \sum_l u_{lk} c^\dagger_l v_{lk} c_l
+        \beta^\dagger_k = \sum_l u_{lk} c^\dagger_l + v_{lk} c_l
 
     Then the Hamiltonian is going to be rewritten with matrix elements formatted
     according to the given format.  During the rewritten, the new matrix
