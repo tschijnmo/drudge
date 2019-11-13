@@ -391,7 +391,7 @@ def _swap_lattice_gens(vec1: Vec, vec2: Vec, bcast_swap_info):
             comm_factor = -1 / phase
             phase = 1 / phase
         elif assume_comm:
-            comm = _NOUGHT
+            comm = parse_terms(_NOUGHT)
             phase = _UNITY
             comm_factor = _UNITY
         else:
