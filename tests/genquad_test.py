@@ -19,7 +19,3 @@ def test_assume_comm(spark_ctx):
     tensor = dr.sum(v1 | v2)
 
     assert tensor.simplify() == Integer(0)
-
-
-
-
