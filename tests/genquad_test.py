@@ -23,4 +23,3 @@ def test_assume_comm(spark_ctx):
 
 
 
-
