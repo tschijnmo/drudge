@@ -701,7 +701,7 @@ def test_tensors_can_be_differentiated(free_alg):
 
 
 @pytest.mark.parametrize('full_balance', [True, False])
-def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
+def test_tensors_can_substitute_scalars(free_alg, full_balance):
     """Test scalar substitution facility for tensors."""
 
     dr = free_alg
@@ -736,7 +736,7 @@ def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_vectors(
+def test_tensors_can_substitute_vectors(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -765,7 +765,7 @@ def test_tensors_can_be_substituted_vectors(
 
 
 @pytest.mark.parametrize('full_balance', [True, False])
-def test_tensors_can_be_substituted_scalars_simultaneously(
+def test_tensors_can_substitute_scalars_simultaneously(
         free_alg, full_balance
 ):
     """Test scalar substitution facility for tensors."""
@@ -796,7 +796,7 @@ def test_tensors_can_be_substituted_scalars_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_vectors_simultaneously(
+def test_tensors_can_substitute_vectors_simultaneously(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -821,7 +821,7 @@ def test_tensors_can_be_substituted_vectors_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_symbols_simultaneously(
+def test_tensors_can_substitute_symbols_simultaneously(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -852,7 +852,7 @@ def test_tensors_can_be_substituted_symbols_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_strings_of_vectors(
+def test_tensors_can_substitute_strings_of_vectors(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for strings of tensors."""
