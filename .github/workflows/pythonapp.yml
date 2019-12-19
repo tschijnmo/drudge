@@ -9,8 +9,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        repository: tschijnmo/DummyRDD
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
@@ -19,6 +17,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # pip install -r requirements.txt
+        git clone https://github.com/tschijnmo/DummyRDD.git
         cd DummyRDD; python3 setup.py install; cd ..
         python3 setup.py install
     - name: Lint with flake8
