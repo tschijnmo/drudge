@@ -1238,9 +1238,13 @@ class Tensor:
         replaced with the wilds if it is needed.
         """
 
-        free_vars_local = (
-            self.free_vars | set.union(*[term.free_vars for term in rhs_terms])
-        )
+        rhs_free_vars_per_term = [term.free_vars for term in rhs_terms]
+        if len(rhs_free_vars_per_term) > 0:
+            rhs_free_vars = set.union(*rhs_free_vars_per_term)
+        else:
+            rhs_free_vars = set()
+
+        free_vars_local = (self.free_vars | rhs_free_vars)
         if excl is not None:
             free_vars_local |= excl
 

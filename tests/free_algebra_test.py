@@ -701,7 +701,7 @@ def test_tensors_can_be_differentiated(free_alg):
 
 
 @pytest.mark.parametrize('full_balance', [True, False])
-def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
+def test_tensors_can_substitute_scalars(free_alg, full_balance):
     """Test scalar substitution facility for tensors."""
 
     dr = free_alg
@@ -736,7 +736,7 @@ def test_tensors_can_be_substituted_scalars(free_alg, full_balance):
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_vectors(
+def test_tensors_can_substitute_vectors(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -765,7 +765,53 @@ def test_tensors_can_be_substituted_vectors(
 
 
 @pytest.mark.parametrize('full_balance', [True, False])
-def test_tensors_can_be_substituted_scalars_simultaneously(
+def test_numbers_can_substitute_scalars(free_alg, full_balance):
+    """Test substituting scalars with numbers."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+    r = Range('D', 0, 2)
+    i, j, k, l = symbols('i j k l')
+    dr.set_dumms(r, [i, j, k, l])
+    v = p.v
+
+    orig = dr.sum((i, r), x[i] ** 2 * x[j] * y[k] * v[l])
+
+    res = orig.subst(x[i], 0, full_balance=full_balance).simplify()
+    assert res == 0
+    res = orig.subst(x[j], 1, full_balance=full_balance).simplify()
+    assert res == dr.sum(2 * y[k] * v[l])
+    res = orig.subst(x[k], 2, full_balance=full_balance).simplify()
+    assert res == dr.sum(16 * y[k] * v[l])
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_numbers_can_substitute_vectors(free_alg, full_balance):
+    """Test substituting vectors with numbers."""
+
+    dr = free_alg
+    p = dr.names
+
+    x = IndexedBase('x')
+    y = IndexedBase('y')
+    r = p.R
+    i, j, k, l = symbols('i j k l')
+    v = p.v
+    w = Vec('w')
+
+    orig = dr.sum((i, r), (j, r), x[i, j] * v[i] * w[j] + y[i, j] * v[i] * v[j])
+
+    res = orig.subst(v[k], 0, full_balance=full_balance).simplify()
+    assert res == 0
+    res = orig.subst(v[i], 1, full_balance=full_balance).simplify()
+    assert res == dr.sum((i, r), (j, r), x[j, i] * w[i] + y[i, j])
+
+
+@pytest.mark.parametrize('full_balance', [True, False])
+def test_tensors_can_substitute_scalars_simultaneously(
         free_alg, full_balance
 ):
     """Test scalar substitution facility for tensors."""
@@ -796,7 +842,7 @@ def test_tensors_can_be_substituted_scalars_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_vectors_simultaneously(
+def test_tensors_can_substitute_vectors_simultaneously(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -821,7 +867,7 @@ def test_tensors_can_be_substituted_vectors_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_symbols_simultaneously(
+def test_tensors_can_substitute_symbols_simultaneously(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for tensors."""
@@ -852,7 +898,7 @@ def test_tensors_can_be_substituted_symbols_simultaneously(
 
 @pytest.mark.parametrize('full_balance', [True, False])
 @pytest.mark.parametrize('full_simplify', [True, False])
-def test_tensors_can_be_substituted_strings_of_vectors(
+def test_tensors_can_substitute_strings_of_vectors(
         free_alg, full_balance, full_simplify
 ):
     """Test vector substitution facility for strings of tensors."""
