@@ -9,6 +9,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Checkout submodules
+      run: |
+          git submodule sync --recursive
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
@@ -19,6 +22,8 @@ jobs:
         # pip install -r requirements.txt
         git clone https://github.com/tschijnmo/DummyRDD.git
         cd DummyRDD; python3 setup.py install; cd ..
+    - name: Install
+      run: |
         python3 setup.py install
     - name: Lint with flake8
       run: |
