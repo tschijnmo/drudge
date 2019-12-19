@@ -31,7 +31,7 @@ jobs:
         DUMMY_SPARK: 1
       run: |
         cd tests 
-        coverage run --source=drudge -m pytest -sv
+        # coverage run --source=drudge -m pytest -sv
         pip install pytest
         pytest
         cd ..
