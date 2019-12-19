@@ -9,6 +9,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Download submodules
       run: |
           git submodule update --init --recursive 
     - name: Set up Python 3.7
