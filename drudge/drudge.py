@@ -1653,21 +1653,21 @@ class TensorDef(Tensor):
     tensor is zero-order, the left-hand side is simply a symbol.  When it has
     external indices, the base and external indices for the it are both
     stored.  The base is a :py:class:`Vec` instance for tensors with vector
-    part or it is an SymPy IndexedBase for scalar tensors.  For instance,
+    part or it is a SymPy IndexedBase for scalar tensors.  For instance,
 
     .. math::
 
         \sum_j o_{i, j} f_j
 
-    can be construed as a tensor.  By storing it as an :py:class:`Tensor`
-    object, we can have mathematical manipulations on it.  With an explicit
-    left-hand side,
+    can be construed as a tensor.  By storing it as a :py:class:`Tensor`
+    object, we can mathematically manipulate it.  With an explicit left-hand
+    side,
 
     .. math::
 
         t_j = \sum_j o_{i, j} f_j
 
-    it is now an tensor definition, which can be handled by the current class.
+    is now a tensor definition, which can be handled by the current class.
 
     A tensor definition is a subclass of tensor.  With explicit storage of a
     left-hand side, it can be convenient to be used for :py:meth:`Tensor.subst`
@@ -1696,9 +1696,9 @@ class TensorDef(Tensor):
     Tensor definition can also be directly subscripts, like ``t_def[1]``
     gives :math:`sum_i o_{1, i} f_i`.
 
-    By being :py:class:`Tensor` subclass, all tensor manipulations are
-    supported.  Just the result will not be an automatically a definition.
-
+    Being a subclass of :py:class:`Tensor`, :py:class:`TensorDef` supports all
+    tensor manipulations, albeit the result will not be a tensor definition
+    automatically.
     """
 
     def __init__(self, base, exts, tensor: Tensor):
